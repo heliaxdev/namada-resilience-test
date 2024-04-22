@@ -27,8 +27,8 @@ jobs:
             image: "namada"
             tag: ""
           - make: "build-namada-inst"
-            image: "namada-inst"
-            tag: inst
+            image: "namada"
+            tag: -inst
 
     steps:
       - name: Checkout repo
