@@ -19,12 +19,16 @@ jobs:
         images:
           - make: "build-config"
             image: "namada-config"
+            tag: ""
           - make: "build-genesis"
             image: "namada-genesis"
+            tag: ""
           - make: "build-namada"
             image: "namada"
+            tag: ""
           - make: "build-namada-inst"
             image: "namada-inst"
+            tag: inst
 
     steps:
       - name: Checkout repo
@@ -44,4 +48,4 @@ jobs:
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit ${{ github.event.inputs.commit }}
         run: |
           registry_url="${{ env.regsitry_url }}" sha=${{ github.event.inputs.commit }} make ${{ matrix.images.make }}
-          docker push ${{ env.regsitry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}
+          docker push ${{ env.regsitry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
