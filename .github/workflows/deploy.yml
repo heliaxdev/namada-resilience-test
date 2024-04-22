@@ -41,5 +41,5 @@ jobs:
           password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit ${{ github.event.inputs.commit }}
         run: |
-          registry_url=${{ secrets.ANTITHESIS_REGISTRY_URL }} sha=${{ github.event.inputs.commit }} make ${{ matrix.images.make }}
-          docker push ${{ secrets.ANTITHESIS_REGISTRY_URL }}/${{ matrix.images.image }}
+          registry_url="${{ secrets.ANTITHESIS_REGISTRY_URL }}" sha=${{ github.event.inputs.commit }} make ${{ matrix.images.make }}
+          docker push "${{ secrets.ANTITHESIS_REGISTRY_URL }}"/${{ matrix.images.image }}
