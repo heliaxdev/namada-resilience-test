@@ -25,5 +25,7 @@ jobs:
             image: "namada-inst"
 
     steps:
-    - name: Build image ${{ matrix.images.name }}
-      run: sha=${{ github.event.inputs.commit }} make ${{ matrix.images.make }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build image ${{ matrix.images.name }}
+        run: sha=${{ github.event.inputs.commit }} make ${{ matrix.images.make }}
