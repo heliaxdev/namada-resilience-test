@@ -1,0 +1,10 @@
+diff --git a/scripts/get_cometbft.sh b/scripts/get_cometbft.sh
+index 5695f2887..b020c51c5 100755
+--- a/scripts/get_cometbft.sh
++++ b/scripts/get_cometbft.sh
+@@ -46,4 +46,4 @@ echo "$RELEASE_URL"
+ curl -LsSfo "$TMP_PATH"/cometbft.tar.gz "$RELEASE_URL" || error_exit "cometbft release download failed"
+ 
+ cd $TARGET_PATH
+-sudo tar -xvzf $TMP_PATH/cometbft.tar.gz cometbft || error_exit "cometbft release extraction failed"
++tar -xvzf $TMP_PATH/cometbft.tar.gz cometbft || error_exit "cometbft release extraction failed"

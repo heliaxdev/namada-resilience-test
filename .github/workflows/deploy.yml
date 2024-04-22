@@ -1,0 +1,17 @@
+name: Rebuild Namada images
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "The namada SHA commit to build"
+        required: true
+        type: string
+
+jobs:
+    hello:
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: Show the commit
+            run: echo "Building namada from the following commit: ${{ github.event.inputs.commit }}"
