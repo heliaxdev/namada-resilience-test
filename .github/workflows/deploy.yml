@@ -16,9 +16,9 @@ jobs:
       matrix:
         images:
           - make: "build-config"
-            image: "config"
+            image: "namada-config"
           - make: "build-genesis"
-            image: "genesis"
+            image: "namada-genesis"
           - make: "build-namada"
             image: "namada"
           - make: "build-namada-inst"
