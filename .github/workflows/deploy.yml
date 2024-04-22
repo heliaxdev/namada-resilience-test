@@ -26,4 +26,4 @@ jobs:
 
     steps:
     - name: Build image ${{ matrix.images.name }}
-      run: make ${{ matrix.images.make }}
+      run: sha=${{ github.event.inputs.commit }} make ${{ matrix.images.make }}
