@@ -1,5 +1,5 @@
 build-config:
-	docker build --no-cache -t namada-config:${sha} -f --build-arg GIT_SHA=${sha} config/Dockerfile config
+	docker build --no-cache -t namada-config:${sha} -f config/Dockerfile --build-arg GIT_SHA=${sha} config
 
 build-genesis:
 	docker build --no-cache -t namada-genesis:${sha} -f genesis/Dockerfile --build-arg GIT_SHA=${sha} genesis
