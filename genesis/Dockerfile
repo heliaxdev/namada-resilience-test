@@ -2,8 +2,8 @@
 # This is used as the genesis container to create the chain and join the validators to the network
 FROM docker.io/rust:1.76-slim-bullseye as builder
 
-# Pinning a release tag
-ARG GIT_BRANCH="v0.33.0"
+# Pinning a commit
+ARG GIT_SHA
 ARG PROFILE="release"
 
 # problem with libclang-12-dev, also added curl
@@ -11,7 +11,7 @@ RUN apt-get -y update
 RUN apt-get install -y make git-core libssl-dev pkg-config libclang-13-dev build-essential protobuf-compiler libudev-dev curl wget python3 python3-pip wget
 RUN pip3 install toml
 
-RUN git clone --depth=1 --branch="${GIT_BRANCH}" https://github.com/anoma/namada.git /namada
+RUN git clone https://github.com/anoma/namada.git /namada && cd /namada && git checkout $GIT_SHA
 
 # Important!
 WORKDIR /namada

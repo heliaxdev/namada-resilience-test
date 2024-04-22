@@ -4,14 +4,14 @@
 FROM docker.io/rust:1.76-slim-bullseye as builder
 
 # Pinning a release tag
-ARG GIT_BRANCH="v0.33.0"
+ARG GIT_SHA
 ARG PROFILE="release"
 
 # problem with libclang-12-dev, also added curl
 RUN apt-get -y update
 RUN apt-get install -y make git-core libssl-dev pkg-config libclang-13-dev build-essential protobuf-compiler libudev-dev curl wget
 
-RUN git clone --depth=1 --branch="${GIT_BRANCH}" https://github.com/anoma/namada.git /namada
+RUN git clone https://github.com/anoma/namada.git /namada && cd /namada && git checkout $GIT_SHA
 
 WORKDIR /namada
 

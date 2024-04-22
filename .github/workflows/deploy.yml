@@ -9,9 +9,21 @@ on:
         type: string
 
 jobs:
-    hello:
-        runs-on: ubuntu-latest
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        images:
+          - make: "build-config"
+            image: "config"
+          - make: "build-genesis"
+            image: "genesis"
+          - make: "build-namada"
+            image: "namada"
+          - make: "build-namada-inst"
+            image: "namada-inst"
 
-        steps:
-        - name: Show the commit
-          run: echo "Building namada from the following commit ${{ github.event.inputs.commit }}"
+    steps:
+    - name: Build image ${{ matrix.images.name }}
+      run: make ${{ matrix.images.make }}
