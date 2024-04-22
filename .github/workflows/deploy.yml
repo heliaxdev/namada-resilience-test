@@ -14,4 +14,4 @@ jobs:
 
         steps:
         - name: Show the commit
-            run: echo "Building namada from the following commit: ${{ github.event.inputs.commit }}"
+          run: echo "Building namada from the following commit ${{ github.event.inputs.commit }}"
