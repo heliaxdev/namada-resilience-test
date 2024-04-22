@@ -44,4 +44,4 @@ jobs:
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit ${{ github.event.inputs.commit }}
         run: |
           registry_url="${{ env.regsitry_url }}" sha=${{ github.event.inputs.commit }} make ${{ matrix.images.make }}
-          docker push ${{ env.regsitry_url }}/${{ matrix.images.image }}
+          docker push ${{ env.regsitry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}
