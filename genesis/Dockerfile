@@ -4,7 +4,7 @@ FROM docker.io/rust:1.76-slim-bullseye as builder
 
 # Pinning a commit
 ARG GIT_SHA
-ARG NETWORK_TEMPLATE_TAG
+ARG GENESIS_TEMPLATE_VERSION
 ARG PROFILE="release"
 
 # problem with libclang-12-dev, also added curl
@@ -37,7 +37,7 @@ RUN make build-wasm-scripts
 
 # Preparing the network templates for starting the chain
 RUN git clone https://github.com/heliaxdev/namada-network-templates.git /namada-network-templates
-RUN mv /namada-network-templates/devnet/$NETWORK_TEMPLATE_TAG /network-templates
+RUN mv /namada-network-templates/devnet/$GENESIS_TEMPLATE_VERSION /network-templates
 
 COPY ./entrypoint.sh /entrypoint.sh
 
