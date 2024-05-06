@@ -13,6 +13,7 @@ mkdir -p /network-config # output from `namadac utils init network` command + th
 mkdir -p /validator-0 # base dir for validators that can be used for `namadac utils join network`
 mkdir -p /validator-1
 mkdir -p /validator-2
+mkdir -p /fullnode
 
 # ENVARS we expect from the docker-compose file
 # We should be able to use either hostname or ip address
