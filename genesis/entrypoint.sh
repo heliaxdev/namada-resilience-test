@@ -58,7 +58,10 @@ for ((i = 0; i < len; i++)); do
 
     echo running init-genesis-validator command for "${validator_aliases[i]}"
 
-    SELF_BOND_AMUNT=$(( 1000 * i ))
+    # Giving unequal voting power to the validators
+    # This means faulting validator 0 or 1 can keep the chain alive
+    # e.g. validator 0 = 1000, 1 = 2000, 2 = 3000
+    SELF_BOND_AMOUNT=$(( 1000 * ( i + 1 ) ))
 
     namadac utils \
     init-genesis-validator \
@@ -66,7 +69,7 @@ for ((i = 0; i < len; i++)); do
     --address ${ESTABLISHED_ADDRESS} \
     --alias ${validator_aliases[i]} --net-address ${validator_address[i]} \
     --commission-rate 0.05 --max-commission-rate-change 0.01 \
-    --self-bond-amount $SELF_BOND_AMUNT --email ${validator_aliases[i]} \
+    --self-bond-amount $SELF_BOND_AMOUNT --email ${validator_aliases[i]} \
     --path "${UNSIGNED_TX_FILE_PATH}" --unsafe-dont-encrypt
 
     # Sign the transactions
@@ -80,7 +83,7 @@ for ((i = 0; i < len; i++)); do
     #6. Edit the `balances.toml` file to give a balance to each newly created established account (depends on the validator index, but 5k should be enough)
     echo "Adding balance to ${network_template_path}/balances.toml for ${validator_aliases[i]}"
     echo "" >> ${network_template_path}/balances.toml
-    echo ${ESTABLISHED_ADDRESS} = '5000' >> ${network_template_path}/balances.toml
+    echo ${ESTABLISHED_ADDRESS} = '6000' >> ${network_template_path}/balances.toml
 
 done
 
