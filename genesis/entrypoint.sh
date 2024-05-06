@@ -59,13 +59,18 @@ for ((i = 0; i < len; i++)); do
 
     echo running init-genesis-validator command for "${validator_aliases[i]}"
 
+    # Giving unequal voting power to the validators
+    # This means faulting validator 0 or 1 can keep the chain alive
+    # e.g. validator 0 = 1000, 1 = 2000, 2 = 3000
+    SELF_BOND_AMOUNT=$(( 1000 * ( i + 1 ) ))
+
     namadac utils \
     init-genesis-validator \
     --base-dir "${base_dirs[i]}" \
     --address ${ESTABLISHED_ADDRESS} \
     --alias ${validator_aliases[i]} --net-address ${validator_address[i]} \
     --commission-rate 0.05 --max-commission-rate-change 0.01 \
-    --self-bond-amount 1000 --email ${validator_aliases[i]} \
+    --self-bond-amount $SELF_BOND_AMOUNT --email ${validator_aliases[i]} \
     --path "${UNSIGNED_TX_FILE_PATH}" --unsafe-dont-encrypt
 
     # Sign the transactions
@@ -76,10 +81,10 @@ for ((i = 0; i < len; i++)); do
     echo "" >> ${network_template_path}/transactions.toml
     cat $SIGNED_TX_FILE_PATH >> ${network_template_path}/transactions.toml
 
-    #6. Edit the `balances.toml` file to give a balance to each newly created established account (at least 1000 since we bonded that)
+    #6. Edit the `balances.toml` file to give a balance to each newly created established account (depends on the validator index, but 5k should be enough)
     echo "Adding balance to ${network_template_path}/balances.toml for ${validator_aliases[i]}"
     echo "" >> ${network_template_path}/balances.toml
-    echo ${ESTABLISHED_ADDRESS} = '"1000"' >> ${network_template_path}/balances.toml
+    echo ${ESTABLISHED_ADDRESS} = '6000' >> ${network_template_path}/balances.toml
 
 done
 
@@ -87,7 +92,7 @@ done
 CHAIN_PREFIX="devnet"
 GENESIS_TIME=$(date -Iseconds)
 WASM_CHECKSUMS_PATH="${namada_path}/wasm/checksums.json"
-namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CHAIN_PREFIX} --genesis-time ${GENESIS_TIME} --templates-path ${network_template_path} --wasm-checksums-path ${WASM_CHECKSUMS_PATH} --consensus-timeout-commit 10s
+namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CHAIN_PREFIX} --genesis-time ${GENESIS_TIME} --templates-path ${network_template_path} --wasm-checksums-path ${WASM_CHECKSUMS_PATH} --consensus-timeout-commit 5s
 
 # Get the CHAIN ID from the above command by parsing that directory
 # @todo, our sed is hard coded so we don't have to escape the slash
