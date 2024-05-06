@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Simple entrypoint for the validator to wait for joining the network before starting
+# Simple entrypoint for the validator/full node to wait for joining the network before starting
 set -e
 
 BASE_DIR=${BASE_DIR:-"/validator0"}
@@ -8,9 +8,10 @@ BASE_DIR=${BASE_DIR:-"/validator0"}
 joined_network=0
 while [ $joined_network -eq 0 ]
 do
-    echo "Checking if validator has joined the network"
+    node=$(echo $BASE_DIR | tr -d "/")
+    echo "Checking if $node has joined the network"
     if [ -e "/container_ready${BASE_DIR}" ]; then
-        echo "Validator ready to start"
+        echo "$node ready to start"
         joined_network=1
     fi
     sleep 10

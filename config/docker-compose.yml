@@ -16,6 +16,7 @@ services:
       - ./validator-0/:/validator-0
       - ./validator-1/:/validator-1
       - ./validator-2/:/validator-2
+      - ./fullnode/:/fullnode
       - ./container_ready/:/container_ready
     networks:
       namada-net:

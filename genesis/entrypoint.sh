@@ -84,7 +84,7 @@ for ((i = 0; i < len; i++)); do
     #6. Edit the `balances.toml` file to give a balance to each newly created established account (depends on the validator index, but 5k should be enough)
     echo "Adding balance to ${network_template_path}/balances.toml for ${validator_aliases[i]}"
     echo "" >> ${network_template_path}/balances.toml
-    echo ${ESTABLISHED_ADDRESS} = '6000' >> ${network_template_path}/balances.toml
+    echo ${ESTABLISHED_ADDRESS} = '"6000"' >> ${network_template_path}/balances.toml
 
 done
 
@@ -121,7 +121,7 @@ NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir /fullnode uti
 
 # Copy all of the wasm artifacts from the chain into base directory for each fullnode chain directory
 rm -rf /fullnode/${CHAIN_ID}/wasm
-cp -r ${network_config_path}/${CHAIN_ID}/wasm fullnode/${CHAIN_ID}/
+cp -r ${network_config_path}/${CHAIN_ID}/wasm /fullnode/${CHAIN_ID}/
 
 # Let each fullnode know it's ready to start 
 touch /container_ready/fullnode
