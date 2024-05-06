@@ -80,6 +80,26 @@ services:
     networks:
       namada-net:
         ipv4_address: 30.0.0.14
+  fullnode: # full node
+    container_name: fullnode
+    hostname: fullnode
+    # image: namada:v0.33.0-inst
+    image: "namada:${IMAGE_TAG:-latest}"
+    environment:
+      - NAMADA_TOKIO_THREADS=4
+      - NAMADA_RAYON_THREADS=4
+      - NAMADA_LOG=info
+      - NAMADA_LOG_FMT=json
+      - CMT_LOG_LEVEL=info
+      - BASE_DIR=/fullnode
+    volumes:
+      - ./fullnode/:/fullnode
+      - ./container_ready/:/container_ready
+      - ./namada.sh:/entrypoint.sh
+    entrypoint: /entrypoint.sh
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.15
   workload0:
     container_name: workload0
     hostname: workload0
@@ -95,7 +115,7 @@ services:
     entrypoint: /app/entrypoint.sh
     networks:
       namada-net:
-        ipv4_address: 30.0.0.15
+        ipv4_address: 30.0.0.16
   workload1:
     container_name: workload1
     hostname: workload1
@@ -111,7 +131,7 @@ services:
     entrypoint: /app/entrypoint.sh
     networks:
       namada-net:
-        ipv4_address: 30.0.0.16
+        ipv4_address: 30.0.0.17
   workload2:
     container_name: workload2
     hostname: workload2
@@ -128,7 +148,7 @@ services:
     entrypoint: /app/entrypoint.sh
     networks:
       namada-net:
-        ipv4_address: 30.0.0.17
+        ipv4_address: 30.0.0.18
 networks:
   namada-net:
     driver: bridge

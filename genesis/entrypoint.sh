@@ -110,6 +110,16 @@ for ((i = 0; i < len; i++)); do
     touch /container_ready/validator-${i}
 done
 
+#9. Initialize full node
+NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir /fullnode utils join-network --chain-id $CHAIN_ID --dont-prefetch-wasm
+
+# Copy all of the wasm artifacts from the chain into base directory for each fullnode chain directory
+rm -rf /fullnode/${CHAIN_ID}/wasm
+cp -r ${network_config_path}/${CHAIN_ID}/wasm fullnode/${CHAIN_ID}/
+
+# Let each fullnode know it's ready to start 
+touch /container_ready/fullnode
+
 # So that container don't exit
 echo Finished genesis ceremony, going to sleep now...
 
