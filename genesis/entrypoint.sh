@@ -92,7 +92,7 @@ done
 CHAIN_PREFIX="devnet"
 GENESIS_TIME=$(date -Iseconds)
 WASM_CHECKSUMS_PATH="${namada_path}/wasm/checksums.json"
-namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CHAIN_PREFIX} --genesis-time ${GENESIS_TIME} --templates-path ${network_template_path} --wasm-checksums-path ${WASM_CHECKSUMS_PATH} --consensus-timeout-commit 5s --add-persistent-peers
+namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CHAIN_PREFIX} --genesis-time ${GENESIS_TIME} --templates-path ${network_template_path} --wasm-checksums-path ${WASM_CHECKSUMS_PATH} --consensus-timeout-commit 5s
 
 # Get the CHAIN ID from the above command by parsing that directory
 # @todo, our sed is hard coded so we don't have to escape the slash
@@ -106,7 +106,7 @@ cp ${namada_path}/*.tar.gz ${network_config_path}
 
 # 8. Initialize each validator
 for ((i = 0; i < len; i++)); do
-    NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir ${base_dirs[i]} utils join-network --chain-id $CHAIN_ID --genesis-validator ${validator_aliases[i]} --pre-genesis-path ${base_dirs[i]}/pre-genesis/${validator_aliases[i]} --dont-prefetch-wasm
+    NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir ${base_dirs[i]} utils join-network --chain-id $CHAIN_ID --genesis-validator ${validator_aliases[i]} --pre-genesis-path ${base_dirs[i]}/pre-genesis/${validator_aliases[i]} --dont-prefetch-wasm --add-persistent-peers
 
     # Copy all of the wasm artifacts from the chain into base directory for each validator chain directory
     rm -rf ${base_dirs[i]}/${CHAIN_ID}/wasm
