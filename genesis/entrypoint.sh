@@ -94,9 +94,9 @@ GENESIS_TIME=$(date -Iseconds)
 WASM_CHECKSUMS_PATH="${namada_path}/wasm/checksums.json"
 namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CHAIN_PREFIX} --genesis-time ${GENESIS_TIME} --templates-path ${network_template_path} --wasm-checksums-path ${WASM_CHECKSUMS_PATH} --consensus-timeout-commit 5s
 
-# Get the CHAIN ID from the above command by parsing that directory
-# @todo, our sed is hard coded so we don't have to escape the slash
-CHAIN_ID=$(find ${network_config_path} -type d -name "devnet*" | sed 's/network-config//' | tr -d '/')
+# Get the CHAIN ID from the release archive
+CHAIN_ID=$(find ${namada_path}/ -type f -name "devnet*" | sed 's/namada//' | tr -d '/')
+CHAIN_ID=$(basename $CHAIN_ID .tar.gz)
 
 # Provide the chain ID for the workload to read
 touch /container_ready/$CHAIN_ID
@@ -104,13 +104,16 @@ touch /container_ready/$CHAIN_ID
 # Copy the tar archive to the network_config_path (Assuming we only have tar.gz in the namada path generated)
 cp ${namada_path}/*.tar.gz ${network_config_path}
 
+# Extract the archive to be used below
+tar xzvf $network_config_path/$CHAIN_ID.tar.gz
+
 # 8. Initialize each validator
 for ((i = 0; i < len; i++)); do
     NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir ${base_dirs[i]} utils join-network --chain-id $CHAIN_ID --genesis-validator ${validator_aliases[i]} --pre-genesis-path ${base_dirs[i]}/pre-genesis/${validator_aliases[i]} --dont-prefetch-wasm --add-persistent-peers
 
     # Copy all of the wasm artifacts from the chain into base directory for each validator chain directory
     rm -rf ${base_dirs[i]}/${CHAIN_ID}/wasm
-    cp -r ${network_config_path}/${CHAIN_ID}/wasm ${base_dirs[i]}/${CHAIN_ID}/
+    cp -r ${namada_path}/${CHAIN_ID}/wasm ${base_dirs[i]}/${CHAIN_ID}/
     
     # Let each validator know it's ready to start 
     touch /container_ready/validator-${i}
@@ -121,7 +124,7 @@ NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir /fullnode uti
 
 # Copy all of the wasm artifacts from the chain into base directory for each fullnode chain directory
 rm -rf /fullnode/${CHAIN_ID}/wasm
-cp -r ${network_config_path}/${CHAIN_ID}/wasm /fullnode/${CHAIN_ID}/
+cp -r ${namada_path}/${CHAIN_ID}/wasm /fullnode/${CHAIN_ID}/
 
 # Let each fullnode know it's ready to start 
 touch /container_ready/fullnode
