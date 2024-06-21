@@ -17,7 +17,6 @@ on:
         options:
         - namada__pr__customer
         - namada__nightly__customer
-        - namada
       timeouts:
         type: choice
         description: Timeout definition

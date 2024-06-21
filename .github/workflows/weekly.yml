@@ -1,4 +1,4 @@
-name: Run antithesis on weekly
+name: Run antithesis weekly (cron)
 
 on:
   schedule:
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.5
         with:
-          notebook_name: ${{ github.event.inputs.workload_type }}
+          notebook_name: namada__nightly__customer
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
           password: ${{ secrets.ANTITHESIS_PASSWORD }}
