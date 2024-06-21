@@ -1,0 +1,41 @@
+name: Run antithesis daily
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  daily:
+    runs-on: [ubuntu-latest]
+    strategy:
+      fail-fast: true
+      matrix:
+        runs:
+          - image: "draft"
+            timeout: "medium"
+            faults: "baseline"
+            run_type: "default_antithesis"
+          - image: "draft"
+            timeout: "short"
+            faults: "minimal"
+            run_type: "default_antithesis"
+          - image: "main"
+            timeout: "medium"
+            faults: "baseline"
+            run_type: "default_antithesis"
+            
+    steps:
+      - uses: antithesishq/antithesis-trigger-action@v0.5
+        with:
+          notebook_name: ${{ github.event.inputs.workload_type }}
+          tenant: heliax
+          username: ${{ secrets.ANTITHESIS_USER_NAME }}
+          password: ${{ secrets.ANTITHESIS_PASSWORD }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          images: namada-config:${{ matrix.runs.image }},namada-genesis:${{ matrix.runs.image }},namada:${{ matrix.runs.image }},namada-scenario-tester:latest
+          additional_parameters: |-
+            custom.timeouts=${{ matrix.runs.timeout }}
+            custom.faults=${{ matrix.runs.faults }}
+            custom.run_type=${{ matrix.runs.run_type }}
+            custom.testing_config=namada-default
+    

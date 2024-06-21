@@ -1,4 +1,4 @@
-name: Run Antithesis 
+name: Run antithesis (triggerable)
 
 on:
   workflow_dispatch:
@@ -18,6 +18,26 @@ on:
         - namada__pr__customer
         - namada__nightly__customer
         - namada
+      timeouts:
+        type: choice
+        description: Timeout definition
+        options:
+        - short
+        - medium
+        - long
+      faults:
+        type: choice
+        description: Faults definition
+        options:
+        - baseline
+        - minimal
+      run_type:
+        type: choice
+        description: RunType definition
+        options:
+        - default_antithesis
+        - determinator__2000_200
+        - default_fuzzer
 
 jobs:
   antithesis:
@@ -32,7 +52,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           images: namada-config:${{ github.event.inputs.namada_docker_tag }},namada-genesis:${{ github.event.inputs.namada_docker_tag }},namada:${{ github.event.inputs.namada_docker_tag }},namada-scenario-tester:${{ github.event.inputs.scenario_tester_docker_tag }}
           additional_parameters: |-
-            custom.timeouts=short
-            custom.faults=baseline
-            custom.run_type=default_antithesis
+            custom.timeouts=${{ github.event.inputs.timeouts }}
+            custom.faults=${{ github.event.inputs.faults }}
+            custom.run_type=${{ github.event.inputs.run_type }}
             custom.testing_config=namada-default

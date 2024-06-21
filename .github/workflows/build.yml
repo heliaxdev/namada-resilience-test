@@ -1,4 +1,4 @@
-name: Rebuild Namada images
+name: Rebuild namada images (triggerable)
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     env:
-        regsitry_url: us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository
+        registry_url: us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository
     strategy:
       fail-fast: true
       matrix:
@@ -46,10 +46,10 @@ jobs:
       - name: Login to private registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.regsitry_url }}
+          registry: ${{ env.registry_url }}
           username: _json_key
           password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit ${{ github.event.inputs.commit }}/${{ github.event.inputs.genesis_template_version }}
         run: |
-          registry_url="${{ env.regsitry_url }}" sha=${{ github.event.inputs.commit }} genesis_template_version=${{ github.event.inputs.genesis_template_version }} make ${{ matrix.images.make }}
-          docker push ${{ env.regsitry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
+          registry_url="${{ env.registry_url }}" sha=${{ github.event.inputs.commit }} genesis_template_version=${{ github.event.inputs.genesis_template_version }} make ${{ matrix.images.make }}
+          docker push ${{ env.registry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
