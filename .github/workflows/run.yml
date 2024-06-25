@@ -11,12 +11,6 @@ on:
         description: 'The docker tag of the scenario tester image'
         required: true
         type: string
-      workload_type:
-        type: choice
-        description: The type of workload to use (namada__pr__customer 3h, namada__nightly__customer 8h)
-        options:
-        - namada__pr__customer
-        - namada__nightly__customer
       timeouts:
         type: choice
         description: Timeout definition
@@ -44,7 +38,7 @@ jobs:
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.5
         with:
-          notebook_name: ${{ github.event.inputs.workload_type }}
+          notebook_name: namada
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
           password: ${{ secrets.ANTITHESIS_PASSWORD }}
