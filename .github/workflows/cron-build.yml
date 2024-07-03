@@ -16,7 +16,7 @@ jobs:
           - name: main
             template: 0.39.0
           - name: draft
-            template: 0.39.0
+            template: draft
         images:
           - make: "build-config"
             image: "namada-config"
