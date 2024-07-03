@@ -23,12 +23,13 @@ jobs:
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.5
         with:
+          namada_config: namada-config:${{ matrix.runs.image }}
           notebook_name: namada
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
           password: ${{ secrets.ANTITHESIS_PASSWORD }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          images: namada-config:${{ matrix.runs.image }},namada-genesis:${{ matrix.runs.image }},namada:${{ matrix.runs.image }},namada-scenario-tester:latest
+          images: namada-genesis:${{ matrix.runs.image }},namada:${{ matrix.runs.image }},namada-scenario-tester:latest
           additional_parameters: |-
             custom.timeouts=${{ matrix.runs.timeout }}
             custom.faults=${{ matrix.runs.faults }}

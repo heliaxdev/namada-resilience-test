@@ -38,12 +38,13 @@ jobs:
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.5
         with:
+          config_image: namada-config:${{ github.event.inputs.namada_docker_tag }}
           notebook_name: namada
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
           password: ${{ secrets.ANTITHESIS_PASSWORD }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          images: namada-config:${{ github.event.inputs.namada_docker_tag }},namada-genesis:${{ github.event.inputs.namada_docker_tag }},namada:${{ github.event.inputs.namada_docker_tag }},namada-scenario-tester:${{ github.event.inputs.scenario_tester_docker_tag }}
+          images: namada-genesis:${{ github.event.inputs.namada_docker_tag }},namada:${{ github.event.inputs.namada_docker_tag }},namada-scenario-tester:${{ github.event.inputs.scenario_tester_docker_tag }}
           additional_parameters: |-
             custom.timeouts=${{ github.event.inputs.timeouts }}
             custom.faults=${{ github.event.inputs.faults }}
