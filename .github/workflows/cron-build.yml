@@ -70,6 +70,6 @@ jobs:
           password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
       - name: Build & Push Image Check Container
         run: |
-          registry_url="${{ env.registry_url }}" make check-container
+          registry_url="${{ env.registry_url }}" make build-check
           docker push ${{ env.registry_url }}/check:latest
     
