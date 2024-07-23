@@ -107,7 +107,7 @@ services:
     image: namada-scenario-tester:latest
     restart: on-failure
     environment:
-      - VALIDATOR_RPC=30.0.0.12:27658
+      - VALIDATOR_RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
       - WORKERS=4
     volumes:
@@ -123,7 +123,7 @@ services:
     image: namada-scenario-tester:latest
     restart: on-failure
     environment:
-      - VALIDATOR_RPC=30.0.0.13:27658
+      - VALIDATOR_RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
       - WORKERS=4
     volumes:
@@ -156,7 +156,7 @@ services:
     image: check:latest
     restart: on-failure
     environment:
-      - RPC=http://30.0.0.15:27658
+      - RPC=http://30.0.0.14:27658
     volumes:
       - ./container_ready/:/container_ready
     networks:
