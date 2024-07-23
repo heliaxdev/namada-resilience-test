@@ -37,7 +37,7 @@ jobs:
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
           password: ${{ secrets.ANTITHESIS_PASSWORD }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          images: namada-genesis:${{ matrix.runs.image }},namada:${{ matrix.runs.image }},namada-scenario-tester:latest
+          images: namada-genesis:${{ matrix.runs.image }},namada:${{ matrix.runs.image }},namada-scenario-tester:latest,check:latest
           additional_parameters: |-
             custom.timeouts=${{ matrix.runs.timeout }}
             custom.faults=${{ matrix.runs.faults }}
