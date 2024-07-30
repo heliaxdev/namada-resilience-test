@@ -15,12 +15,12 @@ impl DoCheck for InflationCheck {
 
         match total_supply {
             Ok(current_total_supply) => {
-                if state.last_total_supply <= current_total_supply {
+                if state.last_total_supply < current_total_supply {
                     state.last_total_supply = current_total_supply;
                     tracing::info!("Total supply before: {}, after {}", state.last_total_supply, current_total_supply);
                     Ok(())
                 } else {
-                    Err("Total supply didn't increase".to_string())
+                    Err("Total supply decreases".to_string())
                 }
             }
             Err(e) => Err(format!("Failed to query total supply: {}", e)),
