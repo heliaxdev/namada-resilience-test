@@ -92,7 +92,7 @@ done
 CHAIN_PREFIX="devnet"
 GENESIS_TIME=$(date -Iseconds)
 WASM_CHECKSUMS_PATH="${namada_path}/wasm/checksums.json"
-namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CHAIN_PREFIX} --genesis-time ${GENESIS_TIME} --templates-path ${network_template_path} --wasm-checksums-path ${WASM_CHECKSUMS_PATH} --consensus-timeout-commit 5s
+namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CHAIN_PREFIX} --genesis-time ${GENESIS_TIME} --templates-path ${network_template_path} --wasm-checksums-path ${WASM_CHECKSUMS_PATH} --consensus-timeout-commit 2s
 
 # Get the CHAIN ID from the release archive
 CHAIN_ID=$(find ${namada_path}/ -type f -name "devnet*" | sed 's/namada//' | tr -d '/')
