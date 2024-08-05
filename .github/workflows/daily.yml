@@ -39,4 +39,3 @@ jobs:
             custom.faults=${{ matrix.runs.faults }}
             custom.run_type=${{ matrix.runs.run_type }}
             custom.testing_config=namada-default
-    

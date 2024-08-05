@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.5
         with:
-          namada_config: namada-config:${{ matrix.runs.image }}
+          config_image: namada-config:${{ matrix.runs.image }}
           notebook_name: namada
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
