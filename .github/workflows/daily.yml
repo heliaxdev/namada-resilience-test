@@ -2,7 +2,7 @@ name: Run antithesis daily (cron)
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 1 * * *"
 
 jobs:
   daily:
@@ -11,21 +11,17 @@ jobs:
       fail-fast: true
       matrix:
         runs:
-          - image: "draft"
-            timeout: "medium"
-            faults: "baseline"
-            run_type: "determinator__2000_200"
-          - image: "draft"
-            timeout: "medium"
-            faults: "baseline"
-            run_type: "default_antithesis"
-          - image: "draft"
-            timeout: "short"
-            faults: "minimal"
-            run_type: "default_antithesis"
           - image: "main"
             timeout: "medium"
             faults: "baseline"
+            run_type: "determinator__2000_200"
+          - image: "main"
+            timeout: "medium"
+            faults: "baseline"
+            run_type: "default_antithesis"
+          - image: "main"
+            timeout: "short"
+            faults: "minimal"
             run_type: "default_antithesis"
             
     steps:

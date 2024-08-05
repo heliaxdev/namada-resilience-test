@@ -2,7 +2,7 @@ name: Rebuild namada images (cron)
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 12 * * *"
 
 jobs:  
   docker:
@@ -14,9 +14,7 @@ jobs:
       matrix:
         branches:
           - name: main
-            template: 0.40.0
-          - name: draft
-            template: draft
+            template: 0.41.0
         images:
           - make: "build-config"
             image: "namada-config"
