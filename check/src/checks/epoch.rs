@@ -8,7 +8,7 @@ use super::DoCheck;
 pub struct EpochCheck {}
 
 impl DoCheck for EpochCheck {
-    async fn do_check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
+    async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
         let client = sdk.namada.client();
         let last_epoch = rpc::query_epoch(client).await;
         match last_epoch {

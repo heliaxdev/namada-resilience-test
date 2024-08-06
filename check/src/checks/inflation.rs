@@ -8,7 +8,7 @@ use super::DoCheck;
 pub struct InflationCheck {}
 
 impl DoCheck for InflationCheck {
-    async fn do_check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
+    async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
         let client = sdk.namada.client();
         let native_token = rpc::query_native_token(client).await.unwrap();
         let total_supply = rpc::get_token_total_supply(client, &native_token).await;

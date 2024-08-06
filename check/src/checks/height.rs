@@ -8,7 +8,7 @@ use super::DoCheck;
 pub struct HeightCheck {}
 
 impl DoCheck for HeightCheck {
-    async fn do_check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
+    async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
         let client = sdk.namada.client();
         let last_block = client.latest_block().await;
         match last_block {
