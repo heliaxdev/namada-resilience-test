@@ -11,26 +11,8 @@ on:
         description: 'The docker tag of the scenario tester image'
         required: true
         type: string
-      timeouts:
-        type: choice
-        description: Timeout definition
-        options:
-        - short
-        - medium
-        - long
-      faults:
-        type: choice
-        description: Faults definition
-        options:
-        - baseline
-        - minimal
-      run_type:
-        type: choice
-        description: RunType definition
-        options:
-        - default_antithesis
-        - determinator__2000_200
-        - default_fuzzer
+      duration:
+        description: Duration
 
 jobs:
   antithesis:
@@ -39,14 +21,11 @@ jobs:
       - uses: antithesishq/antithesis-trigger-action@v0.5
         with:
           config_image: namada-config:${{ github.event.inputs.namada_docker_tag }}
-          notebook_name: namada
+          notebook_name: namada2
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
           password: ${{ secrets.ANTITHESIS_PASSWORD }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           images: namada-genesis:${{ github.event.inputs.namada_docker_tag }},namada:${{ github.event.inputs.namada_docker_tag }},namada-scenario-tester:${{ github.event.inputs.scenario_tester_docker_tag }},check:latest
-          additional_parameters: |-
-            custom.timeouts=${{ github.event.inputs.timeouts }}
-            custom.faults=${{ github.event.inputs.faults }}
-            custom.run_type=${{ github.event.inputs.run_type }}
-            custom.testing_config=namada-default
+          additional_parameters: |
+            custom.duration=${{ github.event.inputs.duration }}
