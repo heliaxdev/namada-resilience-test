@@ -16,19 +16,29 @@ pub trait DoCheck {
         while times <= 3 {
             let result = Self::check(sdk, state).await;
             if result.is_ok() {
-                return result
+                return result;
             } else {
                 if times == 3 {
-                    tracing::info!("Check {} failed {} times, returning error", Self::to_string(), times);
-                    return result
+                    tracing::info!(
+                        "Check {} failed {} times, returning error",
+                        Self::to_string(),
+                        times
+                    );
+                    return result;
                 }
-                tracing::info!("Check {} failed retrying ({}/{})...", Self::to_string(), times, 3);
+                tracing::info!(
+                    "Check {} failed (error: {}) retrying ({}/{}),...",
+                    Self::to_string(),
+                    result.err().unwrap().to_string(),
+                    times,
+                    3
+                );
                 times = times + 1;
                 sleep(Duration::from_secs(1)).await
             }
         }
         Err(format!("Failed {} check (end)", Self::to_string()))
     }
-    
+
     fn to_string() -> String;
 }
