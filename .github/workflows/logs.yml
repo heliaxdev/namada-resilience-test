@@ -1,0 +1,49 @@
+name: Download logs from a run
+
+on:
+  workflow_dispatch:
+    inputs:
+      session_id:
+        description: "The session id"
+        required: true
+        type: string
+      input_hash:
+        description: "The input hash"
+        required: true
+        type: string
+      vtime:
+        description: "The vtime"
+        required: true
+        type: string
+      from:
+        description: "The timestamp to get logs from"
+        required: true
+        type: string
+      to:
+        description: "The timestamp to get logs to"
+        required: true
+        type: string
+
+jobs:
+  daily:
+    runs-on: [ubuntu-latest]
+    strategy:
+      fail-fast: true
+      matrix:
+        runs:
+          - image: "main"
+            
+    steps:
+      - name: Download logs
+        run: |
+          curl --fail -u ${{ secrets.ANTITHESIS_USER_NAME }}:${{ secrets.ANTITHESIS_PASSWORD }}' -X POST
+            https://heliax.antithesis.com/api/v1/launch_experiment/get_full_logs -d '{
+              "params": {
+                "custom.session_id": "${{ github.event.inputs.session_id }}",
+                "custom.input_hash": "${{ github.event.inputs.input_hash }}",
+                "custom.vtime": "${{ github.event.inputs.vtime }}",
+                "custom.capture_time_before_moment": "${{ github.event.inputs.from }}",
+                "custom.capture_time_after_moment": "${{ github.event.inputs.to }}",
+                "antithesis.report.recipients": "gianmarco@heliax.dev"
+              } 
+            }'

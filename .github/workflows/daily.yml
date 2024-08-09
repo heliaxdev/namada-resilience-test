@@ -12,6 +12,9 @@ jobs:
       matrix:
         runs:
           - image: "main"
+            faults: true
+          - image: "main"
+            faults: false
             
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.5
@@ -24,7 +27,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           images: namada-genesis:${{ matrix.runs.image }},namada:${{ matrix.runs.image }},namada-scenario-tester:latest,check:latest
           email_recipients: |
-            gianmarco@heliax.dev,
-            heliax-antithesis-aaaammxjv6zgaqxcdury4ktshq@antithesisgroup.slack.com
+            gianmarco@heliax.dev,heliax-antithesis-aaaammxjv6zgaqxcdury4ktshq@antithesisgroup.slack.com
           additional_parameters: |
             custom.duration=3
+            custom.faults=${{ matrix.runs.faults }}
