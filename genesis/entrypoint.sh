@@ -109,7 +109,7 @@ tar xzvf $network_config_path/$CHAIN_ID.tar.gz
 
 # 8. Initialize each validator
 for ((i = 0; i < len; i++)); do
-    NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir ${base_dirs[i]} utils join-network --chain-id $CHAIN_ID --genesis-validator ${validator_aliases[i]} --pre-genesis-path ${base_dirs[i]}/pre-genesis/${validator_aliases[i]} --dont-prefetch-wasm --add-persistent-peers
+    NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir ${base_dirs[i]} utils join-network --chain-id $CHAIN_ID --genesis-validator ${validator_aliases[i]} --pre-genesis-path ${base_dirs[i]}/pre-genesis/${validator_aliases[i]} --add-persistent-peers
 
     # Copy all of the wasm artifacts from the chain into base directory for each validator chain directory
     rm -rf ${base_dirs[i]}/${CHAIN_ID}/wasm
