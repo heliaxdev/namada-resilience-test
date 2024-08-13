@@ -120,7 +120,7 @@ for ((i = 0; i < len; i++)); do
 done
 
 #9. Initialize full node
-NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir /fullnode utils join-network --chain-id $CHAIN_ID --dont-prefetch-wasm
+NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir /fullnode utils join-network --chain-id $CHAIN_ID
 
 # Copy all of the wasm artifacts from the chain into base directory for each fullnode chain directory
 rm -rf /fullnode/${CHAIN_ID}/wasm
