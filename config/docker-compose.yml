@@ -31,7 +31,9 @@ services:
       - NAMADA_RAYON_THREADS=4
       - NAMADA_LOG=info
       - NAMADA_LOG_FMT=json
-      - NAMADA_TM_STDOUT="true"
+      - TM_LOG_LEVEL=p2p:none,pex:error
+      - CMT_LOG_LEVEL=p2p:none,pex:error
+      - NAMADA_CMT_STDOUT=true
       - BASE_DIR=/validator-0
     volumes:
       - ./validator-0/:/validator-0
@@ -51,8 +53,9 @@ services:
       - NAMADA_RAYON_THREADS=4
       - NAMADA_LOG=info
       - NAMADA_LOG_FMT=json
-      - NAMADA_TM_STDOUT="true"
-      - CMT_LOG_LEVEL=info
+      - TM_LOG_LEVEL=p2p:none,pex:error
+      - CMT_LOG_LEVEL=p2p:none,pex:error
+      - NAMADA_CMT_STDOUT=true
       - BASE_DIR=/validator-1
     volumes:
       - ./validator-1/:/validator-1
@@ -72,8 +75,9 @@ services:
       - NAMADA_RAYON_THREADS=4
       - NAMADA_LOG=info
       - NAMADA_LOG_FMT=json
-      - NAMADA_TM_STDOUT="true"
-      - CMT_LOG_LEVEL=info
+      - TM_LOG_LEVEL=p2p:none,pex:error
+      - CMT_LOG_LEVEL=p2p:none,pex:error
+      - NAMADA_CMT_STDOUT=true
       - BASE_DIR=/validator-2
     volumes:
       - ./validator-2/:/validator-2
