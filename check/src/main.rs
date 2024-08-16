@@ -54,7 +54,7 @@ async fn main() {
                 tracing::info!("block height {}, waiting to be > 2...", block.block.header.height);
             }
         } else {
-            tracing::info!("no response from tendermint, retrying in 5...");
+            tracing::info!("no response from cometbft, retrying in 5...");
             thread::sleep(Duration::from_secs(5));
         }
     }
