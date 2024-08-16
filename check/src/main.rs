@@ -48,7 +48,7 @@ async fn main() {
     loop {
         let latest_blocked = http_client.latest_block().await;
         if let Ok(block) = latest_blocked {
-            if block.block.header.height.value() > 2 {
+            if block.block.header.height.value() >= 2 {
                 break;
             } else {
                 tracing::info!("block height {}, waiting to be > 2...", block.block.header.height);

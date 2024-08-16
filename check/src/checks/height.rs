@@ -16,10 +16,10 @@ impl DoCheck for HeightCheck {
                 let current_block_height = u64::from(block.block.header.height);
                 if state.last_block_height <= current_block_height {
                     state.last_block_height = current_block_height;
-                    tracing::info!("Block height before: {}, after {}", state.last_block_height, current_block_height);
+                    tracing::info!("Block height ok");
                     Ok(())
                 } else {
-                    Err("Block height didnt increase".to_string())
+                    Err(format!("Block height didnt increase: before: {} -> after {}", state.last_block_height, current_block_height))
                 }
             }
             Err(e) => Err(format!("Failed to query last block: {}", e)),
