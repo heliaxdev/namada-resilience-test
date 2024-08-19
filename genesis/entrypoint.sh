@@ -65,13 +65,13 @@ for ((i = 0; i < len; i++)); do
     SELF_BOND_AMOUNT=$(( 1000 * ( i + 1 ) ))
 
     namadac utils \
-    init-genesis-validator \
-    --base-dir "${base_dirs[i]}" \
-    --address ${ESTABLISHED_ADDRESS} \
-    --alias ${validator_aliases[i]} --net-address ${validator_address[i]} \
-    --commission-rate 0.05 --max-commission-rate-change 0.01 \
-    --self-bond-amount $SELF_BOND_AMOUNT --email ${validator_aliases[i]} \
-    --path "${UNSIGNED_TX_FILE_PATH}" --unsafe-dont-encrypt
+        init-genesis-validator \
+        --base-dir "${base_dirs[i]}" \
+        --address ${ESTABLISHED_ADDRESS} \
+        --alias ${validator_aliases[i]} --net-address ${validator_address[i]} \
+        --commission-rate 0.05 --max-commission-rate-change 0.01 \
+        --self-bond-amount $SELF_BOND_AMOUNT --email ${validator_aliases[i]} \
+        --path "${UNSIGNED_TX_FILE_PATH}" --unsafe-dont-encrypt
 
     # Sign the transactions
     namadac --base-dir ${base_dirs[i]} utils sign-genesis-txs --path ${UNSIGNED_TX_FILE_PATH} --output ${SIGNED_TX_FILE_PATH} --alias ${validator_aliases[i]}
