@@ -14,7 +14,7 @@ jobs:
       matrix:
         branches:
           - name: main
-            template: 0.41.0
+            template: 0.43.0
         images:
           - make: "build-config"
             image: "namada-config"
