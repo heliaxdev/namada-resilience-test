@@ -40,7 +40,7 @@ async fn main() {
 
     let io = NullIo;
 
-    let mut state = State::from_height(3);
+    let mut state = State::from_height(2);
 
     let timeout = config.timeout.unwrap_or(15);
 
