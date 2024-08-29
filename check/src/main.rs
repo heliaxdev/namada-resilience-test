@@ -76,6 +76,7 @@ async fn main() {
         is_succesful(InflationCheck::to_string(), inflation_check_res);
 
         let status_check_res = StatusCheck::do_check(&sdk, &mut state).await;
+        is_succesful(StatusCheck::to_string(), status_check_res);
 
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
