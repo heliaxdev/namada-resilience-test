@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use chrono::{DateTime, Timelike, Utc};
 use tokio::time::sleep;
 
 use crate::sdk::namada::Sdk;
@@ -12,7 +13,15 @@ pub mod status;
 pub trait DoCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String>;
 
-    async fn do_check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
+    async fn do_check(
+        sdk: &Sdk,
+        state: &mut crate::state::State,
+        now: DateTime<Utc>,
+    ) -> Result<(), String> {
+        if now.second().rem_euclid(Self::timing()).ne(&0) {
+            return Ok(());
+        }
+
         let mut times = 0;
         while times <= 3 {
             let result = Self::check(sdk, state).await;
@@ -41,7 +50,7 @@ pub trait DoCheck {
         Err(format!("Failed {} check (end)", Self::to_string()))
     }
 
-    fn timing() -> u64;
+    fn timing() -> u32;
 
     fn to_string() -> String;
 }

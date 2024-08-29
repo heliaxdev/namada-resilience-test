@@ -30,7 +30,7 @@ impl DoCheck for HeightCheck {
         }
     }
 
-    fn timing() -> u64 {
+    fn timing() -> u32 {
         10
     }
 

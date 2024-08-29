@@ -26,7 +26,7 @@ impl DoCheck for StatusCheck {
         }
     }
 
-    fn timing() -> u64 {
+    fn timing() -> u32 {
         2
     }
 

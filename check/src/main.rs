@@ -1,6 +1,7 @@
 use std::{str::FromStr, thread, time::Duration};
 
 use antithesis_sdk::antithesis_init;
+use chrono::Timelike;
 use clap::Parser;
 use namada_chain_check::{
     checks::{
@@ -66,16 +67,18 @@ async fn main() {
     let sdk = Sdk::new(&base_dir, http_client.clone(), wallet, shielded_ctx, io).await;
 
     loop {
-        let height_check_res = HeightCheck::do_check(&sdk, &mut state).await;
+        let now = chrono::offset::Utc::now();
+
+        let height_check_res = HeightCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(HeightCheck::to_string(), height_check_res);
 
-        let epoch_check_res = EpochCheck::do_check(&sdk, &mut state).await;
+        let epoch_check_res = EpochCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(EpochCheck::to_string(), epoch_check_res);
 
-        let inflation_check_res = InflationCheck::do_check(&sdk, &mut state).await;
+        let inflation_check_res = InflationCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(InflationCheck::to_string(), inflation_check_res);
 
-        let status_check_res = StatusCheck::do_check(&sdk, &mut state).await;
+        let status_check_res = StatusCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(StatusCheck::to_string(), status_check_res);
 
         tokio::time::sleep(Duration::from_secs(1)).await;

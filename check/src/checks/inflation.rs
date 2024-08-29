@@ -36,7 +36,7 @@ impl DoCheck for InflationCheck {
         }
     }
 
-    fn timing() -> u64 {
+    fn timing() -> u32 {
         30
     }
 
