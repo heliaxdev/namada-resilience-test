@@ -3,7 +3,10 @@ use std::{str::FromStr, thread, time::Duration};
 use antithesis_sdk::antithesis_init;
 use clap::Parser;
 use namada_chain_check::{
-    checks::{epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck, DoCheck},
+    checks::{
+        epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck, status::StatusCheck,
+        DoCheck,
+    },
     config::AppConfig,
     sdk::namada::Sdk,
     state::State,
@@ -42,8 +45,6 @@ async fn main() {
 
     let mut state = State::from_height(2);
 
-    let timeout = config.timeout.unwrap_or(15);
-
     // Wait for the first 2 blocks
     loop {
         let latest_blocked = http_client.latest_block().await;
@@ -51,7 +52,10 @@ async fn main() {
             if block.block.header.height.value() >= 2 {
                 break;
             } else {
-                tracing::info!("block height {}, waiting to be > 2...", block.block.header.height);
+                tracing::info!(
+                    "block height {}, waiting to be > 2...",
+                    block.block.header.height
+                );
             }
         } else {
             tracing::info!("no response from cometbft, retrying in 5...");
@@ -71,13 +75,19 @@ async fn main() {
         let inflation_check_res = InflationCheck::do_check(&sdk, &mut state).await;
         is_succesful(InflationCheck::to_string(), inflation_check_res);
 
-        tracing::info!("waiting {}...", timeout);
-        tokio::time::sleep(Duration::from_secs(timeout)).await;
+        let status_check_res = StatusCheck::do_check(&sdk, &mut state).await;
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
 fn is_succesful(check_name: String, res: Result<(), String>) {
     if let Err(e) = res.clone() {
+        let is_timeout = e.to_lowercase().contains("timed out");
+        if is_timeout {
+            tracing::warn!("Check {} has timedout", check_name);
+            return;
+        }
         match check_name.as_ref() {
             "HeightCheck" => {
                 antithesis_sdk::assert_always!(

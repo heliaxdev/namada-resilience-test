@@ -11,6 +11,7 @@ impl DoCheck for HeightCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
         let client = sdk.namada.client();
         let last_block = client.latest_block().await;
+
         match last_block {
             Ok(block) => {
                 let current_block_height = u64::from(block.block.header.height);
@@ -19,11 +20,18 @@ impl DoCheck for HeightCheck {
                     tracing::info!("Block height ok");
                     Ok(())
                 } else {
-                    Err(format!("Block height didnt increase: before: {} -> after {}", state.last_block_height, current_block_height))
+                    Err(format!(
+                        "Block height didnt increase: before: {} -> after {}",
+                        state.last_block_height, current_block_height
+                    ))
                 }
             }
             Err(e) => Err(format!("Failed to query last block: {}", e)),
         }
+    }
+
+    fn timing() -> u64 {
+        10
     }
 
     fn to_string() -> String {

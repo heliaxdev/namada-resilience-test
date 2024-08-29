@@ -11,6 +11,7 @@ impl DoCheck for EpochCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
         let client = sdk.namada.client();
         let last_epoch = rpc::query_epoch(client).await;
+
         match last_epoch {
             Ok(epoch) => {
                 let current_epoch = epoch.0;
@@ -19,11 +20,18 @@ impl DoCheck for EpochCheck {
                     tracing::info!("Epoch ok");
                     Ok(())
                 } else {
-                    Err(format!("Epoch decreased: before: {} -> after {}", state.last_epoch, epoch.0))
+                    Err(format!(
+                        "Epoch decreased: before: {} -> after {}",
+                        state.last_epoch, epoch.0
+                    ))
                 }
             }
             Err(e) => Err(format!("Failed to query last epoch: {}", e)),
         }
+    }
+
+    fn timing() -> u64 {
+        30
     }
 
     fn to_string() -> String {
