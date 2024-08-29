@@ -14,12 +14,12 @@ impl DoCheck for StatusCheck {
 
         match status {
             Ok(status) => {
-                tracing::info!("Node moniker: {}", status.node_info.moniker);
                 tracing::info!(
-                    "Node voting power: {}",
-                    status.validator_info.power.to_string()
+                    "Node moniker: {}, Node voting power {}, Node is catching up: {}",
+                    status.node_info.moniker,
+                    status.validator_info.power.to_string(),
+                    status.sync_info.catching_up
                 );
-                tracing::info!("Node is catching up: {}", status.sync_info.catching_up);
                 Ok(())
             }
             Err(e) => Err(format!("Failed to query status: {}", e)),
