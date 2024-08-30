@@ -117,6 +117,7 @@ services:
       - VALIDATOR_RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
       - WORKERS=1
+      - AVOID_CHECK=true
     volumes:
       - ./container_ready/:/container_ready
       - ./workload.sh:/app/entrypoint.sh
@@ -133,6 +134,7 @@ services:
       - VALIDATOR_RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
       - WORKERS=1
+      - AVOID_CHECK=true
     volumes:
       - ./container_ready/:/container_ready
       - ./workload.sh:/app/entrypoint.sh
@@ -150,6 +152,7 @@ services:
       - VALIDATOR_RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
       - WORKERS=1
+      - AVOID_CHECK=true
     volumes:
       - ./container_ready/:/container_ready
       - ./workload.sh:/app/entrypoint.sh
