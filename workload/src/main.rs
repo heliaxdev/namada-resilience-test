@@ -29,16 +29,6 @@ async fn main() {
     let url = Url::from_str(&config.rpc).expect("invalid RPC address");
     let http_client = HttpClient::new(url).unwrap();
 
-    // Setup wallet storage
-    let wallet_path = base_dir.join("wallet");
-    let wallet = FsWalletUtils::new(wallet_path);
-
-    // Setup shielded context storage
-    let shielded_ctx_path = base_dir.join("masp");
-    let shielded_ctx = FsShieldedUtils::new(shielded_ctx_path);
-
-    let io = NullIo;
-
     // Wait for the first 2 blocks
     loop {
         let latest_blocked = http_client.latest_block().await;
@@ -57,15 +47,32 @@ async fn main() {
         }
     }
 
-    let sdk = Sdk::new(
-        &config,
-        &base_dir,
-        http_client.clone(),
-        wallet,
-        shielded_ctx,
-        io,
-    )
-    .await;
+    let sdk = loop {
+        // Setup wallet storage
+        let wallet_path = base_dir.join("wallet");
+        let wallet = FsWalletUtils::new(wallet_path);
+
+        // Setup shielded context storage
+        let shielded_ctx_path = base_dir.join("masp");
+        let shielded_ctx = FsShieldedUtils::new(shielded_ctx_path);
+
+        let io = NullIo;
+
+        match Sdk::new(
+            &config,
+            &base_dir,
+            http_client.clone(),
+            wallet,
+            shielded_ctx,
+            io,
+        )
+        .await {
+            Ok(sdk) => break sdk,
+            Err(_) => {
+                std::thread::sleep(Duration::from_secs(2))
+            },
+        };
+    };
 
     tracing::info!("Using base dir: {}", sdk.base_dir.as_path().display());
 

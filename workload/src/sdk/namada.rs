@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 
 use namada_sdk::{
     address::{Address, ImplicitAddress},
@@ -28,15 +28,14 @@ impl Sdk {
         wallet: Wallet<FsWalletUtils>,
         shielded_ctx: ShieldedContext<FsShieldedUtils>,
         io: NullIo,
-    ) -> Sdk {
+    ) -> Result<Sdk, String> {
         let sk = SecretKey::from_str(&config.faucet_sk).unwrap();
         let public_key = sk.to_public();
         let address = Address::Implicit(ImplicitAddress::from(&public_key));
 
         let namada = NamadaImpl::new(http_client, wallet, shielded_ctx, io)
             .await
-            .expect("unable to construct Namada object")
-            .chain_id(ChainId::from_str(&config.chain_id).unwrap());
+            .map_err(|e| e.to_string())?;
 
         let mut namada_wallet = namada.wallet.write().await;
         namada_wallet
@@ -49,9 +48,9 @@ impl Sdk {
             .unwrap();
         drop(namada_wallet);
 
-        Self {
+        Ok(Self {
             base_dir: base_dir.to_owned(),
             namada,
-        }
+        })
     }
 }
