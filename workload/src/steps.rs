@@ -458,7 +458,7 @@ impl WorkloadExecutor {
                             };
                             antithesis_sdk::assert_always!(
                                 post_bond.ge(&check_bond),
-                                "Bond source didn't increase invalid.",
+                                "Bond source didn't increase.",
                                 &json!({
                                     "target": source_address.to_pretty_string(),
                                     "validator": validator_address.to_pretty_string(),
