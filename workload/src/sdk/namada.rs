@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{path::PathBuf, str::FromStr};
 
 use namada_sdk::{
     address::{Address, ImplicitAddress},
@@ -36,13 +36,16 @@ impl Sdk {
         let namada = NamadaImpl::new(http_client, wallet, shielded_ctx, io)
             .await
             .map_err(|e| e.to_string())?;
+        let namada = namada.chain_id(ChainId::from_str(&config.chain_id).unwrap());
 
         let mut namada_wallet = namada.wallet.write().await;
         namada_wallet
             .insert_keypair("faucet".to_string(), true, sk, None, Some(address), None)
             .unwrap();
 
-        let native_token = rpc::query_native_token(namada.client()).await.unwrap();
+        let native_token = rpc::query_native_token(namada.client())
+            .await
+            .map_err(|e| e.to_string())?;
         namada_wallet
             .insert_address("nam", native_token, true)
             .unwrap();
