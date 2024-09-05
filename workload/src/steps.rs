@@ -306,14 +306,14 @@ impl WorkloadExecutor {
                         .await
                     {
                         Ok(was_pk_revealed) => {
+                            antithesis_sdk::assert_always!(
+                                was_pk_revealed,
+                                "The public key was not released correctly.",
+                                &json!({
+                                    "public-key": source.to_pretty_string()
+                                })
+                            );
                             if !was_pk_revealed {
-                                antithesis_sdk::assert_always!(
-                                    was_pk_revealed,
-                                    "The public key was not released correctly.",
-                                    &json!({
-                                        "public-key": source.to_pretty_string()
-                                    })
-                                );
                                 return Err(format!(
                                     "RevealPk check error: pk for {} was not revealed",
                                     source.to_pretty_string()
@@ -353,17 +353,17 @@ impl WorkloadExecutor {
                                     "BalanceTarget check error: balance is negative".to_string()
                                 );
                             };
+                            antithesis_sdk::assert_always!(
+                                post_amount.le(&check_balance),
+                                "Balance target didn't increase.",
+                                &json!({
+                                    "target": target_address.to_pretty_string(),
+                                    "pre_balance": pre_balance,
+                                    "amount": check_balance,
+                                    "post_balance": post_amount
+                                })
+                            );
                             if !post_amount.le(&check_balance) {
-                                antithesis_sdk::assert_always!(
-                                    post_amount.le(&check_balance),
-                                    "Balance target didn't increase.",
-                                    &json!({
-                                        "target": target_address.to_pretty_string(),
-                                        "pre_balance": pre_balance,
-                                        "amount": check_balance,
-                                        "post_balance": post_amount
-                                    })
-                                );
                                 return Err("BalanceTarget check error: post target amount is greater than pre balance".to_string());
                             }
                         }
@@ -398,17 +398,17 @@ impl WorkloadExecutor {
                                     "BalanceTarget check error: balance is negative".to_string()
                                 );
                             };
+                            antithesis_sdk::assert_always!(
+                                post_amount.ge(&check_balance),
+                                "Balance source didn't decrease.",
+                                &json!({
+                                    "target": target_address.to_pretty_string(),
+                                    "pre_balance": pre_balance,
+                                    "amount": check_balance,
+                                    "post_balance": post_amount
+                                })
+                            );
                             if !post_amount.ge(&check_balance) {
-                                antithesis_sdk::assert_always!(
-                                    post_amount.ge(&check_balance),
-                                    "Balance source didn't decrease.",
-                                    &json!({
-                                        "target": target_address.to_pretty_string(),
-                                        "pre_balance": pre_balance,
-                                        "amount": check_balance,
-                                        "post_balance": post_amount
-                                    })
-                                );
                                 return Err(format!("BalanceTarget check error: post target amount is less than pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
                             }
                         }
