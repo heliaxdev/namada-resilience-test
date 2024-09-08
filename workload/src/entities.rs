@@ -1,4 +1,6 @@
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct Alias {
     pub name: String,
 }
@@ -30,5 +32,16 @@ impl Alias {
 
     pub fn is_faucet(&self) -> bool {
         self.eq(&Self::faucet())
+    }
+}
+
+impl Serialize for Alias {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Alias", 3)?;
+        state.serialize_field("name", &self.name)?;
+        state.end()
     }
 }

@@ -26,7 +26,8 @@ async fn main() {
         .with_default_directive(LevelFilter::INFO.into())
         .from_env()
         .unwrap()
-        .add_directive("namada_chain_workload=debug".parse().unwrap());
+        .add_directive("namada_chain_workload=debug".parse().unwrap())
+        .add_directive("namada_sdk::rpc=debug".parse().unwrap());
 
     tracing_subscriber::fmt()
         .with_env_filter(filter)
@@ -118,7 +119,9 @@ async fn main() {
         };
         tracing::info!("Built {:?}...", next_step);
 
-        let checks = workload_executor.build_check(&sdk, tasks.clone()).await;
+        let checks = workload_executor
+            .build_check(&sdk, tasks.clone(), &state)
+            .await;
         tracing::info!("Built checks for {:?}", next_step);
 
         match workload_executor.execute(&sdk, tasks.clone()).await {
@@ -138,7 +141,6 @@ async fn main() {
 
         if let Err(e) = workload_executor.checks(&sdk, checks.clone()).await {
             tracing::error!("Error {:?} (Check) -> {}", next_step, e.to_string());
-            continue;
         } else {
             if checks.is_empty() {
                 tracing::info!("Checks are empty, skipping...");

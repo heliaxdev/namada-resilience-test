@@ -42,7 +42,12 @@ pub enum StepError {
 }
 
 use crate::{
-    check::Check, constants::NATIVE_SCALE, entities::Alias, sdk::namada::Sdk, state::State, task::{Task, TaskSettings}
+    check::Check,
+    constants::NATIVE_SCALE,
+    entities::Alias,
+    sdk::namada::Sdk,
+    state::State,
+    task::{Task, TaskSettings},
 };
 
 #[derive(Clone, Debug, Copy)]
@@ -180,7 +185,7 @@ impl WorkloadExecutor {
         Ok(steps)
     }
 
-    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>) -> Vec<Check> {
+    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State) -> Vec<Check> {
         let config = Self::retry_config();
 
         let client = sdk.namada.client();
@@ -206,7 +211,7 @@ impl WorkloadExecutor {
                     })
                     .await
                     {
-                        Check::BalanceTarget(target, pre_balance, amount)
+                        Check::BalanceTarget(target, pre_balance, amount, state.clone())
                     } else {
                         continue;
                     };
@@ -226,7 +231,7 @@ impl WorkloadExecutor {
                     .with_config(config)
                     .await
                     {
-                        Check::BalanceSource(source, pre_balance, amount)
+                        Check::BalanceSource(source, pre_balance, amount, state.clone())
                     } else {
                         continue;
                     };
@@ -243,7 +248,7 @@ impl WorkloadExecutor {
                     })
                     .await
                     {
-                        Check::BalanceTarget(target, pre_balance, amount)
+                        Check::BalanceTarget(target, pre_balance, amount, state.clone())
                     } else {
                         continue;
                     };
@@ -270,7 +275,7 @@ impl WorkloadExecutor {
                     })
                     .await
                     {
-                        Check::Bond(source, validator, pre_bond, amount)
+                        Check::Bond(source, validator, pre_bond, amount, state.clone())
                     } else {
                         continue;
                     };
@@ -321,7 +326,7 @@ impl WorkloadExecutor {
                         }
                     }
                 }
-                Check::BalanceTarget(target, pre_balance, amount) => {
+                Check::BalanceTarget(target, pre_balance, amount, pre_state) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let native_token_address = wallet.find_address("nam").unwrap().into_owned();
                     let target_address = wallet.find_address(&target.name).unwrap().into_owned();
@@ -356,7 +361,9 @@ impl WorkloadExecutor {
                                     "target": target_address.to_pretty_string(),
                                     "pre_balance": pre_balance,
                                     "amount": check_balance,
-                                    "post_balance": post_amount
+                                    "post_balance": post_amount,
+                                    "pre_state": ""
+                                    // "pre_state": serde_json::to_string_pretty(&pre_state).unwrap()
                                 })
                             );
                             if !post_amount.le(&check_balance) {
@@ -366,7 +373,7 @@ impl WorkloadExecutor {
                         Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
                     }
                 }
-                Check::BalanceSource(target, pre_balance, amount) => {
+                Check::BalanceSource(target, pre_balance, amount, pre_state) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let native_token_address = wallet.find_address("nam").unwrap().into_owned();
                     let target_address = wallet.find_address(&target.name).unwrap().into_owned();
@@ -401,7 +408,8 @@ impl WorkloadExecutor {
                                     "target": target_address.to_pretty_string(),
                                     "pre_balance": pre_balance,
                                     "amount": check_balance,
-                                    "post_balance": post_amount
+                                    "post_balance": post_amount,
+                                    "pre_state": pre_state
                                 })
                             );
                             if !post_amount.ge(&check_balance) {
@@ -411,7 +419,7 @@ impl WorkloadExecutor {
                         Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
                     }
                 }
-                Check::Bond(target, validator, pre_bond, amount) => {
+                Check::Bond(target, validator, pre_bond, amount, pre_state) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
 
@@ -460,7 +468,8 @@ impl WorkloadExecutor {
                                     "validator": validator_address.to_pretty_string(),
                                     "pre_bond": pre_bond,
                                     "amount": amount,
-                                    "post_bond": post_bond
+                                    "post_bond": post_bond,
+                                    "pre_state": pre_state
                                 })
                             );
                             if !post_bond.le(&check_bond) {
@@ -545,8 +554,6 @@ impl WorkloadExecutor {
                     transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys.clone());
                     drop(wallet);
 
-                    tracing::debug!("data: {:?}", transfer_tx_builder);
-
                     let (mut transfer_tx, signing_data) = transfer_tx_builder
                         .build(&sdk.namada)
                         .await
@@ -600,8 +607,6 @@ impl WorkloadExecutor {
                         token: token_address,
                         amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
                     };
-
-                    tracing::debug!("data: {:?}", tx_transfer_data);
 
                     let mut transfer_tx_builder =
                         sdk.namada.new_transparent_transfer(vec![tx_transfer_data]);
@@ -669,8 +674,6 @@ impl WorkloadExecutor {
                     }
                     bond_tx_builder = bond_tx_builder.signing_keys(signing_keys.clone());
                     drop(wallet);
-
-                    tracing::debug!("data: {:?}", bond_tx_builder);
 
                     let (mut bond_tx, signing_data) = bond_tx_builder
                         .build(&sdk.namada)

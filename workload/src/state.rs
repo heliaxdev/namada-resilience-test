@@ -1,13 +1,14 @@
 use std::collections::{BTreeSet, HashMap};
 
 use rand::seq::IteratorRandom;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE},
     entities::Alias,
 };
 
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AddressType {
     Enstablished,
     #[default]
@@ -20,7 +21,7 @@ impl AddressType {
     }
 }
 
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Account {
     pub alias: Alias,
     pub public_keys: BTreeSet<Alias>,
@@ -34,7 +35,7 @@ impl Account {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
