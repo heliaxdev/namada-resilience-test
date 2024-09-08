@@ -312,7 +312,6 @@ impl WorkloadExecutor {
                                 "The public key was not released correctly.",
                                 &json!({
                                     "public-key": source.to_pretty_string(),
-                                    "pre_state": state
                                 })
                             );
                             if !was_pk_revealed {
