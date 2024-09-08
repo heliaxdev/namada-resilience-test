@@ -11,6 +11,7 @@ use namada_chain_workload::{
 use namada_sdk::{
     io::NullIo, masp::fs::FsShieldedUtils, queries::Client, wallet::fs::FsWalletUtils,
 };
+use rand::RngCore;
 use tempfile::tempdir;
 use tendermint_rpc::{HttpClient, Url};
 use tracing::level_filters::LevelFilter;
@@ -83,9 +84,12 @@ async fn main() {
         };
     };
 
-    tracing::info!("Using base dir: {}", sdk.base_dir.as_path().display());
+    let seed = config.seed.unwrap_or(rand::thread_rng().next_u64());
+    let mut state = State::new(seed);
 
-    let mut state = State::default();
+    tracing::info!("Using base dir: {}", sdk.base_dir.as_path().display());
+    tracing::info!("Using seed: {}", seed);
+
     let workload_executor = WorkloadExecutor::new(
         vec![
             StepType::NewWalletKeyPair,
@@ -103,7 +107,7 @@ async fn main() {
     loop {
         let next_step = workload_executor.next(&state);
         tracing::info!("Next step is: {:?}...", next_step);
-        let tasks = match workload_executor.build(next_step, &sdk, &state).await {
+        let tasks = match workload_executor.build(next_step, &sdk, &mut state).await {
             Ok(tasks) => tasks,
             Err(e) => {
                 match e {

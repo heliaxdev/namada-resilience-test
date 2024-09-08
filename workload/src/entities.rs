@@ -1,4 +1,4 @@
-use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub struct Alias {
@@ -40,8 +40,6 @@ impl Serialize for Alias {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Alias", 3)?;
-        state.serialize_field("name", &self.name)?;
-        state.end()
+        Serialize::serialize(&self.name, serializer)
     }
 }

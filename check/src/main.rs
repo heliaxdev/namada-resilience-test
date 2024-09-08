@@ -90,10 +90,16 @@ async fn main() {
 fn is_succesful(check_name: String, res: Result<(), String>) {
     if let Err(e) = res.clone() {
         let is_timeout = e.to_lowercase().contains("timed out");
+        let is_connection_closed = e.to_lowercase().contains("connection closed before");
         if is_timeout {
             tracing::warn!("Check {} has timedout", check_name);
             return;
         }
+        if is_connection_closed {
+            tracing::warn!("Check {} has failed due to connection closed before message completed", check_name);
+            return
+        }
+        
         match check_name.as_ref() {
             "HeightCheck" => {
                 antithesis_sdk::assert_always!(

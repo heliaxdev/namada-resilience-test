@@ -120,16 +120,16 @@ impl WorkloadExecutor {
         &self,
         step_type: StepType,
         sdk: &Sdk,
-        state: &State,
+        mut state: &mut State,
     ) -> Result<Vec<Task>, StepError> {
         let steps = match step_type {
             StepType::NewWalletKeyPair => {
-                let alias = Self::random_alias();
+                let alias = Self::random_alias(&mut state);
                 vec![Task::NewWalletKeyPair(alias)]
             }
             StepType::FaucetTransfer => {
                 let target_account = state.random_account(vec![]);
-                let amount = Self::random_between(1000, 2000) * NATIVE_SCALE;
+                let amount = Self::random_between(1000, 2000, &mut state) * NATIVE_SCALE;
 
                 let task_settings = TaskSettings::faucet();
 
@@ -168,7 +168,7 @@ impl WorkloadExecutor {
                 let validator = validators
                     .into_iter()
                     .map(|v| v.address)
-                    .choose(&mut rand::thread_rng())
+                    .choose(&mut state.rng)
                     .unwrap(); // safe as there is always at least a validator
 
                 let task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
@@ -778,16 +778,16 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    fn random_alias() -> Alias {
+    fn random_alias(state: &mut State) -> Alias {
         format!(
             "load-tester-{}",
-            Alphanumeric.sample_string(&mut rand::thread_rng(), 8)
+            Alphanumeric.sample_string(&mut state.rng, 8)
         )
         .into()
     }
 
-    fn random_between(from: u64, to: u64) -> u64 {
-        rand::thread_rng().gen_range(from..to)
+    fn random_between(from: u64, to: u64, state: &mut State) -> u64 {
+        state.rng.gen_range(from..to)
     }
 
     fn is_tx_rejected(

@@ -1,6 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 
-use rand::seq::IteratorRandom;
+use rand::{seq::IteratorRandom, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -35,14 +36,24 @@ impl Account {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
     pub bonds: HashMap<Alias, HashMap<String, u64>>,
+    #[serde(skip)]
+    pub rng: ChaCha20Rng,
 }
 
 impl State {
+    pub fn new(seed: u64) -> Self {
+        Self {
+            accounts: HashMap::default(),
+            balances: HashMap::default(),
+            bonds: HashMap::default(),
+            rng: ChaCha20Rng::seed_from_u64(seed),
+        }
+    }
     /// READ
 
     pub fn any_account(&self) -> bool {
@@ -77,16 +88,16 @@ impl State {
 
     /// GET
 
-    pub fn random_account(&self, blacklist: Vec<Alias>) -> Account {
+    pub fn random_account(&mut self, blacklist: Vec<Alias>) -> Account {
         self.accounts
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
-            .choose(&mut rand::thread_rng())
+            .choose(&mut self.rng)
             .map(|(_, account)| account.clone())
             .unwrap()
     }
 
-    pub fn random_account_with_min_balance(&self, blacklist: Vec<Alias>) -> Account {
+    pub fn random_account_with_min_balance(&mut self, blacklist: Vec<Alias>) -> Account {
         self.balances
             .iter()
             .filter_map(|(alias, balance)| {
@@ -99,7 +110,7 @@ impl State {
                     None
                 }
             })
-            .choose(&mut rand::thread_rng())
+            .choose(&mut self.rng)
             .unwrap()
     }
 
