@@ -311,7 +311,8 @@ impl WorkloadExecutor {
                                 was_pk_revealed,
                                 "The public key was not released correctly.",
                                 &json!({
-                                    "public-key": source.to_pretty_string()
+                                    "public-key": source.to_pretty_string(),
+                                    "pre_state": state
                                 })
                             );
                             if !was_pk_revealed {
@@ -362,8 +363,7 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": check_balance,
                                     "post_balance": post_amount,
-                                    "pre_state": ""
-                                    // "pre_state": serde_json::to_string_pretty(&pre_state).unwrap()
+                                    "pre_state": pre_state
                                 })
                             );
                             if !post_amount.le(&check_balance) {
