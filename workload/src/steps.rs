@@ -358,6 +358,7 @@ impl WorkloadExecutor {
                                 post_amount.le(&check_balance),
                                 "Balance target didn't increase.",
                                 &json!({
+                                    "target_alias": target,
                                     "target": target_address.to_pretty_string(),
                                     "pre_balance": pre_balance,
                                     "amount": check_balance,
@@ -404,6 +405,7 @@ impl WorkloadExecutor {
                                 post_amount.ge(&check_balance),
                                 "Balance source didn't decrease.",
                                 &json!({
+                                    "target_alias": target,
                                     "target": target_address.to_pretty_string(),
                                     "pre_balance": pre_balance,
                                     "amount": check_balance,
@@ -463,6 +465,7 @@ impl WorkloadExecutor {
                                 post_bond.ge(&check_bond),
                                 "Bond source didn't increase.",
                                 &json!({
+                                    "target_alias": target,
                                     "target": source_address.to_pretty_string(),
                                     "validator": validator_address.to_pretty_string(),
                                     "pre_bond": pre_bond,
