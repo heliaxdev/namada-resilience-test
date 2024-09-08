@@ -65,3 +65,4 @@ target/
 .vscode
 check/target
 workload/run.sh
+workload/run-campfire.sh

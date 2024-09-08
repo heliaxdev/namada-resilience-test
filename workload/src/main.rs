@@ -13,6 +13,8 @@ use namada_sdk::{
 };
 use tempfile::tempdir;
 use tendermint_rpc::{HttpClient, Url};
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() {
@@ -20,8 +22,15 @@ async fn main() {
 
     let config = AppConfig::parse();
 
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env()
+        .unwrap()
+        .add_directive("namada_chain_workload=debug".parse().unwrap());
+
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
+        .with_env_filter(filter)
+        .compact()
         .init();
 
     let base_dir = tempdir().unwrap().path().to_path_buf();
@@ -66,11 +75,10 @@ async fn main() {
             shielded_ctx,
             io,
         )
-        .await {
+        .await
+        {
             Ok(sdk) => break sdk,
-            Err(_) => {
-                std::thread::sleep(Duration::from_secs(2))
-            },
+            Err(_) => std::thread::sleep(Duration::from_secs(2)),
         };
     };
 

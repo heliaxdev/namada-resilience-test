@@ -42,11 +42,7 @@ pub enum StepError {
 }
 
 use crate::{
-    check::Check,
-    entities::Alias,
-    sdk::namada::Sdk,
-    state::State,
-    task::{Task, TaskSettings},
+    check::Check, constants::NATIVE_SCALE, entities::Alias, sdk::namada::Sdk, state::State, task::{Task, TaskSettings}
 };
 
 #[derive(Clone, Debug, Copy)]
@@ -128,7 +124,7 @@ impl WorkloadExecutor {
             }
             StepType::FaucetTransfer => {
                 let target_account = state.random_account(vec![]);
-                let amount = Self::random_between(1000, 2000);
+                let amount = Self::random_between(1000, 2000) * NATIVE_SCALE;
 
                 let task_settings = TaskSettings::faucet();
 
@@ -549,6 +545,8 @@ impl WorkloadExecutor {
                     transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys.clone());
                     drop(wallet);
 
+                    tracing::debug!("data: {:?}", transfer_tx_builder);
+
                     let (mut transfer_tx, signing_data) = transfer_tx_builder
                         .build(&sdk.namada)
                         .await
@@ -602,6 +600,8 @@ impl WorkloadExecutor {
                         token: token_address,
                         amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
                     };
+
+                    tracing::debug!("data: {:?}", tx_transfer_data);
 
                     let mut transfer_tx_builder =
                         sdk.namada.new_transparent_transfer(vec![tx_transfer_data]);
@@ -669,6 +669,8 @@ impl WorkloadExecutor {
                     }
                     bond_tx_builder = bond_tx_builder.signing_keys(signing_keys.clone());
                     drop(wallet);
+
+                    tracing::debug!("data: {:?}", bond_tx_builder);
 
                     let (mut bond_tx, signing_data) = bond_tx_builder
                         .build(&sdk.namada)
