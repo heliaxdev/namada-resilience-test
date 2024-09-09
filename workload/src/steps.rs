@@ -355,19 +355,19 @@ impl WorkloadExecutor {
                                 );
                             };
                             antithesis_sdk::assert_always!(
-                                post_amount.le(&check_balance),
+                                post_amount.eq(&check_balance),
                                 "Balance target didn't increase.",
                                 &json!({
                                     "target_alias": target,
                                     "target": target_address.to_pretty_string(),
                                     "pre_balance": pre_balance,
-                                    "amount": check_balance,
+                                    "amount": amount,
                                     "post_balance": post_amount,
                                     "pre_state": pre_state
                                 })
                             );
-                            if !post_amount.le(&check_balance) {
-                                return Err("BalanceTarget check error: post target amount is greater than pre balance".to_string());
+                            if !post_amount.eq(&check_balance) {
+                                return Err("BalanceTarget check error: post target amount is not equal to pre balance".to_string());
                             }
                         }
                         Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
@@ -402,19 +402,19 @@ impl WorkloadExecutor {
                                 );
                             };
                             antithesis_sdk::assert_always!(
-                                post_amount.ge(&check_balance),
+                                post_amount.eq(&check_balance),
                                 "Balance source didn't decrease.",
                                 &json!({
                                     "target_alias": target,
                                     "target": target_address.to_pretty_string(),
                                     "pre_balance": pre_balance,
-                                    "amount": check_balance,
+                                    "amount": amount,
                                     "post_balance": post_amount,
                                     "pre_state": pre_state
                                 })
                             );
-                            if !post_amount.ge(&check_balance) {
-                                return Err(format!("BalanceTarget check error: post target amount is less than pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
+                            if !post_amount.eq(&check_balance) {
+                                return Err(format!("BalanceTarget check error: post target amount not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
                             }
                         }
                         Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
@@ -462,7 +462,7 @@ impl WorkloadExecutor {
                                 return Err("Bond check error: bond is negative".to_string());
                             };
                             antithesis_sdk::assert_always!(
-                                post_bond.ge(&check_bond),
+                                post_bond.eq(&check_bond),
                                 "Bond source didn't increase.",
                                 &json!({
                                     "target_alias": target,
@@ -471,11 +471,12 @@ impl WorkloadExecutor {
                                     "pre_bond": pre_bond,
                                     "amount": amount,
                                     "post_bond": post_bond,
-                                    "pre_state": pre_state
+                                    "pre_state": pre_state,
+                                    "epoch": epoch
                                 })
                             );
-                            if !post_bond.le(&check_bond) {
-                                return Err(format!("Bond check error: post target amount is less than pre balance: pre {}, post {}, amount: {}", pre_bond, post_bond, amount));
+                            if !post_bond.eq(&check_bond) {
+                                return Err(format!("Bond check error: post target amount is not equal to pre balance: pre {}, post {}, amount: {}", pre_bond, post_bond, amount));
                             }
                         }
                         Err(e) => return Err(format!("Bond check error: {}", e)),
