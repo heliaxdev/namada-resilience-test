@@ -3,9 +3,11 @@ use std::{str::FromStr, time::Instant};
 use namada_sdk::{
     address::Address,
     args::{InputAmount, TxBuilder, TxTransparentTransferData},
+    io::NamadaIo,
     key::{common, SchemeType},
     rpc,
     signing::default_sign,
+    state::Epoch,
     token::{self, DenominatedAmount},
     tx::{data::GasLimit, either, ProcessTxResponse, Tx},
     Namada,
@@ -200,7 +202,7 @@ impl WorkloadExecutor {
                     drop(wallet);
 
                     let check = if let Ok(pre_balance) = tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &target_address)
+                        rpc::get_token_balance(client, &native_token_address, &target_address, None)
                     })
                     .with_config(config)
                     .on_retry(|attempt, _, error| {
@@ -226,7 +228,7 @@ impl WorkloadExecutor {
                     drop(wallet);
 
                     let source_check = if let Ok(pre_balance) = tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &source_address)
+                        rpc::get_token_balance(client, &native_token_address, &source_address, None)
                     })
                     .with_config(config)
                     .await
@@ -237,7 +239,7 @@ impl WorkloadExecutor {
                     };
 
                     let target_check = if let Ok(pre_balance) = tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &target_address)
+                        rpc::get_token_balance(client, &native_token_address, &target_address, None)
                     })
                     .with_config(config)
                     .on_retry(|attempt, _, error| {
@@ -333,7 +335,7 @@ impl WorkloadExecutor {
                     drop(wallet);
 
                     match tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &target_address)
+                        rpc::get_token_balance(client, &native_token_address, &target_address, None)
                     })
                     .with_config(config)
                     .on_retry(|attempt, _, error| {
@@ -380,7 +382,7 @@ impl WorkloadExecutor {
                     drop(wallet);
 
                     match tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &target_address)
+                        rpc::get_token_balance(client, &native_token_address, &target_address, None)
                     })
                     .with_config(config)
                     .on_retry(|attempt, _, error| {
@@ -442,7 +444,12 @@ impl WorkloadExecutor {
                     };
 
                     match tryhard::retry_fn(|| {
-                        rpc::get_bond_amount_at(client, &source_address, &validator_address, epoch)
+                        rpc::get_bond_amount_at(
+                            client,
+                            &source_address,
+                            &validator_address,
+                            Epoch(epoch.0 + 2),
+                        )
                     })
                     .with_config(config)
                     .on_retry(|attempt, _, error| {

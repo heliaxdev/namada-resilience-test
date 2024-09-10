@@ -1,5 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
+use namada_sdk::io::NamadaIo;
 use namada_sdk::{
     address::{Address, ImplicitAddress},
     args::TxBuilder,
@@ -7,10 +8,9 @@ use namada_sdk::{
     io::NullIo,
     key::common::SecretKey,
     masp::{fs::FsShieldedUtils, ShieldedContext},
-    rpc,
-    wallet::{fs::FsWalletUtils, Wallet},
-    Namada, NamadaImpl,
+    rpc, Namada, NamadaImpl,
 };
+use namada_wallet::{fs::FsWalletUtils, Wallet};
 use tendermint_rpc::HttpClient;
 
 use crate::config::AppConfig;
@@ -33,7 +33,7 @@ impl Sdk {
         let public_key = sk.to_public();
         let address = Address::Implicit(ImplicitAddress::from(&public_key));
 
-        let namada = NamadaImpl::new(http_client, wallet, shielded_ctx, io)
+        let namada = NamadaImpl::new(http_client, wallet, shielded_ctx.into(), io)
             .await
             .map_err(|e| e.to_string())?;
         let namada = namada.chain_id(ChainId::from_str(&config.chain_id).unwrap());

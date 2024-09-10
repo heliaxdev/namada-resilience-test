@@ -9,8 +9,10 @@ use namada_chain_workload::{
     steps::{StepType, WorkloadExecutor},
 };
 use namada_sdk::{
-    io::NullIo, masp::fs::FsShieldedUtils, queries::Client, wallet::fs::FsWalletUtils,
+    io::{Client, NullIo},
+    masp::{fs::FsShieldedUtils, ShieldedContext},
 };
+use namada_wallet::fs::FsWalletUtils;
 use rand::RngCore;
 use tempfile::tempdir;
 use tendermint_rpc::{HttpClient, Url};
@@ -65,7 +67,7 @@ async fn main() {
 
         // Setup shielded context storage
         let shielded_ctx_path = base_dir.join("masp");
-        let shielded_ctx = FsShieldedUtils::new(shielded_ctx_path);
+        let shielded_ctx = ShieldedContext::new(FsShieldedUtils::new(shielded_ctx_path));
 
         let io = NullIo;
 
@@ -129,7 +131,10 @@ async fn main() {
         tracing::info!("Built checks for {:?}", next_step);
 
         match workload_executor.execute(&sdk, tasks.clone()).await {
-            Ok(secs) => tracing::info!("Execution took {}s...", secs),
+            Ok(secs) => {
+                workload_executor.update_state(tasks, &mut state);
+                tracing::info!("Execution took {}s...", secs);
+            }
             Err(e) => {
                 match e {
                     namada_chain_workload::steps::StepError::Execution(_) => {
@@ -151,7 +156,6 @@ async fn main() {
             } else {
                 tracing::info!("Checks were successful, updating state...");
             }
-            workload_executor.update_state(tasks, &mut state);
             tracing::info!("Done {:?}!", next_step);
         }
         println!(" ")

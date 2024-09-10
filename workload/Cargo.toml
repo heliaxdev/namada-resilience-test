@@ -8,9 +8,10 @@ build = "build.rs"
 
 [dependencies]
 clap = { version = "4.4.2", features = ["derive", "env"] }
-namada_sdk = { git = "https://github.com/anoma/namada", branch = "fraccaman/query-active-validators", default-features = false, features = ["std", "async-send", "download-params"] }
-tendermint-config = "0.37.0"
-tendermint-rpc = { version = "0.37.0", features = ["http-client"]}
+namada_sdk = { git = "https://github.com/anoma/namada", branch = "test-antithesis", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_wallet = { git = "https://github.com/anoma/namada", branch = "test-antithesis", default-features = false, features = ["std"] }
+tendermint-config = "0.38.0"
+tendermint-rpc = { version = "0.38.0", features = ["http-client"]}
 tokio = {version = "1.8.2", default-features = false}
 tempfile = "3.10.1"
 async-trait = "0.1.74"
