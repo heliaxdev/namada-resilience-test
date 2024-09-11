@@ -24,6 +24,7 @@ async fn main() {
     antithesis_init();
 
     let config = AppConfig::parse();
+    tracing::info!("Using config: {:#?}", config);
 
     let filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
