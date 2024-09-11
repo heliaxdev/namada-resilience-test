@@ -2,7 +2,7 @@
 
 set -e
 
-VALIDATOR_RPC=${VALIDATOR_RPC:-"30.0.0.12:27658"}
+VALIDATOR_RPC=${RPC:-"30.0.0.12:27658"}
 FAUCET_SK=${FAUCET_SK:-"00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963"}
 
 # Wait for the JSON RPC to come up for validator 0
