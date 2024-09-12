@@ -1,7 +1,6 @@
 use std::{str::FromStr, thread, time::Duration};
 
 use antithesis_sdk::antithesis_init;
-use chrono::Timelike;
 use clap::Parser;
 use namada_chain_check::{
     checks::{
@@ -23,6 +22,7 @@ async fn main() {
     antithesis_init();
 
     let config = AppConfig::parse();
+    tracing::info!("Using config: {:#?}", config);
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
