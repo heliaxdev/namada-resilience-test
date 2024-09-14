@@ -23,9 +23,6 @@ use tracing_subscriber::EnvFilter;
 async fn main() {
     antithesis_init();
 
-    let config = AppConfig::parse();
-    tracing::info!("Using config: {:#?}", config);
-
     let filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env()
@@ -37,6 +34,9 @@ async fn main() {
         .with_env_filter(filter)
         .compact()
         .init();
+
+    let config = AppConfig::parse();
+    tracing::info!("Using config: {:#?}", config);
 
     let base_dir = tempdir().unwrap().path().to_path_buf();
 

@@ -4,7 +4,8 @@ use antithesis_sdk::antithesis_init;
 use clap::Parser;
 use namada_chain_check::{
     checks::{
-        epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck, status::StatusCheck, voting_power::VotingPowerCheck, DoCheck
+        epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck, status::StatusCheck,
+        voting_power::VotingPowerCheck, DoCheck,
     },
     config::AppConfig,
     sdk::namada::Sdk,
@@ -21,12 +22,12 @@ use tendermint_rpc::{HttpClient, Url};
 async fn main() {
     antithesis_init();
 
-    let config = AppConfig::parse();
-    tracing::info!("Using config: {:#?}", config);
-
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
+
+    let config = AppConfig::parse();
+    tracing::info!("Using config: {:#?}", config);
 
     let base_dir = tempdir().unwrap().path().to_path_buf();
 
@@ -96,10 +97,13 @@ fn is_succesful(check_name: String, res: Result<(), String>) {
             return;
         }
         if is_connection_closed {
-            tracing::warn!("Check {} has failed due to connection closed before message completed", check_name);
-            return
+            tracing::warn!(
+                "Check {} has failed due to connection closed before message completed",
+                check_name
+            );
+            return;
         }
-        
+
         match check_name.as_ref() {
             "HeightCheck" => {
                 antithesis_sdk::assert_always!(
