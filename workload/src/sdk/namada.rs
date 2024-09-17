@@ -11,7 +11,7 @@ use namada_sdk::{
     rpc, NamadaImpl,
 };
 use namada_wallet::{fs::FsWalletUtils, Wallet};
-use tendermint_rpc::HttpClicent;
+use tendermint_rpc::HttpClient;
 
 use crate::config::AppConfig;
 
