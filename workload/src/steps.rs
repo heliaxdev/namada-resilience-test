@@ -3,9 +3,9 @@ use std::{str::FromStr, time::Instant};
 use namada_sdk::{
     address::Address,
     args::{InputAmount, TxBuilder, TxTransparentTransferData},
-    io::NamadaIo,
+    io::{Client, NamadaIo},
     key::{common, SchemeType},
-    rpc,
+    rpc::{self, TxResponse},
     signing::default_sign,
     state::Epoch,
     token::{self, DenominatedAmount},
@@ -58,6 +58,12 @@ pub enum StepType {
     FaucetTransfer,
     TransparentTransfer,
     Bond,
+}
+
+#[derive(Clone, Debug)]
+pub struct ExecutionResult {
+    pub time_taken: u64,
+    pub execution_height: Option<u64>,
 }
 
 #[derive(Clone, Debug)]
@@ -289,12 +295,40 @@ impl WorkloadExecutor {
         checks
     }
 
-    pub async fn checks(&self, sdk: &Sdk, checks: Vec<Check>) -> Result<(), String> {
+    pub async fn checks(
+        &self,
+        sdk: &Sdk,
+        checks: Vec<Check>,
+        execution_height: Option<u64>,
+    ) -> Result<(), String> {
         let config = Self::retry_config();
         let client = sdk.namada.client();
 
         if checks.is_empty() {
             return Ok(());
+        }
+
+        let execution_height = if let Some(height) = execution_height {
+            height
+        } else {
+            return Ok(());
+        };
+
+        loop {
+            let latest_block = client.latest_block().await;
+            if let Ok(block) = latest_block {
+                let block_height = block.block.header.height.value();
+                if block_height == execution_height {
+                    break;
+                } else {
+                    tracing::info!(
+                        "Waiting for block height: {}, currently at: {}",
+                        execution_height,
+                        block_height
+                    );
+                }
+            }
+            sleep(Duration::from_secs(1)).await
         }
 
         for check in checks {
@@ -495,8 +529,9 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub async fn execute(&self, sdk: &Sdk, tasks: Vec<Task>) -> Result<u64, StepError> {
+    pub async fn execute(&self, sdk: &Sdk, tasks: Vec<Task>) -> Result<ExecutionResult, StepError> {
         let now = Instant::now();
+        let mut execution_height: Option<u64> = None;
 
         for task in tasks {
             match task {
@@ -520,7 +555,7 @@ impl WorkloadExecutor {
                     drop(wallet);
 
                     let public_key = sk.to_public();
-                    Self::reveal_pk(sdk, public_key).await?
+                    execution_height = Self::reveal_pk(sdk, public_key).await?
                 }
                 Task::FaucetTransfer(target, amount, settings) => {
                     let wallet = sdk.namada.wallet.write().await;
@@ -584,6 +619,12 @@ impl WorkloadExecutor {
                         .namada
                         .submit(transfer_tx.clone(), &transfer_tx_builder.tx)
                         .await;
+
+                    if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
+                        execution_height = Some(height.0)
+                    } else {
+                        execution_height = None
+                    }
 
                     if Self::is_tx_rejected(&transfer_tx, &tx) {
                         match tx {
@@ -652,6 +693,12 @@ impl WorkloadExecutor {
                         .submit(transfer_tx.clone(), &transfer_tx_builder.tx)
                         .await;
 
+                    if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
+                        execution_height = Some(height.0)
+                    } else {
+                        execution_height = None
+                    }
+
                     if Self::is_tx_rejected(&transfer_tx, &tx) {
                         match tx {
                             Ok(tx) => {
@@ -706,6 +753,12 @@ impl WorkloadExecutor {
                         .submit(bond_tx.clone(), &bond_tx_builder.tx)
                         .await;
 
+                    if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
+                        execution_height = Some(height.0)
+                    } else {
+                        execution_height = None
+                    }
+
                     if Self::is_tx_rejected(&bond_tx, &tx) {
                         match tx {
                             Ok(tx) => {
@@ -718,7 +771,11 @@ impl WorkloadExecutor {
                 }
             }
         }
-        Ok(now.elapsed().as_secs())
+
+        Ok(ExecutionResult {
+            time_taken: now.elapsed().as_secs(),
+            execution_height: execution_height,
+        })
     }
 
     pub fn update_state(&self, tasks: Vec<Task>, state: &mut State) {
@@ -744,7 +801,7 @@ impl WorkloadExecutor {
         }
     }
 
-    async fn reveal_pk(sdk: &Sdk, public_key: common::PublicKey) -> Result<(), StepError> {
+    async fn reveal_pk(sdk: &Sdk, public_key: common::PublicKey) -> Result<Option<u64>, StepError> {
         let wallet = sdk.namada.wallet.write().await;
         let fee_payer = wallet.find_public_key("faucet").unwrap();
         drop(wallet);
@@ -786,7 +843,11 @@ impl WorkloadExecutor {
             }
         }
 
-        Ok(())
+        if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
+            Ok(Some(height.0))
+        } else {
+            Ok(None)
+        }
     }
 
     fn random_alias(state: &mut State) -> Alias {

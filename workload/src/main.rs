@@ -131,10 +131,11 @@ async fn main() {
             .await;
         tracing::info!("Built checks for {:?}", next_step);
 
-        match workload_executor.execute(&sdk, tasks.clone()).await {
-            Ok(secs) => {
+        let execution_height = match workload_executor.execute(&sdk, tasks.clone()).await {
+            Ok(result) => {
                 workload_executor.update_state(tasks, &mut state);
-                tracing::info!("Execution took {}s...", secs);
+                tracing::info!("Execution took {}s...", result.time_taken);
+                result.execution_height
             }
             Err(e) => {
                 match e {
@@ -149,7 +150,10 @@ async fn main() {
             }
         };
 
-        if let Err(e) = workload_executor.checks(&sdk, checks.clone()).await {
+        if let Err(e) = workload_executor
+            .checks(&sdk, checks.clone(), execution_height)
+            .await
+        {
             tracing::error!("Error {:?} (Check) -> {}", next_step, e.to_string());
         } else {
             if checks.is_empty() {

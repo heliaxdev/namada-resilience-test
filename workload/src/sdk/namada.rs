@@ -8,7 +8,7 @@ use namada_sdk::{
     io::NullIo,
     key::common::SecretKey,
     masp::{fs::FsShieldedUtils, ShieldedContext},
-    rpc, Namada, NamadaImpl,
+    rpc, NamadaImpl,
 };
 use namada_wallet::{fs::FsWalletUtils, Wallet};
 use tendermint_rpc::HttpClient;
