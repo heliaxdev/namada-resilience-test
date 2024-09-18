@@ -37,6 +37,7 @@ async fn main() {
 
     let config = AppConfig::parse();
     tracing::info!("Using config: {:#?}", config);
+    tracing::info!("Sha commit: {}", env!("VERGEN_GIT_SHA").to_string());
 
     let base_dir = tempdir().unwrap().path().to_path_buf();
 
