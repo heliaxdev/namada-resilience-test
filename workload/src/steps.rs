@@ -319,7 +319,7 @@ impl WorkloadExecutor {
             let latest_block = client.latest_block().await;
             if let Ok(block) = latest_block {
                 let block_height = block.block.header.height.value();
-                if block_height == execution_height {
+                if block_height >= execution_height {
                     break;
                 } else {
                     tracing::info!(
