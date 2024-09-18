@@ -315,12 +315,13 @@ impl WorkloadExecutor {
             return Ok(());
         };
 
-        loop {
+        let latest_block = loop {
             let latest_block = client.latest_block().await;
             if let Ok(block) = latest_block {
-                let block_height = block.block.header.height.value();
+                let current_height = block.block.header.height.value();
+                let block_height = current_height;
                 if block_height >= execution_height {
-                    break;
+                    break current_height
                 } else {
                     tracing::info!(
                         "Waiting for block height: {}, currently at: {}",
@@ -330,7 +331,7 @@ impl WorkloadExecutor {
                 }
             }
             sleep(Duration::from_secs(1)).await
-        }
+        };
 
         // introduce some random sleep
         let random_timeout = state.rng.gen_range(0.1f64..3.0f64);
@@ -353,7 +354,9 @@ impl WorkloadExecutor {
                                 "The public key was not released correctly.",
                                 &json!({
                                     "public-key": source.to_pretty_string(),
-                                    "timeout": random_timeout
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
                                 })
                             );
                             if !was_pk_revealed {
@@ -406,7 +409,9 @@ impl WorkloadExecutor {
                                     "amount": amount,
                                     "post_balance": post_amount,
                                     "pre_state": pre_state,
-                                    "timeout": random_timeout
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
                                 })
                             );
                             if !post_amount.eq(&check_balance) {
@@ -454,7 +459,9 @@ impl WorkloadExecutor {
                                     "amount": amount,
                                     "post_balance": post_amount,
                                     "pre_state": pre_state,
-                                    "timeout": random_timeout
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
                                 })
                             );
                             if !post_amount.eq(&check_balance) {
@@ -522,7 +529,9 @@ impl WorkloadExecutor {
                                     "post_bond": post_bond,
                                     "pre_state": pre_state,
                                     "epoch": epoch,
-                                    "timeout": random_timeout
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
                                 })
                             );
                             if !post_bond.eq(&check_bond) {
