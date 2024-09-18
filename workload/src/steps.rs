@@ -320,7 +320,7 @@ impl WorkloadExecutor {
             if let Ok(block) = latest_block {
                 let current_height = block.block.header.height.value();
                 let block_height = current_height;
-                if block_height >= execution_height {
+                if block_height > execution_height {
                     break current_height
                 } else {
                     tracing::info!(
@@ -334,7 +334,8 @@ impl WorkloadExecutor {
         };
 
         // introduce some random sleep
-        let random_timeout = state.rng.gen_range(0.1f64..3.0f64);
+        // let random_timeout = state.rng.gen_range(0.1f64..3.0f64);
+        let random_timeout = 0.0f64;
         sleep(Duration::from_secs_f64(random_timeout)).await;
 
         for check in checks {
