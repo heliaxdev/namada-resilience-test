@@ -28,7 +28,8 @@ async fn main() {
         .from_env()
         .unwrap()
         .add_directive("namada_chain_workload=debug".parse().unwrap())
-        .add_directive("namada_sdk::rpc=debug".parse().unwrap());
+        .add_directive("namada_sdk::rpc=debug".parse().unwrap())
+        .add_directive("tendermint_rpc::client::transport::http=debug".parse().unwrap());
 
     tracing_subscriber::fmt()
         .with_env_filter(filter)
@@ -152,7 +153,7 @@ async fn main() {
         };
 
         if let Err(e) = workload_executor
-            .checks(&sdk, checks.clone(), execution_height)
+            .checks(&sdk, checks.clone(), execution_height, &mut state)
             .await
         {
             tracing::error!("Error {:?} (Check) -> {}", next_step, e.to_string());

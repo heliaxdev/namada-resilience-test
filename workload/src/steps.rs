@@ -300,6 +300,7 @@ impl WorkloadExecutor {
         sdk: &Sdk,
         checks: Vec<Check>,
         execution_height: Option<u64>,
+        state: &mut State
     ) -> Result<(), String> {
         let config = Self::retry_config();
         let client = sdk.namada.client();
@@ -331,6 +332,10 @@ impl WorkloadExecutor {
             sleep(Duration::from_secs(1)).await
         }
 
+        // introduce some random sleep
+        let random_timeout = state.rng.gen_range(0.1f64..3.0f64);
+        sleep(Duration::from_secs_f64(random_timeout)).await;
+
         for check in checks {
             match check {
                 Check::RevealPk(alias) => {
@@ -348,6 +353,7 @@ impl WorkloadExecutor {
                                 "The public key was not released correctly.",
                                 &json!({
                                     "public-key": source.to_pretty_string(),
+                                    "timeout": random_timeout
                                 })
                             );
                             if !was_pk_revealed {
@@ -399,7 +405,8 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_amount,
-                                    "pre_state": pre_state
+                                    "pre_state": pre_state,
+                                    "timeout": random_timeout
                                 })
                             );
                             if !post_amount.eq(&check_balance) {
@@ -446,7 +453,8 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_amount,
-                                    "pre_state": pre_state
+                                    "pre_state": pre_state,
+                                    "timeout": random_timeout
                                 })
                             );
                             if !post_amount.eq(&check_balance) {
@@ -513,7 +521,8 @@ impl WorkloadExecutor {
                                     "amount": amount,
                                     "post_bond": post_bond,
                                     "pre_state": pre_state,
-                                    "epoch": epoch
+                                    "epoch": epoch,
+                                    "timeout": random_timeout
                                 })
                             );
                             if !post_bond.eq(&check_bond) {
