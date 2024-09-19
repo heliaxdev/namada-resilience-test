@@ -188,6 +188,8 @@ impl WorkloadExecutor {
                     current_epoch.into(),
                     task_settings,
                 )]
+
+                
             }
         };
         Ok(steps)
@@ -272,7 +274,7 @@ impl WorkloadExecutor {
                     drop(wallet);
 
                     let bond_check = if let Ok(pre_bond) = tryhard::retry_fn(|| {
-                        rpc::get_bond_amount_at(client, &source_address, &validator_address, epoch)
+                        rpc::get_bond_amount_at(client, &source_address, &validator_address, epoch.next().next())
                     })
                     .with_config(config)
                     .on_retry(|attempt, _, error| {
@@ -320,7 +322,7 @@ impl WorkloadExecutor {
             if let Ok(block) = latest_block {
                 let current_height = block.block.header.height.value();
                 let block_height = current_height;
-                if block_height > execution_height {
+                if block_height >= execution_height {
                     break current_height
                 } else {
                     tracing::info!(
@@ -330,13 +332,13 @@ impl WorkloadExecutor {
                     );
                 }
             }
-            sleep(Duration::from_secs(1)).await
+            sleep(Duration::from_secs_f64(0.1f64)).await
         };
 
         // introduce some random sleep
-        // let random_timeout = state.rng.gen_range(0.1f64..3.0f64);
+        // let random_timeout = state.rng.gen_range(0.0f64..2.0f64);
         let random_timeout = 0.0f64;
-        sleep(Duration::from_secs_f64(random_timeout)).await;
+        // sleep(Duration::from_secs_f64(random_timeout)).await;
 
         for check in checks {
             match check {
