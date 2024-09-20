@@ -320,7 +320,7 @@ impl WorkloadExecutor {
         let latest_block = loop {
             let latest_block = client.latest_block().await;
             if let Ok(block) = latest_block {
-                let current_height = block.block.header.height.value();
+                let current_height = block.block.last_commit.unwrap().height.value();
                 let block_height = current_height;
                 if block_height >= execution_height {
                     break current_height
