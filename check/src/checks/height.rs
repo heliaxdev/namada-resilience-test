@@ -16,7 +16,19 @@ impl DoCheck for HeightCheck {
             Ok(block) => {
                 let current_block_height = u64::from(block.block.header.height);
                 if state.last_block_height <= current_block_height {
-                    state.last_block_height = current_block_height;
+                    if state.last_block_height == current_block_height {
+                        state.total_times_block_query_was_equal += 1;
+                        if state.total_times_block_query_was_equal > 3 {
+                            return Err(format!(
+                                "Block height didn't change for 3 times: before: {} -> after {}, times {}",
+                                state.last_block_height, current_block_height, state.total_times_block_query_was_equal
+                            ));
+                        }
+                    } else {
+                        state.last_block_height = current_block_height;
+                        state.total_times_block_query_was_equal = 0;
+                    }
+
                     tracing::info!("Block height ok");
                     Ok(())
                 } else {
