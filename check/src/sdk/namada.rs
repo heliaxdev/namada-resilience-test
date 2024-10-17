@@ -2,9 +2,9 @@ use std::path::PathBuf;
 
 use namada_sdk::{
     io::NullIo,
-    masp::{fs::FsShieldedUtils, ShieldedContext},
+    masp::fs::FsShieldedUtils,
     wallet::{fs::FsWalletUtils, Wallet},
-    NamadaImpl,
+    NamadaImpl, ShieldedWallet,
 };
 use tendermint_rpc::HttpClient;
 
@@ -18,7 +18,7 @@ impl Sdk {
         base_dir: &PathBuf,
         http_client: HttpClient,
         wallet: Wallet<FsWalletUtils>,
-        shielded_ctx: ShieldedContext<FsShieldedUtils>,
+        shielded_ctx: ShieldedWallet<FsShieldedUtils>,
         io: NullIo,
     ) -> Sdk {
         let namada = NamadaImpl::new(http_client, wallet, shielded_ctx, io)

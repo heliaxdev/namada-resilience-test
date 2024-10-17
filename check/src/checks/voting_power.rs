@@ -1,4 +1,3 @@
-use namada_sdk::Namada;
 use tendermint_rpc::Client;
 
 use crate::sdk::namada::Sdk;
@@ -10,7 +9,7 @@ pub struct VotingPowerCheck {}
 
 impl DoCheck for VotingPowerCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
-        let client = sdk.namada.client();
+        let client = sdk.namada.clone_client();
         let status = client.status().await;
 
         match status {
@@ -29,7 +28,12 @@ impl DoCheck for VotingPowerCheck {
                         for validator in validators.validators {
                             let vp = validator.power();
                             let percentage_vp = (vp as f32) / (total_vp as f32);
-                            tracing::info!("Validator: {}, voting power: {}, percentage: {}%", validator.address, vp, percentage_vp);
+                            tracing::info!(
+                                "Validator: {}, voting power: {}, percentage: {}%",
+                                validator.address,
+                                vp,
+                                percentage_vp
+                            );
                         }
                     }
                     Err(e) => Err(format!("Failed to query validators: {}", e))?,

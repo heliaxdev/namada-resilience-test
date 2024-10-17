@@ -1,4 +1,4 @@
-use namada_sdk::{queries::Client, Namada};
+use tendermint_rpc::Client;
 
 use crate::sdk::namada::Sdk;
 
@@ -9,7 +9,7 @@ pub struct StatusCheck {}
 
 impl DoCheck for StatusCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
-        let client = sdk.namada.client();
+        let client = sdk.namada.clone_client();
         let status = client.status().await;
 
         match status {

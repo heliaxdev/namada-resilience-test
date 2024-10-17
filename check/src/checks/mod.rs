@@ -44,7 +44,7 @@ pub trait DoCheck {
                     times,
                     3
                 );
-                times = times + 1;
+                times += 1;
                 sleep(Duration::from_secs(2)).await
             }
         }

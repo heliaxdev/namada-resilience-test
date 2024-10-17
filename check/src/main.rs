@@ -11,12 +11,10 @@ use namada_chain_check::{
     sdk::namada::Sdk,
     state::State,
 };
-use namada_sdk::{
-    io::NullIo, masp::fs::FsShieldedUtils, queries::Client, wallet::fs::FsWalletUtils,
-};
+use namada_sdk::{io::NullIo, masp::fs::FsShieldedUtils, wallet::fs::FsWalletUtils};
 use serde_json::json;
 use tempfile::tempdir;
-use tendermint_rpc::{HttpClient, Url};
+use tendermint_rpc::{Client, HttpClient, Url};
 
 #[tokio::main]
 async fn main() {

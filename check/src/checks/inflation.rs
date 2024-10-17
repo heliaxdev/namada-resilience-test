@@ -1,4 +1,4 @@
-use namada_sdk::{rpc, Namada};
+use namada_sdk::rpc;
 
 use crate::sdk::namada::Sdk;
 
@@ -9,15 +9,15 @@ pub struct InflationCheck {}
 
 impl DoCheck for InflationCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
-        let client = sdk.namada.client();
-        let native_token = match rpc::query_native_token(client).await {
+        let client = sdk.namada.clone_client();
+        let native_token = match rpc::query_native_token(&client).await {
             Ok(address) => address,
             Err(e) => {
                 return Err(e.to_string());
             }
         };
 
-        let total_supply = rpc::get_token_total_supply(client, &native_token).await;
+        let total_supply = rpc::get_token_total_supply(&client, &native_token).await;
 
         match total_supply {
             Ok(current_total_supply) => {

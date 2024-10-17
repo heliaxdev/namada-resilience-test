@@ -1,4 +1,4 @@
-use namada_sdk::{rpc, Namada};
+use namada_sdk::rpc;
 
 use crate::sdk::namada::Sdk;
 
@@ -9,8 +9,8 @@ pub struct EpochCheck {}
 
 impl DoCheck for EpochCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
-        let client = sdk.namada.client();
-        let last_epoch = rpc::query_epoch(client).await;
+        let client = sdk.namada.clone_client();
+        let last_epoch = rpc::query_epoch(&client).await;
 
         match last_epoch {
             Ok(epoch) => {
