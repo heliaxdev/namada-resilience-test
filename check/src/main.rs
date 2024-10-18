@@ -66,6 +66,9 @@ async fn main() {
 
     loop {
         let now = chrono::offset::Utc::now();
+        
+        let vp_check_res = VotingPowerCheck::do_check(&sdk, &mut state, now).await;
+        is_succesful(VotingPowerCheck::to_string(), vp_check_res);
 
         let height_check_res = HeightCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(HeightCheck::to_string(), height_check_res);
@@ -78,9 +81,6 @@ async fn main() {
 
         let status_check_res = StatusCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(StatusCheck::to_string(), status_check_res);
-
-        let vp_check_res = VotingPowerCheck::do_check(&sdk, &mut state, now).await;
-        is_succesful(VotingPowerCheck::to_string(), vp_check_res);
 
         tokio::time::sleep(Duration::from_secs(1)).await;
     }

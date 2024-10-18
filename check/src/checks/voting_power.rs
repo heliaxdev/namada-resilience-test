@@ -1,3 +1,5 @@
+use std::u64;
+
 use tendermint_rpc::Client;
 
 use crate::sdk::namada::Sdk;
@@ -21,10 +23,38 @@ impl DoCheck for VotingPowerCheck {
                 match validators {
                     Ok(validators) => {
                         let mut total_vp = 0;
+                        let mut max_validator_vp = 0;
                         for validator in validators.validators.clone() {
                             total_vp += validator.power();
+                            if max_validator_vp < validator.power() {
+                                max_validator_vp = validator.power();
+                            }
                         }
+
+                        let two_third = (total_vp * 2) / 3;
+                        let mut vps = vec![];
+                        for validator in validators.validators.clone() {
+                            if validator.power() == max_validator_vp {
+                                continue
+                            }
+                            vps.push(validator.power());
+                        }
+
+                        let mut can_halt = false;
+                        for vp in vps {
+                            if vp + max_validator_vp < two_third {
+                                can_halt = true;
+                            }
+                        }
+
+                        if can_halt {
+                            state.two_nodes_have_two_third = false;
+                        } else {
+                            state.two_nodes_have_two_third = true;
+                        }
+
                         tracing::info!("Total vp: {}", total_vp);
+                        tracing::info!("Can halt: {}", can_halt);
                         for validator in validators.validators {
                             let vp = validator.power();
                             let percentage_vp = (vp as f32) / (total_vp as f32);

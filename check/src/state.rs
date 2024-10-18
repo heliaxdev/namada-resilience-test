@@ -5,6 +5,7 @@ pub struct State {
     pub last_block_height: u64,
     pub last_epoch: u64,
     pub last_total_supply: token::Amount,
+    pub two_nodes_have_two_third: bool
 }
 
 impl State {
@@ -13,6 +14,7 @@ impl State {
             last_block_height: height,
             last_epoch: 0,
             last_total_supply: token::Amount::default(),
+            two_nodes_have_two_third: true
         }
     }
 }
