@@ -223,6 +223,7 @@ impl WorkloadExecutor {
                     {
                         Check::BalanceTarget(target, pre_balance, amount, state.clone())
                     } else {
+                        tracing::info!("retrying ...");
                         continue;
                     };
 
@@ -243,6 +244,7 @@ impl WorkloadExecutor {
                     {
                         Check::BalanceSource(source, pre_balance, amount, state.clone())
                     } else {
+                        tracing::info!("retrying ...");
                         continue;
                     };
 
@@ -260,6 +262,7 @@ impl WorkloadExecutor {
                     {
                         Check::BalanceTarget(target, pre_balance, amount, state.clone())
                     } else {
+                        tracing::info!("retrying ...");
                         continue;
                     };
 
@@ -287,6 +290,7 @@ impl WorkloadExecutor {
                     {
                         Check::Bond(source, validator, pre_bond, amount, state.clone())
                     } else {
+                        tracing::info!("retrying ...");
                         continue;
                     };
                     vec![bond_check]
