@@ -34,6 +34,8 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .compact()
+        .without_time()
+        .with_ansi(false)
         .init();
 
     let config = AppConfig::parse();
@@ -117,10 +119,10 @@ async fn main() {
             Err(e) => {
                 match e {
                     namada_chain_workload::steps::StepError::Execution(_) => {
-                        tracing::error!("Error {:?} -> {}", next_step, e.to_string());
+                        tracing::error!("Error build {:?} -> {}", next_step, e.to_string());
                     }
                     _ => {
-                        tracing::warn!("Warning {:?} -> {}", next_step, e.to_string());
+                        tracing::warn!("Warning build {:?} -> {}", next_step, e.to_string());
                     }
                 }
                 continue;
@@ -142,10 +144,10 @@ async fn main() {
             Err(e) => {
                 match e {
                     namada_chain_workload::steps::StepError::Execution(_) => {
-                        tracing::error!("Error {:?} -> {}", next_step, e.to_string());
+                        tracing::error!("Error executing{:?} -> {}", next_step, e.to_string());
                     }
                     _ => {
-                        tracing::warn!("Warning {:?} -> {}", next_step, e.to_string());
+                        tracing::warn!("Warning executing {:?} -> {}", next_step, e.to_string());
                     }
                 }
                 continue;
@@ -156,7 +158,7 @@ async fn main() {
             .checks(&sdk, checks.clone(), execution_height, &mut state)
             .await
         {
-            tracing::error!("Error {:?} (Check) -> {}", next_step, e.to_string());
+            tracing::error!("Error final checks {:?} -> {}", next_step, e.to_string());
         } else {
             if checks.is_empty() {
                 tracing::info!("Checks are empty, skipping...");

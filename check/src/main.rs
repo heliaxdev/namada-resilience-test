@@ -15,13 +15,23 @@ use namada_sdk::{io::NullIo, masp::fs::FsShieldedUtils, wallet::fs::FsWalletUtil
 use serde_json::json;
 use tempfile::tempdir;
 use tendermint_rpc::{Client, HttpClient, Url};
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() {
     antithesis_init();
 
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env()
+        .unwrap();
+
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
+        .with_env_filter(filter)
+        .compact()
+        .without_time()
+        .with_ansi(false)
         .init();
 
     let config = AppConfig::parse();

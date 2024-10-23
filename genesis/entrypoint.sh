@@ -24,7 +24,7 @@ VALIDATOR2_ADDR="${VALIDATOR2_ADDR:-30.0.0.14:27657}"
 # Some variables for the setup
 base_dirs=('/validator-0' '/validator-1' '/validator-2')
 validator_aliases=('billy' 'bob' 'ben')
-validator_voting_powers=('200000' '200000' '2000000')
+validator_voting_powers=('2000000' '2000000' '15000000')
 validator_address=($VALIDATOR0_ADDR $VALIDATOR1_ADDR $VALIDATOR2_ADDR)
 
 # https://github.com/heliaxdev/namada-network-templates/tree/master/devnet/it-se
