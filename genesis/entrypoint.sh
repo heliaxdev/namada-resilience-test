@@ -80,7 +80,7 @@ for ((i = 0; i < len; i++)); do
     #6. Edit the `balances.toml` file to give a balance to each newly created established account (depends on the validator index, but 5k should be enough)
     echo "Adding balance to ${network_template_path}/balances.toml for ${validator_aliases[i]}"
     echo "" >> ${network_template_path}/balances.toml
-    echo ${ESTABLISHED_ADDRESS} = '"10000000"' >> ${network_template_path}/balances.toml
+    echo ${ESTABLISHED_ADDRESS} = '"18000000"' >> ${network_template_path}/balances.toml
 
 done
 
