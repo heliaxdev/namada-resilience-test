@@ -178,7 +178,7 @@ services:
       PGUSER: postgres
       POSTGRES_DB: masp_indexer_local
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "masp_indexer_local"]
+      test: ["CMD", "pg_isready", "-d", "masp_indexer_local"]
       interval: 5s
       timeout: 10s
       retries: 5
