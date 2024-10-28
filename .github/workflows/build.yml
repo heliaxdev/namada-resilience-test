@@ -7,6 +7,10 @@ on:
         description: "The namada SHA commit to build"
         required: true
         type: string
+      masp_comit:
+        description: "The namada masp indexer SHA commit to build"
+        required: true
+        type: string
       genesis_template_version:
         description: "The genesis template version"
         required: true
