@@ -7,7 +7,7 @@ on:
         description: "The namada SHA commit to build"
         required: true
         type: string
-      masp_comit:
+      masp_commit:
         description: "The namada masp indexer SHA commit to build"
         required: true
         type: string
