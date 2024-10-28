@@ -11,7 +11,7 @@ RUN cargo build --release --package block-index
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
-COPY --from=builder /app/target/release/block-index /app/block-index
+COPY --from=builder /app/target/release/block-index-builder /app/block-index
 
 RUN apt-get update && apt-get install -y libpq5 wget
 
