@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       registry_url: us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository
-      masp_commit: main
+      masp_commit: master
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
