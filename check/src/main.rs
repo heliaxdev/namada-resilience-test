@@ -4,8 +4,7 @@ use antithesis_sdk::antithesis_init;
 use clap::Parser;
 use namada_chain_check::{
     checks::{
-        epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck, status::StatusCheck,
-        voting_power::VotingPowerCheck, DoCheck,
+        epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck, masp_indexer::MaspIndexerHeightCheck, status::StatusCheck, voting_power::VotingPowerCheck, DoCheck
     },
     config::AppConfig,
     sdk::namada::Sdk,
@@ -72,7 +71,7 @@ async fn main() {
         }
     }
 
-    let sdk = Sdk::new(&base_dir, http_client.clone(), wallet, shielded_ctx, io).await;
+    let sdk = Sdk::new(&base_dir, http_client.clone(), wallet, shielded_ctx, io, config.masp_indexer_url).await;
 
     loop {
         let now = chrono::offset::Utc::now();
@@ -91,6 +90,9 @@ async fn main() {
 
         let status_check_res = StatusCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(StatusCheck::to_string(), status_check_res);
+
+        let masp_indexer_check_res = MaspIndexerHeightCheck::do_check(&sdk, &mut state, now).await;
+        is_succesful(MaspIndexerHeightCheck::to_string(), masp_indexer_check_res);
 
         tokio::time::sleep(Duration::from_secs(1)).await;
     }

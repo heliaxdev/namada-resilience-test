@@ -10,6 +10,7 @@ pub mod height;
 pub mod inflation;
 pub mod status;
 pub mod voting_power;
+pub mod masp_indexer;
 
 pub trait DoCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String>;
@@ -30,14 +31,14 @@ pub trait DoCheck {
                 return result;
             } else {
                 if times == 3 {
-                    tracing::info!(
+                    tracing::error!(
                         "Check {} failed {} times, returning error",
                         Self::to_string(),
                         times
                     );
                     return result;
                 }
-                tracing::info!(
+                tracing::warn!(
                     "Check {} failed (error: {}) retrying ({}/{}),...",
                     Self::to_string(),
                     result.err().unwrap().to_string(),
