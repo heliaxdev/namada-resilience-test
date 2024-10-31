@@ -1,4 +1,4 @@
-FROM docker.io/rust:1.76-bullseye as builder
+FROM docker.io/rust:1.76-bookworm as builder
 WORKDIR /app
 
 ARG GIT_SHA
