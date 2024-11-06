@@ -14,7 +14,8 @@ pub struct MaspIndexerHeightCheck {}
 
 impl DoCheck for MaspIndexerHeightCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
-        let masp_indexer_block_height = reqwest::get(&sdk.masp_indexer_url).await;
+        let url = format!("{}/api/v1/height", sdk.masp_indexer_url);
+        let masp_indexer_block_height = reqwest::get(&url).await;
 
         match masp_indexer_block_height {
             Ok(response) => {
