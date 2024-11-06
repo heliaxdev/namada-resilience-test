@@ -4,10 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  docker:
-    runs-on: ubuntu-latest
-  
-  check-container:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
