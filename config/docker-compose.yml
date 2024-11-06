@@ -183,6 +183,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 80s
+    networks:
+      namada-net:
   masp-chain:
     container_name: masp-chain
     hostname: masp-chain
