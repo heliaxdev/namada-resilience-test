@@ -12,10 +12,10 @@ jobs:
       matrix:
         runs:
           - image: "main"
-            masp_indexer: "master"
+            masp_indexer: "latest"
             faults: true
           - image: "main-inst"
-            masp_indexer: "master"
+            masp_indexer: "latest"
             faults: true
             
     steps:
