@@ -29,7 +29,7 @@ for service in current_docker_compose['services']:
         current_docker_compose['services'][service]['image'] = updated_image
         subprocess.run(["docker", "pull", updated_image])
 
-updated_docker_compose_path = "docker-compose-test.yml"
+updated_docker_compose_path = "config/docker-compose-test.yml"
 with open(updated_docker_compose_path, 'w') as outfile:
     yaml.dump(current_docker_compose, outfile)
 
