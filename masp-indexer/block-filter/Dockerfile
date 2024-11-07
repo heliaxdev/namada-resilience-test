@@ -24,4 +24,6 @@ RUN wget -O /app/.masp-params/masp-spend.params https://github.com/anoma/masp-mp
 
 WORKDIR /app
 
-CMD ["./block-index"]
+COPY --chmod=0755 entrypoint.sh /app/entrypoint.sh
+
+CMD ["./entrypoint.sh"]
