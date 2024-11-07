@@ -13,7 +13,7 @@ FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/block-index-builder /app/block-index
 
-RUN apt-get update && apt-get install -y libpq5 wget
+RUN apt-get update && apt-get install -y libpq5 wget postgresql
 
 # preload the MASP params (since we don't haveinternet)
 RUN mkdir -p /app/.masp-params
