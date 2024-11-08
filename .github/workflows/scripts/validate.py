@@ -27,7 +27,7 @@ for service in current_docker_compose['services']:
         tag = image_map[current_image]
         updated_image = "us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/{}:{}".format(current_image, tag)
         current_docker_compose['services'][service]['image'] = updated_image
-        subprocess.run(["docker", "pull", updated_image])
+        # subprocess.run(["docker", "pull", updated_image])
 
 updated_docker_compose_path = "config/docker-compose-test.yml"
 with open(updated_docker_compose_path, 'w') as outfile:
