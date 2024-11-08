@@ -1,12 +1,18 @@
-use std::collections::{BTreeSet, HashMap};
+use std::{
+    collections::{BTreeSet, HashMap},
+    env,
+    fs::{self},
+    path::PathBuf,
+};
 
-use rand::{seq::IteratorRandom, SeedableRng};
+use rand::{seq::IteratorRandom, Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE},
     entities::Alias,
+    task::Task,
 };
 
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,24 +42,102 @@ impl Account {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
     pub bonds: HashMap<Alias, HashMap<String, u64>>,
-    #[serde(skip)]
+    pub seed: u64,
     pub rng: ChaCha20Rng,
+    pub path: PathBuf,
+    pub base_dir: PathBuf,
 }
 
 impl State {
-    pub fn new(seed: u64) -> Self {
+    pub fn new(id: u64, seed: u64) -> Self {
         Self {
             accounts: HashMap::default(),
             balances: HashMap::default(),
             bonds: HashMap::default(),
+            seed,
             rng: ChaCha20Rng::seed_from_u64(seed),
+            path: env::current_dir()
+                .unwrap()
+                .join(format!("state-{}.json", id)),
+            base_dir: env::current_dir().unwrap().join("base"),
         }
     }
+
+    pub fn update(&mut self, tasks: Vec<Task>, with_fee: bool) {
+        for task in tasks {
+            match task {
+                Task::NewWalletKeyPair(alias) => {
+                    self.add_implicit_account(alias);
+                }
+                Task::FaucetTransfer(target, amount, settings) => {
+                    let source_alias = Alias::faucet();
+                    self.modify_balance(source_alias, target, amount);
+                    if with_fee {
+                        self.modify_balance_fee(settings.gas_payer, settings.gas_limit);
+                    }
+                }
+                Task::TransparentTransfer(source, target, amount, setting) => {
+                    self.modify_balance(source, target, amount);
+                    if with_fee {
+                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    }
+                }
+                Task::Bond(source, validator, amount, _, setting) => {
+                    self.modify_bond(source, validator, amount);
+                    if with_fee {
+                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    }
+                }
+                Task::Batch(tasks, setting) => {
+                    self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    self.update(tasks, false);
+                }
+                Task::InitAccount(alias, sources, threshold, setting) => {
+                    self.add_enstablished_account(alias, sources, threshold);
+                    if with_fee {
+                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn serialize_to_file(&self) {
+        fs::write(&self.path, serde_json::to_string_pretty(&self).unwrap()).unwrap()
+    }
+
+    pub fn from_file(id: u64, seed: Option<u64>) -> Self {
+        let path = env::current_dir()
+            .unwrap()
+            .join(format!("state-{}.json", id));
+        match fs::read_to_string(path) {
+            Ok(data) => match serde_json::from_str(&data) {
+                Ok(state) => state,
+                Err(_) => {
+                    let state = State::new(
+                        id,
+                        seed.unwrap_or(rand::thread_rng().gen_range(0..u64::MAX)),
+                    );
+                    state.serialize_to_file();
+                    state
+                }
+            },
+            Err(_) => {
+                let state = State::new(
+                    id,
+                    seed.unwrap_or(rand::thread_rng().gen_range(0..u64::MAX)),
+                );
+                state.serialize_to_file();
+                state
+            }
+        }
+    }
+
     /// READ
 
     pub fn any_account(&self) -> bool {
@@ -70,6 +154,14 @@ impl State {
             .any(|(_, balance)| balance >= &min_balance)
     }
 
+    pub fn min_n_account_with_min_balance(&self, total_accounts: usize, min_balance: u64) -> bool {
+        self.balances
+            .iter()
+            .filter(|(_, balance)| **balance >= min_balance)
+            .count()
+            >= total_accounts
+    }
+
     pub fn any_account_can_pay_fees(&self) -> bool {
         self.balances.iter().any(|(alias, balance)| {
             if balance >= &DEFAULT_FEE_IN_NATIVE_TOKEN {
@@ -80,24 +172,47 @@ impl State {
             }
         })
     }
+
     pub fn any_account_can_make_transfer(&self) -> bool {
         self.balances
             .iter()
             .any(|(_, balance)| balance >= &MIN_TRANSFER_BALANCE)
     }
 
+    pub fn min_n_implicit_accounts(&self, sample_size: usize) -> bool {
+        self.accounts
+            .iter()
+            .filter(|(_, account)| account.is_implicit())
+            .count()
+            > sample_size
+    }
+
     /// GET
 
-    pub fn random_account(&mut self, blacklist: Vec<Alias>) -> Account {
+    pub fn random_account(&mut self, blacklist: Vec<Alias>) -> Option<Account> {
         self.accounts
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
             .choose(&mut self.rng)
             .map(|(_, account)| account.clone())
-            .unwrap()
     }
 
-    pub fn random_account_with_min_balance(&mut self, blacklist: Vec<Alias>) -> Account {
+    pub fn random_implicit_accounts(
+        &mut self,
+        blacklist: Vec<Alias>,
+        sample_size: usize,
+    ) -> Vec<Account> {
+        self.accounts
+            .iter()
+            .filter(|(alias, _)| !blacklist.contains(alias))
+            .choose_multiple(&mut self.rng, sample_size)
+            .into_iter()
+            .filter(|(_, account)| account.is_implicit())
+            .map(|(_, account)| account.clone())
+            .collect()
+    }
+
+    pub fn random_account_with_min_balance(&mut self, blacklist: Vec<Alias>) -> Option<Account> {
         self.balances
             .iter()
             .filter_map(|(alias, balance)| {
@@ -111,7 +226,6 @@ impl State {
                 }
             })
             .choose(&mut self.rng)
-            .unwrap()
     }
 
     pub fn get_balance_for(&self, alias: &Alias) -> u64 {
@@ -128,6 +242,24 @@ impl State {
                 public_keys: BTreeSet::from_iter(vec![alias.clone()]),
                 threshold: 1,
                 address_type: AddressType::Implicit,
+            },
+        );
+        self.balances.insert(alias.clone(), 0);
+    }
+
+    pub fn add_enstablished_account(
+        &mut self,
+        alias: Alias,
+        aliases: BTreeSet<Alias>,
+        threshold: u64,
+    ) {
+        self.accounts.insert(
+            alias.clone(),
+            Account {
+                alias: alias.clone(),
+                public_keys: aliases,
+                threshold,
+                address_type: AddressType::Enstablished,
             },
         );
         self.balances.insert(alias.clone(), 0);

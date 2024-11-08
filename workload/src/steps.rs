@@ -1,31 +1,43 @@
-use std::{str::FromStr, time::Instant};
+use std::{collections::HashMap, fmt::Display, str::FromStr, time::Instant};
 
+use crate::{
+    build::{
+        batch::{build_bond_batch, build_random_batch},
+        bond::build_bond,
+        faucet_transfer::build_faucet_transfer,
+        init_account::build_init_account,
+        new_wallet_keypair::build_new_wallet_keypair,
+        transparent_transfer::build_transparent_transfer,
+    },
+    build_checks,
+    check::Check,
+    entities::Alias,
+    execute::{
+        batch::execute_tx_batch,
+        bond::{build_tx_bond, execute_tx_bond},
+        faucet_transfer::execute_faucet_transfer,
+        init_account::build_tx_init_account,
+        new_wallet_keypair::execute_new_wallet_key_pair,
+        reveal_pk::execute_reveal_pk,
+        transparent_transfer::{build_tx_transparent_transfer, execute_tx_transparent_transfer},
+    },
+    sdk::namada::Sdk,
+    state::State,
+    task::Task,
+};
+use clap::ValueEnum;
 use namada_sdk::{
     address::Address,
-    args::{InputAmount, TxBuilder, TxTransparentTransferData},
     io::{Client, NamadaIo},
-    key::{common, SchemeType},
-    rpc::{self, TxResponse},
-    signing::default_sign,
+    key::common,
+    rpc::{self},
     state::Epoch,
-    token::{self, DenominatedAmount},
-    tx::{data::GasLimit, either, ProcessTxResponse, Tx},
-    Namada,
-};
-use rand::{
-    distributions::{Alphanumeric, DistString},
-    rngs::OsRng,
-    seq::IteratorRandom,
-    Rng,
+    token::{self},
 };
 use serde_json::json;
 use thiserror::Error;
 use tokio::time::{sleep, Duration};
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
-use weighted_rand::{
-    builder::{NewBuilder, WalkerTableBuilder},
-    table::WalkerTable,
-};
 
 #[derive(Error, Debug)]
 pub enum StepError {
@@ -43,21 +55,29 @@ pub enum StepError {
     Rpc(String),
 }
 
-use crate::{
-    check::Check,
-    constants::NATIVE_SCALE,
-    entities::Alias,
-    sdk::namada::Sdk,
-    state::State,
-    task::{Task, TaskSettings},
-};
-
-#[derive(Clone, Debug, Copy)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum StepType {
     NewWalletKeyPair,
     FaucetTransfer,
     TransparentTransfer,
     Bond,
+    InitAccount,
+    BatchBond,
+    BatchRandom,
+}
+
+impl Display for StepType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StepType::NewWalletKeyPair => write!(f, "wallet-key-pair"),
+            StepType::FaucetTransfer => write!(f, "faucet-transfer"),
+            StepType::TransparentTransfer => write!(f, "transparent-transfer"),
+            StepType::Bond => write!(f, "bond"),
+            StepType::InitAccount => write!(f, "init-account"),
+            StepType::BatchRandom => write!(f, "batch-random"),
+            StepType::BatchBond => write!(f, "batch-bond"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -67,20 +87,17 @@ pub struct ExecutionResult {
 }
 
 #[derive(Clone, Debug)]
-pub struct WorkloadExecutor {
-    pub step_types: Vec<StepType>,
-    inner: WalkerTable,
+pub struct WorkloadExecutor {}
+
+impl Default for WorkloadExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WorkloadExecutor {
-    pub fn new(step_types: Vec<StepType>, step_prob: Vec<f32>) -> Self {
-        let builder = WalkerTableBuilder::new(&step_prob);
-        let table = builder.build();
-
-        Self {
-            step_types,
-            inner: table,
-        }
+    pub fn new() -> Self {
+        Self {}
     }
 
     pub async fn init(&self, sdk: &Sdk) {
@@ -103,24 +120,17 @@ impl WorkloadExecutor {
         }
     }
 
-    pub fn next(&self, state: &State) -> StepType {
-        let mut next_step = self.step_types[self.inner.next()];
-        loop {
-            if Self::is_valid(next_step, state) {
-                return next_step;
-            }
-            next_step = self.step_types[self.inner.next()];
-        }
-    }
-
-    fn is_valid(step_type: StepType, state: &State) -> bool {
+    pub fn is_valid(&self, step_type: &StepType, state: &State) -> bool {
         match step_type {
             StepType::NewWalletKeyPair => true,
             StepType::FaucetTransfer => state.any_account(),
             StepType::TransparentTransfer => {
                 state.at_least_accounts(2) && state.any_account_can_make_transfer()
             }
-            StepType::Bond => state.any_account_with_min_balance(1),
+            StepType::Bond => state.any_account_with_min_balance(2),
+            StepType::InitAccount => state.min_n_implicit_accounts(3),
+            StepType::BatchBond => state.min_n_account_with_min_balance(3, 2),
+            StepType::BatchRandom => state.min_n_account_with_min_balance(3, 2),
         }
     }
 
@@ -128,172 +138,161 @@ impl WorkloadExecutor {
         &self,
         step_type: StepType,
         sdk: &Sdk,
-        mut state: &mut State,
+        state: &mut State,
     ) -> Result<Vec<Task>, StepError> {
         let steps = match step_type {
-            StepType::NewWalletKeyPair => {
-                let alias = Self::random_alias(&mut state);
-                vec![Task::NewWalletKeyPair(alias)]
-            }
-            StepType::FaucetTransfer => {
-                let target_account = state.random_account(vec![]);
-                let amount = Self::random_between(1000, 2000, &mut state) * NATIVE_SCALE;
-
-                let task_settings = TaskSettings::faucet();
-
-                vec![Task::FaucetTransfer(
-                    target_account.alias,
-                    amount,
-                    task_settings,
-                )]
-            }
-            StepType::TransparentTransfer => {
-                let source_account = state.random_account_with_min_balance(vec![]);
-                let target_account = state.random_account(vec![source_account.alias.clone()]);
-                let amount = state.get_balance_for(&source_account.alias);
-
-                let task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
-
-                vec![Task::TransparentTransfer(
-                    source_account.alias,
-                    target_account.alias,
-                    amount,
-                    task_settings,
-                )]
-            }
-            StepType::Bond => {
-                let client = sdk.namada.client();
-                let source_account = state.random_account_with_min_balance(vec![]);
-                let amount = state.get_balance_for(&source_account.alias);
-
-                let current_epoch = rpc::query_epoch(client)
-                    .await
-                    .map_err(|e| StepError::Rpc(format!("query epoch: {}", e)))?;
-                let validators = rpc::get_all_consensus_validators(client, current_epoch)
-                    .await
-                    .map_err(|e| StepError::Rpc(format!("query consensus validators: {}", e)))?;
-
-                let validator = validators
-                    .into_iter()
-                    .map(|v| v.address)
-                    .choose(&mut state.rng)
-                    .unwrap(); // safe as there is always at least a validator
-
-                let task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
-
-                vec![Task::Bond(
-                    source_account.alias,
-                    validator.to_string(),
-                    amount,
-                    current_epoch.into(),
-                    task_settings,
-                )]
-
-                
-            }
+            StepType::NewWalletKeyPair => build_new_wallet_keypair(state).await,
+            StepType::FaucetTransfer => build_faucet_transfer(state).await?,
+            StepType::TransparentTransfer => build_transparent_transfer(state).await?,
+            StepType::Bond => build_bond(sdk, state).await?,
+            StepType::InitAccount => build_init_account(state).await?,
+            StepType::BatchBond => build_bond_batch(sdk, 3, state).await?,
+            StepType::BatchRandom => build_random_batch(sdk, 3, state).await?,
         };
         Ok(steps)
     }
 
     pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State) -> Vec<Check> {
-        let config = Self::retry_config();
+        let retry_config = Self::retry_config();
 
-        let client = sdk.namada.client();
         let mut checks = vec![];
         for task in tasks {
             let check = match task {
                 Task::NewWalletKeyPair(source) => vec![Check::RevealPk(source)],
                 Task::FaucetTransfer(target, amount, _) => {
-                    let wallet = sdk.namada.wallet.read().await;
-                    let native_token_address = wallet.find_address("nam").unwrap().into_owned();
-                    let target_address = wallet.find_address(&target.name).unwrap().into_owned();
-                    drop(wallet);
-
-                    let check = if let Ok(pre_balance) = tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &target_address, None)
-                    })
-                    .with_config(config)
-                    .on_retry(|attempt, _, error| {
-                        let error = error.to_string();
-                        async move {
-                            tracing::info!("Retry {} due to {}...", attempt, error);
-                        }
-                    })
+                    build_checks::faucet::faucet_build_check(
+                        sdk,
+                        target,
+                        amount,
+                        retry_config,
+                        state,
+                    )
                     .await
-                    {
-                        Check::BalanceTarget(target, pre_balance, amount, state.clone())
-                    } else {
-                        tracing::info!("retrying ...");
-                        continue;
-                    };
-
-                    vec![check]
                 }
                 Task::TransparentTransfer(source, target, amount, _) => {
-                    let wallet = sdk.namada.wallet.read().await;
-                    let native_token_address = wallet.find_address("nam").unwrap().into_owned();
-                    let source_address = wallet.find_address(&source.name).unwrap().into_owned();
-                    let target_address = wallet.find_address(&target.name).unwrap().into_owned();
-                    drop(wallet);
-
-                    let source_check = if let Ok(pre_balance) = tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &source_address, None)
-                    })
-                    .with_config(config)
+                    build_checks::transparent_transfer::transparent_transfer(
+                        sdk,
+                        source,
+                        target,
+                        amount,
+                        retry_config,
+                        state,
+                    )
                     .await
-                    {
-                        Check::BalanceSource(source, pre_balance, amount, state.clone())
-                    } else {
-                        tracing::info!("retrying ...");
-                        continue;
-                    };
-
-                    let target_check = if let Ok(pre_balance) = tryhard::retry_fn(|| {
-                        rpc::get_token_balance(client, &native_token_address, &target_address, None)
-                    })
-                    .with_config(config)
-                    .on_retry(|attempt, _, error| {
-                        let error = error.to_string();
-                        async move {
-                            tracing::info!("Retry {} due to {}...", attempt, error);
-                        }
-                    })
-                    .await
-                    {
-                        Check::BalanceTarget(target, pre_balance, amount, state.clone())
-                    } else {
-                        tracing::info!("retrying ...");
-                        continue;
-                    };
-
-                    vec![source_check, target_check]
                 }
                 Task::Bond(source, validator, amount, epoch, _) => {
-                    let wallet = sdk.namada.wallet.read().await;
-                    let source_address = wallet.find_address(&source.name).unwrap().into_owned();
-
-                    let validator_address = Address::from_str(&validator).unwrap();
-                    let epoch = namada_sdk::state::Epoch::from(epoch);
-                    drop(wallet);
-
-                    let bond_check = if let Ok(pre_bond) = tryhard::retry_fn(|| {
-                        rpc::get_bond_amount_at(client, &source_address, &validator_address, epoch.next().next())
-                    })
-                    .with_config(config)
-                    .on_retry(|attempt, _, error| {
-                        let error = error.to_string();
-                        async move {
-                            tracing::info!("Retry {} due to {}...", attempt, error);
-                        }
-                    })
+                    build_checks::bond::bond(
+                        sdk,
+                        source,
+                        validator,
+                        amount,
+                        epoch,
+                        retry_config,
+                        state,
+                    )
                     .await
-                    {
-                        Check::Bond(source, validator, pre_bond, amount, state.clone())
-                    } else {
-                        tracing::info!("retrying ...");
-                        continue;
-                    };
-                    vec![bond_check]
+                }
+                Task::InitAccount(alias, sources, threshold, _) => {
+                    build_checks::init_account::init_account_build_checks(
+                        sdk,
+                        alias,
+                        sources,
+                        threshold,
+                        retry_config,
+                        state,
+                    )
+                    .await
+                }
+                Task::Batch(tasks, _) => {
+                    let mut checks = vec![];
+
+                    let mut reveal_pks: HashMap<Alias, Alias> = HashMap::default();
+                    let mut balances: HashMap<Alias, i64> = HashMap::default();
+                    let mut bond: HashMap<String, (u64, u64)> = HashMap::default();
+
+                    for task in tasks {
+                        println!("{:>?}", task);
+                        match &task {
+                            Task::NewWalletKeyPair(source) => {
+                                reveal_pks.insert(source.clone(), source.to_owned());
+                            }
+                            Task::FaucetTransfer(target, amount, _task_settings) => {
+                                balances
+                                    .entry(target.clone())
+                                    .and_modify(|balance| *balance += *amount as i64)
+                                    .or_insert(*amount as i64);
+                            }
+                            Task::TransparentTransfer(source, target, amount, _task_settings) => {
+                                balances
+                                    .entry(target.clone())
+                                    .and_modify(|balance| *balance += *amount as i64)
+                                    .or_insert(*amount as i64);
+                                balances
+                                    .entry(source.clone())
+                                    .and_modify(|balance| *balance -= *amount as i64)
+                                    .or_insert(-(*amount as i64));
+                            }
+                            Task::Bond(source, validator, amount, epoch, _task_settings) => {
+                                bond.entry(format!("{}@{}", source.name, validator))
+                                    .and_modify(|(_epoch, balance)| *balance += amount)
+                                    .or_insert((*epoch, *amount));
+                                balances
+                                    .entry(source.clone())
+                                    .and_modify(|balance| *balance -= *amount as i64)
+                                    .or_insert(-(*amount as i64));
+                            }
+                            _ => panic!(),
+                        };
+                    }
+
+                    for (_, source) in reveal_pks {
+                        checks.push(Check::RevealPk(source));
+                    }
+
+                    for (alias, amount) in balances {
+                        if let Some(pre_balance) =
+                            build_checks::utils::get_balance(sdk, alias.clone(), retry_config).await
+                        {
+                            if amount >= 0 {
+                                checks.push(Check::BalanceTarget(
+                                    alias,
+                                    pre_balance,
+                                    amount.unsigned_abs(),
+                                    state.clone(),
+                                ));
+                            } else {
+                                checks.push(Check::BalanceSource(
+                                    alias,
+                                    pre_balance,
+                                    amount.unsigned_abs(),
+                                    state.clone(),
+                                ));
+                            }
+                        }
+                    }
+
+                    for (key, (epoch, amount)) in bond {
+                        let (source, validator) = key.split_once('@').unwrap();
+                        if let Some(pre_bond) = build_checks::utils::get_bond(
+                            sdk,
+                            Alias::from(source),
+                            validator.to_owned(),
+                            epoch,
+                            retry_config,
+                        )
+                        .await
+                        {
+                            checks.push(Check::Bond(
+                                Alias::from(source),
+                                validator.to_owned(),
+                                pre_bond,
+                                amount,
+                                state.clone(),
+                            ));
+                        }
+                    }
+                    println!("{:>?}", checks);
+                    checks
                 }
             };
             checks.extend(check)
@@ -306,9 +305,9 @@ impl WorkloadExecutor {
         sdk: &Sdk,
         checks: Vec<Check>,
         execution_height: Option<u64>,
-        state: &mut State
     ) -> Result<(), String> {
         let config = Self::retry_config();
+        let random_timeout = 0.0f64;
         let client = sdk.namada.client();
 
         if checks.is_empty() {
@@ -327,7 +326,7 @@ impl WorkloadExecutor {
                 let current_height = block.block.last_commit.unwrap().height.value();
                 let block_height = current_height;
                 if block_height >= execution_height {
-                    break current_height
+                    break current_height;
                 } else {
                     tracing::info!(
                         "Waiting for block height: {}, currently at: {}",
@@ -336,13 +335,8 @@ impl WorkloadExecutor {
                     );
                 }
             }
-            sleep(Duration::from_secs_f64(0.1f64)).await
+            sleep(Duration::from_secs_f64(1.0f64)).await
         };
-
-        // introduce some random sleep
-        // let random_timeout = state.rng.gen_range(0.0f64..2.0f64);
-        let random_timeout = 0.0f64;
-        // sleep(Duration::from_secs_f64(random_timeout)).await;
 
         for check in checks {
             match check {
@@ -363,7 +357,7 @@ impl WorkloadExecutor {
                                     "public-key": source.to_pretty_string(),
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
-                                    "check_height": latest_block
+                                    "check_height": latest_block,
                                 })
                             );
                             if !was_pk_revealed {
@@ -374,6 +368,15 @@ impl WorkloadExecutor {
                             }
                         }
                         Err(e) => {
+                            tracing::error!(
+                                "{}",
+                                json!({
+                                    "public-key": source.to_pretty_string(),
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block,
+                                })
+                            );
                             return Err(format!("RevealPk check error: {}", e));
                         }
                     }
@@ -422,7 +425,21 @@ impl WorkloadExecutor {
                                 })
                             );
                             if !post_amount.eq(&check_balance) {
-                                return Err("BalanceTarget check error: post target amount is not equal to pre balance".to_string());
+                                tracing::error!(
+                                    "{}",
+                                    json!({
+                                        "target_alias": target,
+                                        "target": target_address.to_pretty_string(),
+                                        "pre_balance": pre_balance,
+                                        "amount": amount,
+                                        "post_balance": post_amount,
+                                        "pre_state": pre_state,
+                                        "timeout": random_timeout,
+                                        "execution_height": execution_height,
+                                        "check_height": latest_block
+                                    })
+                                );
+                                return Err(format!("BalanceTarget check error: post target amount is not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
                             }
                         }
                         Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
@@ -472,10 +489,24 @@ impl WorkloadExecutor {
                                 })
                             );
                             if !post_amount.eq(&check_balance) {
-                                return Err(format!("BalanceTarget check error: post target amount not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
+                                tracing::error!(
+                                    "{}",
+                                    json!({
+                                        "target_alias": target,
+                                        "target": target_address.to_pretty_string(),
+                                        "pre_balance": pre_balance,
+                                        "amount": amount,
+                                        "post_balance": post_amount,
+                                        "pre_state": pre_state,
+                                        "timeout": random_timeout,
+                                        "execution_height": execution_height,
+                                        "check_height": latest_block
+                                    })
+                                );
+                                return Err(format!("BalanceSource check error: post target amount not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
                             }
                         }
-                        Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
+                        Err(e) => return Err(format!("BalanceSource check error: {}", e)),
                     }
                 }
                 Check::Bond(target, validator, pre_bond, amount, pre_state) => {
@@ -542,11 +573,106 @@ impl WorkloadExecutor {
                                 })
                             );
                             if !post_bond.eq(&check_bond) {
+                                tracing::error!(
+                                    "{}",
+                                    json!({
+                                        "target_alias": target,
+                                        "target": source_address.to_pretty_string(),
+                                        "validator": validator_address.to_pretty_string(),
+                                        "pre_bond": pre_bond,
+                                        "amount": amount,
+                                        "post_bond": post_bond,
+                                        "pre_state": pre_state,
+                                        "epoch": epoch,
+                                        "timeout": random_timeout,
+                                        "execution_height": execution_height,
+                                        "check_height": latest_block
+                                    })
+                                );
                                 return Err(format!("Bond check error: post target amount is not equal to pre balance: pre {}, post {}, amount: {}", pre_bond, post_bond, amount));
                             }
                         }
                         Err(e) => return Err(format!("Bond check error: {}", e)),
                     }
+                }
+                Check::AccountExist(target, threshold, sources, pre_state) => {
+                    let wallet = sdk.namada.wallet.read().await;
+                    let source_address = wallet.find_address(&target.name).unwrap().into_owned();
+                    drop(wallet);
+
+                    match tryhard::retry_fn(|| rpc::get_account_info(client, &source_address))
+                        .with_config(config)
+                        .on_retry(|attempt, _, error| {
+                            let error = error.to_string();
+                            async move {
+                                tracing::info!("Retry {} due to {}...", attempt, error);
+                            }
+                        })
+                        .await
+                    {
+                        Ok(Some(account)) => {
+                            let is_threshold_ok = account.threshold == threshold as u8;
+                            let is_sources_ok =
+                                sources.len() == account.public_keys_map.idx_to_pk.len();
+                            antithesis_sdk::assert_always!(
+                                is_sources_ok && is_threshold_ok,
+                                "OnChain account is invalid.",
+                                &json!({
+                                    "target_alias": target,
+                                    "target": source_address.to_pretty_string(),
+                                    "account": account,
+                                    "threshold": threshold,
+                                    "sources": sources,
+                                    "pre_state": pre_state,
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
+                                })
+                            );
+                            if !is_sources_ok || !is_threshold_ok {
+                                tracing::error!(
+                                    "{}",
+                                    json!({
+                                        "target_alias": target,
+                                        "target": source_address.to_pretty_string(),
+                                        "account": account,
+                                        "threshold": threshold,
+                                        "sources": sources,
+                                        "pre_state": pre_state,
+                                        "timeout": random_timeout,
+                                        "execution_height": execution_height,
+                                        "check_height": latest_block
+                                    })
+                                );
+                                return Err(format!(
+                                    "AccountExist check error: account {} is invalid",
+                                    source_address
+                                ));
+                            }
+                        }
+                        Ok(None) => {
+                            antithesis_sdk::assert_always!(
+                                false,
+                                "OnChain account doesn't exist.",
+                                &json!({
+                                    "target_alias": target,
+                                    "target": source_address.to_pretty_string(),
+                                    "account": "",
+                                    "threshold": threshold,
+                                    "sources": sources,
+                                    "pre_state": pre_state,
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
+                                })
+                            );
+                            return Err(format!(
+                                "AccountExist check error: account {} is doesn't exist",
+                                target.name
+                            ));
+                        }
+                        Err(e) => return Err(format!("AccountExist check error: {}", e)),
+                    };
                 }
             }
         }
@@ -554,375 +680,74 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub async fn execute(&self, sdk: &Sdk, tasks: Vec<Task>) -> Result<ExecutionResult, StepError> {
-        let now = Instant::now();
-        let mut execution_height: Option<u64> = None;
+    pub async fn execute(
+        &self,
+        sdk: &Sdk,
+        tasks: Vec<Task>,
+    ) -> Result<Vec<ExecutionResult>, StepError> {
+        let mut execution_results = vec![];
 
         for task in tasks {
-            match task {
+            let now = Instant::now();
+            let execution_height = match task {
                 Task::NewWalletKeyPair(alias) => {
-                    let mut wallet = sdk.namada.wallet.write().await;
-
-                    let keypair = wallet.gen_store_secret_key(
-                        SchemeType::Ed25519,
-                        Some(alias.name),
-                        true,
-                        None,
-                        &mut OsRng,
-                    );
-
-                    let (_alias, sk) = if let Some((alias, sk)) = keypair {
-                        wallet.save().expect("unable to save wallet");
-                        (alias, sk)
-                    } else {
-                        return Err(StepError::Wallet("Failed to save keypair".to_string()));
-                    };
-                    drop(wallet);
-
-                    let public_key = sk.to_public();
-                    execution_height = Self::reveal_pk(sdk, public_key).await?
+                    let public_key = execute_new_wallet_key_pair(sdk, alias).await?;
+                    Self::reveal_pk(sdk, public_key).await?
                 }
                 Task::FaucetTransfer(target, amount, settings) => {
-                    let wallet = sdk.namada.wallet.write().await;
-
-                    let faucet_alias = Alias::faucet();
-                    let native_token_alias = Alias::nam();
-
-                    let source_address = wallet
-                        .find_address(faucet_alias.name)
-                        .unwrap()
-                        .as_ref()
-                        .clone();
-                    let target_address = wallet.find_address(target.name).unwrap().as_ref().clone();
-                    let token_address = wallet
-                        .find_address(native_token_alias.name)
-                        .unwrap()
-                        .as_ref()
-                        .clone();
-                    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
-                    let token_amount = token::Amount::from_u64(amount);
-
-                    let tx_transfer_data = TxTransparentTransferData {
-                        source: source_address.clone(),
-                        target: target_address.clone(),
-                        token: token_address,
-                        amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
-                    };
-
-                    let mut transfer_tx_builder =
-                        sdk.namada.new_transparent_transfer(vec![tx_transfer_data]);
-
-                    transfer_tx_builder =
-                        transfer_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
-                    transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
-
-                    let mut signing_keys = vec![];
-                    for signer in settings.signers {
-                        let public_key = wallet.find_public_key(&signer.name).unwrap();
-                        signing_keys.push(public_key)
-                    }
-                    transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys.clone());
-                    drop(wallet);
-
-                    let (mut transfer_tx, signing_data) = transfer_tx_builder
-                        .build(&sdk.namada)
-                        .await
-                        .map_err(|e| StepError::Build(e.to_string()))?;
-
-                    sdk.namada
-                        .sign(
-                            &mut transfer_tx,
-                            &transfer_tx_builder.tx,
-                            signing_data,
-                            default_sign,
-                            (),
-                        )
-                        .await
-                        .expect("unable to sign tx");
-
-                    let tx = sdk
-                        .namada
-                        .submit(transfer_tx.clone(), &transfer_tx_builder.tx)
-                        .await;
-
-                    if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
-                        execution_height = Some(height.0)
-                    } else {
-                        execution_height = None
-                    }
-
-                    if Self::is_tx_rejected(&transfer_tx, &tx) {
-                        match tx {
-                            Ok(tx) => {
-                                let errors =
-                                    Self::get_tx_errors(&transfer_tx, &tx).unwrap_or_default();
-                                return Err(StepError::Execution(errors));
-                            }
-                            Err(e) => return Err(StepError::Broadcast(e.to_string())),
-                        }
-                    }
+                    execute_faucet_transfer(sdk, target, amount, settings).await?
                 }
                 Task::TransparentTransfer(source, target, amount, settings) => {
-                    let wallet = sdk.namada.wallet.write().await;
-
-                    let native_token_alias = Alias::nam();
-
-                    let source_address = wallet.find_address(source.name).unwrap().as_ref().clone();
-                    let target_address = wallet.find_address(target.name).unwrap().as_ref().clone();
-                    let token_address = wallet
-                        .find_address(native_token_alias.name)
-                        .unwrap()
-                        .as_ref()
-                        .clone();
-                    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
-                    let token_amount = token::Amount::from_u64(amount);
-
-                    let tx_transfer_data = TxTransparentTransferData {
-                        source: source_address.clone(),
-                        target: target_address.clone(),
-                        token: token_address,
-                        amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
-                    };
-
-                    let mut transfer_tx_builder =
-                        sdk.namada.new_transparent_transfer(vec![tx_transfer_data]);
-                    transfer_tx_builder =
-                        transfer_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
-                    transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
-                    let mut signing_keys = vec![];
-                    for signer in settings.signers {
-                        let public_key = wallet.find_public_key(&signer.name).unwrap();
-                        signing_keys.push(public_key)
-                    }
-                    transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys.clone());
-                    drop(wallet);
-
-                    let (mut transfer_tx, signing_data) = transfer_tx_builder
-                        .build(&sdk.namada)
-                        .await
-                        .map_err(|e| StepError::Build(e.to_string()))?;
-
-                    sdk.namada
-                        .sign(
-                            &mut transfer_tx,
-                            &transfer_tx_builder.tx,
-                            signing_data,
-                            default_sign,
-                            (),
-                        )
-                        .await
-                        .expect("unable to sign tx");
-
-                    let tx = sdk
-                        .namada
-                        .submit(transfer_tx.clone(), &transfer_tx_builder.tx)
-                        .await;
-
-                    if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
-                        execution_height = Some(height.0)
-                    } else {
-                        execution_height = None
-                    }
-
-                    if Self::is_tx_rejected(&transfer_tx, &tx) {
-                        match tx {
-                            Ok(tx) => {
-                                let errors =
-                                    Self::get_tx_errors(&transfer_tx, &tx).unwrap_or_default();
-                                return Err(StepError::Execution(errors));
-                            }
-                            Err(e) => return Err(StepError::Broadcast(e.to_string())),
-                        }
-                    }
+                    let (mut tx, signing_data, tx_args) =
+                        build_tx_transparent_transfer(sdk, source, target, amount, settings)
+                            .await?;
+                    execute_tx_transparent_transfer(sdk, &mut tx, signing_data, &tx_args).await?
                 }
                 Task::Bond(source, validator, amount, _, settings) => {
-                    let wallet = sdk.namada.wallet.write().await;
-
-                    let source_address = wallet.find_address(source.name).unwrap().as_ref().clone();
-                    let token_amount = token::Amount::from_u64(amount);
-                    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
-                    let validator = Address::from_str(&validator).unwrap(); // safe
-
-                    let mut bond_tx_builder = sdk
-                        .namada
-                        .new_bond(validator, token_amount)
-                        .source(source_address);
-                    bond_tx_builder = bond_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
-                    bond_tx_builder = bond_tx_builder.wrapper_fee_payer(fee_payer);
-                    let mut signing_keys = vec![];
-                    for signer in settings.signers {
-                        let public_key = wallet.find_public_key(&signer.name).unwrap();
-                        signing_keys.push(public_key)
-                    }
-                    bond_tx_builder = bond_tx_builder.signing_keys(signing_keys.clone());
-                    drop(wallet);
-
-                    let (mut bond_tx, signing_data) = bond_tx_builder
-                        .build(&sdk.namada)
-                        .await
-                        .map_err(|e| StepError::Build(e.to_string()))?;
-
-                    sdk.namada
-                        .sign(
-                            &mut bond_tx,
-                            &bond_tx_builder.tx,
-                            signing_data,
-                            default_sign,
-                            (),
-                        )
-                        .await
-                        .expect("unable to sign tx");
-
-                    let tx = sdk
-                        .namada
-                        .submit(bond_tx.clone(), &bond_tx_builder.tx)
-                        .await;
-
-                    if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
-                        execution_height = Some(height.0)
-                    } else {
-                        execution_height = None
-                    }
-
-                    if Self::is_tx_rejected(&bond_tx, &tx) {
-                        match tx {
-                            Ok(tx) => {
-                                let errors = Self::get_tx_errors(&bond_tx, &tx).unwrap_or_default();
-                                return Err(StepError::Execution(errors));
-                            }
-                            Err(e) => return Err(StepError::Broadcast(e.to_string())),
-                        }
-                    }
+                    let (mut tx, signing_data, tx_args) =
+                        build_tx_bond(sdk, source, validator, amount, settings).await?;
+                    execute_tx_bond(sdk, &mut tx, signing_data, &tx_args).await?
                 }
-            }
+                Task::InitAccount(source, sources, threshold, settings) => {
+                    let (mut tx, signing_data, tx_args) =
+                        build_tx_init_account(sdk, source, sources, threshold, settings).await?;
+                    execute_tx_bond(sdk, &mut tx, signing_data, &tx_args).await?
+                }
+                Task::Batch(tasks, task_settings) => {
+                    let mut txs = vec![];
+                    for task in tasks {
+                        let (tx, signing_data, _) = match task {
+                            Task::TransparentTransfer(source, target, amount, settings) => {
+                                build_tx_transparent_transfer(sdk, source, target, amount, settings)
+                                    .await?
+                            }
+                            Task::Bond(source, validator, amount, _, settings) => {
+                                build_tx_bond(sdk, source, validator, amount, settings).await?
+                            }
+                            _ => panic!(),
+                        };
+                        txs.push((tx, signing_data));
+                    }
+
+                    execute_tx_batch(sdk, txs, task_settings).await?
+                }
+            };
+            let execution_result = ExecutionResult {
+                time_taken: now.elapsed().as_secs(),
+                execution_height,
+            };
+            execution_results.push(execution_result);
         }
 
-        Ok(ExecutionResult {
-            time_taken: now.elapsed().as_secs(),
-            execution_height: execution_height,
-        })
+        Ok(execution_results)
     }
 
     pub fn update_state(&self, tasks: Vec<Task>, state: &mut State) {
-        for task in tasks {
-            match task {
-                Task::NewWalletKeyPair(alias) => {
-                    state.add_implicit_account(alias);
-                }
-                Task::FaucetTransfer(target, amount, settings) => {
-                    let source_alias = Alias::faucet();
-                    state.modify_balance(source_alias, target, amount);
-                    state.modify_balance_fee(settings.gas_payer, settings.gas_limit);
-                }
-                Task::TransparentTransfer(source, target, amount, setting) => {
-                    state.modify_balance(source, target, amount);
-                    state.modify_balance_fee(setting.gas_payer, setting.gas_limit);
-                }
-                Task::Bond(source, validator, amount, _, setting) => {
-                    state.modify_bond(source, validator, amount);
-                    state.modify_balance_fee(setting.gas_payer, setting.gas_limit);
-                }
-            }
-        }
+        state.update(tasks, true);
     }
 
     async fn reveal_pk(sdk: &Sdk, public_key: common::PublicKey) -> Result<Option<u64>, StepError> {
-        let wallet = sdk.namada.wallet.write().await;
-        let fee_payer = wallet.find_public_key("faucet").unwrap();
-        drop(wallet);
-
-        let reveal_pk_tx_builder = sdk
-            .namada
-            .new_reveal_pk(public_key.clone())
-            .signing_keys(vec![public_key.clone()])
-            .wrapper_fee_payer(fee_payer);
-
-        let (mut reveal_tx, signing_data) = reveal_pk_tx_builder
-            .build(&sdk.namada)
-            .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
-
-        sdk.namada
-            .sign(
-                &mut reveal_tx,
-                &reveal_pk_tx_builder.tx,
-                signing_data,
-                default_sign,
-                (),
-            )
-            .await
-            .expect("unable to sign tx");
-
-        let tx = sdk
-            .namada
-            .submit(reveal_tx.clone(), &reveal_pk_tx_builder.tx)
-            .await;
-
-        if Self::is_tx_rejected(&reveal_tx, &tx) {
-            match tx {
-                Ok(tx) => {
-                    let errors = Self::get_tx_errors(&reveal_tx, &tx).unwrap_or_default();
-                    return Err(StepError::Execution(errors));
-                }
-                Err(e) => return Err(StepError::Broadcast(e.to_string())),
-            }
-        }
-
-        if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx {
-            Ok(Some(height.0))
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn random_alias(state: &mut State) -> Alias {
-        format!(
-            "load-tester-{}",
-            Alphanumeric.sample_string(&mut state.rng, 8)
-        )
-        .into()
-    }
-
-    fn random_between(from: u64, to: u64, state: &mut State) -> u64 {
-        state.rng.gen_range(from..to)
-    }
-
-    fn is_tx_rejected(
-        tx: &Tx,
-        tx_response: &Result<ProcessTxResponse, namada_sdk::error::Error>,
-    ) -> bool {
-        let cmt = tx.first_commitments().unwrap().to_owned();
-        let wrapper_hash = tx.wrapper_hash();
-        match tx_response {
-            Ok(tx_result) => tx_result
-                .is_applied_and_valid(wrapper_hash.as_ref(), &cmt)
-                .is_none(),
-            Err(_) => true,
-        }
-    }
-
-    fn get_tx_errors(tx: &Tx, tx_response: &ProcessTxResponse) -> Option<String> {
-        let cmt = tx.first_commitments().unwrap().to_owned();
-        let wrapper_hash = tx.wrapper_hash();
-        match tx_response {
-            ProcessTxResponse::Applied(result) => match &result.batch {
-                Some(batch) => {
-                    tracing::info!("batch result: {:#?}", batch);
-                    match batch.get_inner_tx_result(wrapper_hash.as_ref(), either::Right(&cmt)) {
-                        Some(Ok(res)) => {
-                            let errors = res.vps_result.errors.clone();
-                            let _status_flag = res.vps_result.status_flags;
-                            let _rejected_vps = res.vps_result.rejected_vps.clone();
-                            Some(serde_json::to_string(&errors).unwrap())
-                        }
-                        Some(Err(e)) => Some(e.to_string()),
-                        _ => None,
-                    }
-                }
-                None => None,
-            },
-            _ => None,
-        }
+        execute_reveal_pk(sdk, public_key).await
     }
 
     fn retry_config() -> RetryFutureConfig<ExponentialBackoff, NoOnRetry> {
