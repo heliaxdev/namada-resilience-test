@@ -17,7 +17,6 @@ pub async fn redelegate(
     {
         Check::BondDecrease(source.clone(), from_validator, pre_bond, amount, state.clone())
     } else {
-        tracing::info!("retrying ...");
         return vec![];
     };
     let to_validator_bond_check = if let Some(pre_bond) =
@@ -25,7 +24,6 @@ pub async fn redelegate(
     {
         Check::BondIncrease(source, to_validator, pre_bond, amount, state.clone())
     } else {
-        tracing::info!("retrying ...");
         return vec![];
     };
     vec![from_validator_bond_check, to_validator_bond_check]

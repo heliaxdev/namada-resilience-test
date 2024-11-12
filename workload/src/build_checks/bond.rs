@@ -16,7 +16,6 @@ pub async fn bond(
     {
         Check::BondIncrease(source, validator, pre_bond, amount, state.clone())
     } else {
-        tracing::info!("retrying ...");
         return vec![];
     };
     vec![bond_check]

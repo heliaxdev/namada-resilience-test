@@ -15,7 +15,6 @@ pub async fn transparent_transfer(
     {
         Check::BalanceSource(source, pre_balance, amount, state.clone())
     } else {
-        tracing::info!("retrying ...");
         return vec![];
     };
 
@@ -24,7 +23,6 @@ pub async fn transparent_transfer(
     {
         Check::BalanceTarget(target, pre_balance, amount, state.clone())
     } else {
-        tracing::info!("retrying ...");
         return vec![];
     };
 

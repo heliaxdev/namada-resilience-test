@@ -14,7 +14,6 @@ pub async fn faucet_build_check(
     {
         Check::BalanceTarget(target, pre_balance, amount, state.clone())
     } else {
-        tracing::info!("retrying ...");
         return vec![];
     };
 
