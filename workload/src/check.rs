@@ -16,25 +16,29 @@ pub enum Check {
     RevealPk(Target),
     BalanceTarget(Target, PreBalance, Amount, State),
     BalanceSource(Target, PreBalance, Amount, State),
-    Bond(Target, Address, PreBalance, Amount, State),
+    BondIncrease(Target, Address, PreBalance, Amount, State),
+    BondDecrease(Target, Address, PreBalance, Amount, State),
     AccountExist(Target, Threshold, BTreeSet<Target>, State),
 }
 
 impl Display for Check {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Check::RevealPk(alias) => write!(f, "reveal-{}", alias.name),
+            Check::RevealPk(alias) => write!(f, "reveal/{}", alias.name),
             Check::BalanceSource(target, _pre_balance, _amount, _) => {
-                write!(f, "balance-source-{}", target.name)
+                write!(f, "balance/source/{}", target.name)
             }
             Check::BalanceTarget(target, _pre_balance, _amount, _) => {
-                write!(f, "balance-target-{}", target.name)
+                write!(f, "balance/target/{}", target.name)
             }
-            Check::Bond(source, validator, _pre_balance, _amount, _) => {
-                write!(f, "bond-{}-{}", source.name, validator)
+            Check::BondIncrease(source, validator, _pre_balance, _amount, _) => {
+                write!(f, "bond/{}/{}/increase", source.name, validator)
+            }
+            Check::BondDecrease(source, validator, _pre_balance, _amount, _) => {
+                write!(f, "bond/{}/{}/decrease", source.name, validator)
             }
             Check::AccountExist(source, _threshold, _sources, _) => {
-                write!(f, "account-exist-{}", source.name)
+                write!(f, "account-exist/{}", source.name)
             }
         }
     }

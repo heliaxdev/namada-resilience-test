@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     env,
     fs::{self},
     path::PathBuf,
@@ -42,11 +42,20 @@ impl Account {
     }
 }
 
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Bond {
+    pub alias: Alias,
+    pub validator: String,
+    pub amount: u64,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
     pub bonds: HashMap<Alias, HashMap<String, u64>>,
+    pub redelegations: HashMap<Alias, HashMap<String, u64>>,
+    pub validators: HashMap<Alias, String>,
     pub seed: u64,
     pub rng: ChaCha20Rng,
     pub path: PathBuf,
@@ -59,6 +68,8 @@ impl State {
             accounts: HashMap::default(),
             balances: HashMap::default(),
             bonds: HashMap::default(),
+            redelegations: HashMap::default(),
+            validators: HashMap::default(),
             seed,
             rng: ChaCha20Rng::seed_from_u64(seed),
             path: env::current_dir()
@@ -92,6 +103,10 @@ impl State {
                     if with_fee {
                         self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
                     }
+                }
+                Task::Redelegate(source, from, to, amount, _epoch, setting) => {
+                    self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    self.modify_redeleagte(source, from, to, amount)
                 }
                 Task::Batch(tasks, setting) => {
                     self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
@@ -144,8 +159,8 @@ impl State {
         self.at_least_accounts(1)
     }
 
-    pub fn at_least_accounts(&self, min_accounts: u64) -> bool {
-        self.accounts.len() >= min_accounts as usize
+    pub fn at_least_accounts(&self, sample: u64) -> bool {
+        self.accounts.len() >= sample as usize
     }
 
     pub fn any_account_with_min_balance(&self, min_balance: u64) -> bool {
@@ -154,12 +169,12 @@ impl State {
             .any(|(_, balance)| balance >= &min_balance)
     }
 
-    pub fn min_n_account_with_min_balance(&self, total_accounts: usize, min_balance: u64) -> bool {
+    pub fn min_n_account_with_min_balance(&self, sample: usize, min_balance: u64) -> bool {
         self.balances
             .iter()
             .filter(|(_, balance)| **balance >= min_balance)
             .count()
-            >= total_accounts
+            >= sample
     }
 
     pub fn any_account_can_pay_fees(&self) -> bool {
@@ -187,6 +202,19 @@ impl State {
             > sample_size
     }
 
+    pub fn any_bond(&self) -> bool {
+        self.min_bonds(1)
+    }
+
+    pub fn min_bonds(&self, sample: usize) -> bool {
+        self.bonds
+            .values()
+            .filter(|data| data.values().any(|data| *data > 2))
+            .flatten()
+            .count()
+            >= sample
+    }
+
     /// GET
 
     pub fn random_account(&mut self, blacklist: Vec<Alias>) -> Option<Account> {
@@ -212,6 +240,27 @@ impl State {
             .collect()
     }
 
+    pub fn random_bond(&mut self) -> Bond {
+        self.bonds
+            .iter()
+            .map(|(source, bonds)| {
+                bonds.iter().filter_map(|(validator, amount)| {
+                    if *amount > 1 {
+                        Some(Bond {
+                            alias: source.to_owned(),
+                            validator: validator.to_owned(),
+                            amount: *amount,
+                        })
+                    } else {
+                        None
+                    }
+                })
+            })
+            .flatten()
+            .choose(&mut self.rng)
+            .unwrap()
+    }
+
     pub fn random_account_with_min_balance(&mut self, blacklist: Vec<Alias>) -> Option<Account> {
         self.balances
             .iter()
@@ -228,8 +277,19 @@ impl State {
             .choose(&mut self.rng)
     }
 
+    pub fn get_account_by_alias(&self, alias: &Alias) -> Account {
+        self.accounts.get(alias).unwrap().to_owned()
+    }
+
     pub fn get_balance_for(&self, alias: &Alias) -> u64 {
         self.balances.get(alias).cloned().unwrap_or_default()
+    }
+
+    pub fn get_redelegations_targets_for(&mut self, alias: &Alias) -> HashSet<String> {
+        self.redelegations
+            .get(alias)
+            .map(|data| data.keys().map(|a| a.clone()).collect::<HashSet<String>>())
+            .unwrap_or_default()
     }
 
     /// UPDATE
@@ -289,5 +349,18 @@ impl State {
             .or_insert(default)
             .entry(validator)
             .or_insert(0) += amount;
+    }
+
+    pub fn modify_redeleagte(&mut self, source: Alias, from: String, to: String, amount: u64) {
+        let default = HashMap::from_iter([(to.clone(), 0u64)]);
+        *self
+            .redelegations
+            .entry(source.clone())
+            .or_insert(default)
+            .entry(to)
+            .or_insert(0) += amount;
+        self.bonds
+            .entry(source.clone())
+            .and_modify(|bond| *bond.get_mut(&from).unwrap() -= amount);
     }
 }
