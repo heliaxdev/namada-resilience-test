@@ -166,7 +166,7 @@ impl WorkloadExecutor {
         Ok(steps)
     }
 
-    pub async fn gibuild_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State) -> Vec<Check> {
+    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State) -> Vec<Check> {
         let retry_config = Self::retry_config();
 
         let mut checks = vec![];
