@@ -72,14 +72,14 @@ async fn main() {
 
     let sdk = loop {
         // Setup wallet storage
-        let wallet_path = state.base_dir.join("wallet");
+        let wallet_path = state.base_dir.join(format!("wallet-{}", config.id));
         let mut wallet = FsWalletUtils::new(wallet_path.clone());
         if wallet_path.join("wallet.toml").exists() {
             wallet.load().expect("Should be able to load the wallet;");
         }
 
         // Setup shielded context storage
-        let shielded_ctx_path = state.base_dir.join("masp");
+        let shielded_ctx_path = state.base_dir.join(format!("masp-{}", config.id));
         let shielded_ctx = ShieldedContext::new(FsShieldedUtils::new(shielded_ctx_path));
 
         let io = NullIo;
@@ -110,7 +110,7 @@ async fn main() {
         tracing::info!("Invalid step: {}", next_step);
         return;
     }
-    
+
     let init_block_height = fetch_current_block_height(&sdk).await;
 
     tracing::info!("Step is: {:?}...", next_step);
@@ -132,7 +132,14 @@ async fn main() {
             return;
         }
     };
-    tracing::info!("Built {:?} -> {:?}", next_step, tasks.iter().map(|task| task.to_string()).collect::<Vec<String>>());
+    tracing::info!(
+        "Built {:?} -> {:?}",
+        next_step,
+        tasks
+            .iter()
+            .map(|task| task.to_string())
+            .collect::<Vec<String>>()
+    );
 
     let checks = workload_executor
         .build_check(&sdk, tasks.clone(), &state)
@@ -154,13 +161,17 @@ async fn main() {
                     tracing::error!("Error executing{:?} -> {}", next_step, e.to_string());
                 }
                 namada_chain_workload::steps::StepError::Broadcast(e) => {
-                    tracing::info!("Broadcasting error {:?} -> {}, waiting for next block", next_step, e.to_string());
+                    tracing::info!(
+                        "Broadcasting error {:?} -> {}, waiting for next block",
+                        next_step,
+                        e.to_string()
+                    );
                     loop {
                         let current_block_height = fetch_current_block_height(&sdk).await;
                         if current_block_height > init_block_height {
-                            break
+                            break;
                         }
-                    };
+                    }
                 }
                 _ => {
                     tracing::warn!("Warning executing {:?} -> {}", next_step, e.to_string());
@@ -193,7 +204,6 @@ async fn main() {
     tracing::info!("Done {:?}!", next_step);
 }
 
-
 async fn fetch_current_block_height(sdk: &Sdk) -> u64 {
     let client = sdk.namada.clone_client();
     loop {
@@ -202,5 +212,5 @@ async fn fetch_current_block_height(sdk: &Sdk) -> u64 {
             return block.block.header.height.into();
         }
         sleep(Duration::from_secs_f64(1.0f64)).await
-    };
+    }
 }
