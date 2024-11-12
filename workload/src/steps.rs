@@ -166,7 +166,7 @@ impl WorkloadExecutor {
         Ok(steps)
     }
 
-    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State) -> Vec<Check> {
+    pub async fn gibuild_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State) -> Vec<Check> {
         let retry_config = Self::retry_config();
 
         let mut checks = vec![];
@@ -802,8 +802,7 @@ impl WorkloadExecutor {
                             }
                         }
                         Ok(None) => {
-                            antithesis_sdk::assert_always!(
-                                false,
+                            antithesis_sdk::assert_unreachable!(
                                 "OnChain account doesn't exist.",
                                 &json!({
                                     "target_alias": target,
