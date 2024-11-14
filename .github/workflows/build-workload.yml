@@ -1,0 +1,32 @@
+name: Rebuild namada images (triggerable)
+
+on:
+  workflow_dispatch:
+    inputs:
+      workload_commit:
+        description: "The workload SHA commit to build"
+        required: true
+        type: string
+
+jobs:
+  workload-container:
+    runs-on: ubuntu-latest
+    env:
+      antithesis_registry_url: us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.antithesis_registry_url }}
+          username: _json_key
+          password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
+      - name: Build & Push Image Check Container
+        run: |
+          registry_url="${{ env.antithesis_registry_url }}" sha="${{ workload_commit }}" make build-workload
+          docker push ${{ env.antithesis_registry_url }}/workload:${{ github.event.inputs.workload_commit }}

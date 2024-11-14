@@ -1,8 +1,10 @@
 FROM docker.io/rust:1.78 AS builder
 
-COPY . /app
-
 WORKDIR /app
+
+ARG GIT_SHA
+
+RUN git clone https://github.com/heliaxdev/namada-antithesis.git repo && cd repo && git checkout $GIT_SHA
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --assume-yes \
     libprotobuf-dev \
@@ -15,7 +17,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     libudev-dev \
     && apt-get clean
 
-RUN cargo build --release
+RUN cd repo/workload && cargo build --release
 
 FROM docker.io/debian:bookworm-slim
 
@@ -24,7 +26,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y ca-certi
 WORKDIR /app
 
 # copy the runtime files
-COPY --from=builder /app/target/release/namada-chain-workload /app/namada-chain-workload 
+COPY --from=builder /app/repo/workload/target/release/namada-chain-workload /app/namada-chain-workload 
 
 COPY --chmod=0755 docker_run.sh /app/run.sh
 

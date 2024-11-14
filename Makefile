@@ -14,7 +14,7 @@ build-check:
 	docker build --no-cache -t ${registry_url}/check:latest -f check/Dockerfile check
 
 build-workload:
-	docker build --no-cache -t ${registry_url}/workload:latest -f workload/Dockerfile workload
+	docker build --no-cache -t ${registry_url}/workload:${sha} -f workload/Dockerfile workload --build-arg GIT_SHA=${sha}
 
 build-masp-indexer:
 	docker build --no-cache -t ${registry_url}/masp-indexer-webserver:latest --build-arg GIT_SHA=${masp_sha} masp-indexer/webserver

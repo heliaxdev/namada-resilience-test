@@ -1,0 +1,34 @@
+name: Rebuild namada images (triggerable)
+
+on:
+  workflow_dispatch:
+    inputs:
+      masp_commit:
+        description: "The namada masp indexer SHA commit to build"
+        required: true
+        type: string
+
+jobs:
+  masp-indexer:
+    runs-on: ubuntu-latest
+    env:
+      antithesis_registry_url: us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.antithesis_registry_url }}
+          username: _json_key
+          password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
+      - name: Build & Push Image Masp Indexer Containers
+        run: |
+          registry_url="${{ env.antithesis_registry_url }}" masp_sha=${{ github.event.inputs.masp_commit }} make build-masp-indexer
+          docker push ${{ env.antithesis_registry_url }}/masp-indexer-webserver:latest
+          docker push ${{ env.antithesis_registry_url }}/masp-indexer-chain:latest
+          docker push ${{ env.antithesis_registry_url }}/masp-indexer-block-filter:latest
