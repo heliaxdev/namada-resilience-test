@@ -1,4 +1,4 @@
-name: Rebuild namada images (cron)
+name: Rebuild All images (cron)
 
 on:
   schedule:
