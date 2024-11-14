@@ -1,4 +1,4 @@
-name: Rebuild namada images (triggerable)
+name: Rebuild Workload images (triggerable)
 
 on:
   workflow_dispatch:
