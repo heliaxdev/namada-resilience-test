@@ -32,6 +32,9 @@ async fn main() {
         .with_ansi(false)
         .init();
 
+    rlimit::increase_nofile_limit(10240).unwrap();
+    rlimit::increase_nofile_limit(u64::MAX).unwrap();
+
     let config = AppConfig::parse();
     tracing::info!("Using config: {:#?}", config);
     tracing::info!("Sha commit: {}", env!("VERGEN_GIT_SHA").to_string());
@@ -81,6 +84,7 @@ async fn main() {
         // Setup shielded context storage
         let shielded_ctx_path = state.base_dir.join(format!("masp-{}", config.id));
         let shielded_ctx = ShieldedContext::new(FsShieldedUtils::new(shielded_ctx_path));
+        shielded_ctx.save().await.unwrap();
 
         let io = NullIo;
 

@@ -27,6 +27,7 @@ thiserror = "1.0.63"
 tryhard = "0.5.1"
 rand_chacha = { version = "0.3.1", features = ["serde1"] }
 fs2 = "0.4.3"
+rlimit = "0.10.2"
 
 [build-dependencies]
 vergen = { version = "8.0.0", features = ["build", "git", "gitcl"] }

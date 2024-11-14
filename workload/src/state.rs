@@ -36,6 +36,13 @@ pub struct Account {
     pub address_type: AddressType,
 }
 
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaspAccount {
+    pub alias: Alias,
+    pub spending_key: Alias,
+    pub payment_address: Alias,
+}
+
 impl Account {
     pub fn is_implicit(&self) -> bool {
         self.address_type.is_implicit()
@@ -52,8 +59,10 @@ pub struct Bond {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
+    pub masp_accounts: HashMap<Alias, MaspAccount>,
     pub balances: HashMap<Alias, u64>,
-    pub bonds: HashMap<Alias, HashMap<String, u64>>,  
+    pub masp_balances: HashMap<Alias, u64>,
+    pub bonds: HashMap<Alias, HashMap<String, u64>>,
     pub unbonds: HashMap<Alias, HashMap<String, u64>>,
     pub redelegations: HashMap<Alias, HashMap<String, u64>>,
     pub validators: HashMap<Alias, String>,
@@ -67,7 +76,9 @@ impl State {
     pub fn new(id: u64, seed: u64) -> Self {
         Self {
             accounts: HashMap::default(),
+            masp_accounts: HashMap::default(),
             balances: HashMap::default(),
+            masp_balances: HashMap::default(),
             bonds: HashMap::default(),
             unbonds: HashMap::default(),
             redelegations: HashMap::default(),
@@ -85,7 +96,8 @@ impl State {
         for task in tasks {
             match task {
                 Task::NewWalletKeyPair(alias) => {
-                    self.add_implicit_account(alias);
+                    self.add_implicit_account(alias.clone());
+                    self.add_masp_account(alias);
                 }
                 Task::FaucetTransfer(target, amount, settings) => {
                     let source_alias = Alias::faucet();
@@ -127,6 +139,12 @@ impl State {
                         self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
                     }
                     self.add_enstablished_account(alias, sources, threshold);
+                }
+                Task::Shielding(source, target, amount, setting) => {
+                    if with_fee {
+                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    }
+                    self.modify_shielding(source, target, amount)
                 }
             }
         }
@@ -235,6 +253,14 @@ impl State {
             .map(|(_, account)| account.clone())
     }
 
+    pub fn random_payment_address(&mut self, blacklist: Vec<Alias>) -> Option<MaspAccount> {
+        self.masp_accounts
+            .iter()
+            .filter(|(alias, _)| !blacklist.contains(alias))
+            .choose(&mut self.rng)
+            .map(|(_, account)| account.clone())
+    }
+
     pub fn random_implicit_accounts(
         &mut self,
         blacklist: Vec<Alias>,
@@ -317,6 +343,18 @@ impl State {
         self.balances.insert(alias.clone(), 0);
     }
 
+    pub fn add_masp_account(&mut self, alias: Alias) {
+        self.masp_accounts.insert(
+            alias.clone(),
+            MaspAccount {
+                alias: alias.clone(),
+                spending_key: format!("{}-spending-key", alias.name).into(),
+                payment_address: format!("{}-payment-address", alias.name).into(),
+            },
+        );
+        self.masp_balances.insert(alias.clone(), 0);
+    }
+
     pub fn add_enstablished_account(
         &mut self,
         alias: Alias,
@@ -385,5 +423,14 @@ impl State {
         self.bonds
             .entry(source.clone())
             .and_modify(|bond| *bond.get_mut(&validator).unwrap() -= amount);
+    }
+
+    pub fn modify_shielding(&mut self, source: Alias, target: Alias, amount: u64) {
+        *self.balances.get_mut(&source).unwrap() -= amount;
+        let target_alias = Alias { name: target.name.strip_suffix("-payment-address").unwrap().to_string() };
+        *self
+            .masp_balances
+            .get_mut(&target_alias)
+            .unwrap() += amount;
     }
 }

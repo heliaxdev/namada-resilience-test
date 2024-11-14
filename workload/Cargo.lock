@@ -3256,6 +3256,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "reqwest",
+ "rlimit",
  "serde",
  "serde_json",
  "tendermint-config",
@@ -4693,7 +4694,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acf0c195eebb4af52c752bec4f52f645da98b6e92077a04110c7f349477ae5ac"
 dependencies = [
  "anyhow",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.72",
@@ -5020,6 +5021,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd124222d17ad93a644ed9d011a40f4fb64aa54275c08cc216524a9ea82fb09f"
 dependencies = [
  "digest 0.10.7",
+]
+
+[[package]]
+name = "rlimit"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7043b63bd0cd1aaa628e476b80e6d4023a3b50eb32789f2728908107bd0c793a"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
