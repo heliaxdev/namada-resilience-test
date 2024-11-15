@@ -2,7 +2,7 @@
 
 set -e
 
-# Wait for the JSON RPC to come up for validator 0
+# Wait for the JSON RPC to come up for validator 2
 json_rpc_ready=0
 while [ $json_rpc_ready -eq 0 ]
 do
@@ -20,6 +20,14 @@ do
 done
 
 CHAIN_ID=$(basename $CHAIN_ID)
+
+# Wait for the JSON RPC to come up for masp indexer
+# json_rpc_ready=0
+# while [ $json_rpc_ready -eq 0 ]
+# do
+#     json_rpc_ready=$(curl -I ${MASP_INDEXER_URL}/api/v1/health | grep 200 | wc -l)
+#     sleep 5
+# done
 
 # Ready to start workload
 echo "Ready to start the workload"

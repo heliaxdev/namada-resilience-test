@@ -6,7 +6,7 @@ default_image_map = {
     "namada-genesis": os.environ.get("NAMADA_TAG", "main"),
     "namada": os.environ.get("NAMADA_TAG", "main"),
     "workload": os.environ.get("WORKLOAD_TAG", "latest"),
-    "check": "latest",
+    "check": os.environ.get("CHECK_TAG", "latest"),
     "masp-indexer-chain": os.environ.get("MASP_TAG", "latest"),
     "masp-indexer-webserver": os.environ.get("MASP_TAG", "latest"),
     "masp-indexer-block-filter": os.environ.get("MASP_TAG", "latest"),
