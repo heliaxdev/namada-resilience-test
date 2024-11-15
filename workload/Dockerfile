@@ -39,8 +39,8 @@ COPY --chmod=0755 scripts/parallel_driver_init_account.sh /opt/antithesis/test/v
 COPY --chmod=0755 scripts/parallel_driver_bond_batch.sh /opt/antithesis/test/v1/namada/parallel_driver_bond_batch.sh
 COPY --chmod=0755 scripts/parallel_driver_bond_batch.sh /opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh
 COPY --chmod=0755 scripts/parallel_driver_bond_batch.sh /opt/antithesis/test/v1/namada/parallel_driver_unbond.sh
-COPY --chmod=0755 scripts/parallel_driver_bond_batch.sh /opt/antithesis/test/v1/namada/parallel_shielding.sh
-COPY --chmod=0755 scripts/parallel_driver_bond_batch.sh /opt/antithesis/test/v1/namada/parallel_claim_rewards.sh
+COPY --chmod=0755 scripts/parallel_driver_bond_batch.sh /opt/antithesis/test/v1/namada/parallel_driver_shielding.sh
+COPY --chmod=0755 scripts/parallel_driver_bond_batch.sh /opt/antithesis/test/v1/namada/parallel_driver_claim_rewards.sh
 COPY --chmod=0755 scripts/parallel_driver_random_batch.sh /opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh
 
 # download masp parameters
