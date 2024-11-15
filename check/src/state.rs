@@ -16,7 +16,7 @@ impl State {
             last_block_height_masp_indexer: 0,
             last_epoch: 0,
             last_total_supply: token::Amount::default(),
-            two_nodes_have_two_third: true
+            two_nodes_have_two_third: true,
         }
     }
 }

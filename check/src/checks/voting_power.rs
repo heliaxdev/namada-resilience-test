@@ -1,5 +1,3 @@
-use std::u64;
-
 use tendermint_rpc::Client;
 
 use crate::sdk::namada::Sdk;
@@ -35,7 +33,7 @@ impl DoCheck for VotingPowerCheck {
                         let mut vps = vec![];
                         for validator in validators.validators.clone() {
                             if validator.power() == max_validator_vp {
-                                continue
+                                continue;
                             }
                             vps.push(validator.power());
                         }

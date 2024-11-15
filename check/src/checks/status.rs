@@ -8,7 +8,7 @@ use super::DoCheck;
 pub struct StatusCheck {}
 
 impl DoCheck for StatusCheck {
-    async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String> {
+    async fn check(sdk: &Sdk, _state: &mut crate::state::State) -> Result<(), String> {
         let client = sdk.namada.clone_client();
         let status = client.status().await;
 

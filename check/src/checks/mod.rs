@@ -8,9 +8,9 @@ use crate::sdk::namada::Sdk;
 pub mod epoch;
 pub mod height;
 pub mod inflation;
+pub mod masp_indexer;
 pub mod status;
 pub mod voting_power;
-pub mod masp_indexer;
 
 pub trait DoCheck {
     async fn check(sdk: &Sdk, state: &mut crate::state::State) -> Result<(), String>;

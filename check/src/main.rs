@@ -4,7 +4,9 @@ use antithesis_sdk::antithesis_init;
 use clap::Parser;
 use namada_chain_check::{
     checks::{
-        epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck, masp_indexer::MaspIndexerHeightCheck, status::StatusCheck, voting_power::VotingPowerCheck, DoCheck
+        epoch::EpochCheck, height::HeightCheck, inflation::InflationCheck,
+        masp_indexer::MaspIndexerHeightCheck, status::StatusCheck, voting_power::VotingPowerCheck,
+        DoCheck,
     },
     config::AppConfig,
     sdk::namada::Sdk,
@@ -64,18 +66,46 @@ async fn main() {
                     "block height {}, waiting to be > 2...",
                     block.block.header.height
                 );
+                thread::sleep(Duration::from_secs(2));
             }
         } else {
-            tracing::info!("no response from cometbft, retrying in 5...");
-            thread::sleep(Duration::from_secs(5));
+            tracing::info!("no response from cometbft, retrying in 2...");
+            thread::sleep(Duration::from_secs(2));
         }
     }
 
-    let sdk = Sdk::new(&base_dir, http_client.clone(), wallet, shielded_ctx, io, config.masp_indexer_url).await;
+    loop {
+        let client = reqwest::Client::new();
+        if let Ok(res) = client
+            .get(format!("{}/api/v1/health", config.masp_indexer_url))
+            .send()
+            .await
+        {
+            if res.status().is_success() {
+                break;
+            } else {
+                tracing::info!("waiting for masp-indexer to be responsive...",);
+                thread::sleep(Duration::from_secs(2));
+            }
+        } else {
+            tracing::info!("no response from masp-indexer, retrying in 2...");
+            thread::sleep(Duration::from_secs(2));
+        }
+    }
+
+    let sdk = Sdk::new(
+        &base_dir,
+        http_client.clone(),
+        wallet,
+        shielded_ctx,
+        io,
+        config.masp_indexer_url,
+    )
+    .await;
 
     loop {
         let now = chrono::offset::Utc::now();
-        
+
         let vp_check_res = VotingPowerCheck::do_check(&sdk, &mut state, now).await;
         is_succesful(VotingPowerCheck::to_string(), vp_check_res);
 

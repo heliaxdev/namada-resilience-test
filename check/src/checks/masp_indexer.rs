@@ -18,34 +18,39 @@ impl DoCheck for MaspIndexerHeightCheck {
         let masp_indexer_block_height = reqwest::get(&url).await;
 
         match masp_indexer_block_height {
-            Ok(response) => {
-                match response.status() {
-                    reqwest::StatusCode::OK => {
-                        match response.json::<LatestHeightResponse>().await {
-                            Ok(parsed) => {
-                                let current_block_height = u64::from(parsed.block_height);
-                                if state.last_block_height_masp_indexer <= current_block_height {
-                                    tracing::info!("Masp indexer block height ok ({} -> {})", state.last_block_height_masp_indexer, current_block_height);
-                                    state.last_block_height_masp_indexer = current_block_height;
-                                    Ok(())
-                                } else {
-                                    Err(format!(
-                                        "Masp indexer height didnt increase: before: {} -> after {}",
-                                        state.last_block_height_masp_indexer, current_block_height
-                                    ))
-                                }
-                            },
-                            Err(e) => Err(format!("Error while requesting height from masp indexer: {}", e))
+            Ok(response) => match response.status() {
+                reqwest::StatusCode::OK => match response.json::<LatestHeightResponse>().await {
+                    Ok(parsed) => {
+                        let current_block_height = u64::from(parsed.block_height);
+                        if state.last_block_height_masp_indexer <= current_block_height {
+                            tracing::info!(
+                                "Masp indexer block height ok ({} -> {})",
+                                state.last_block_height_masp_indexer,
+                                current_block_height
+                            );
+                            state.last_block_height_masp_indexer = current_block_height;
+                            Ok(())
+                        } else {
+                            Err(format!(
+                                "Masp indexer height didnt increase: before: {} -> after {}",
+                                state.last_block_height_masp_indexer, current_block_height
+                            ))
                         }
                     }
-                    _ => {
-                        Err(format!("Error while requesting height from masp indexer: status code was {}", response.status()))
-                    }
-                }
+                    Err(e) => Err(format!(
+                        "Error while requesting height from masp indexer: {}",
+                        e
+                    )),
+                },
+                _ => Err(format!(
+                    "Error while requesting height from masp indexer: status code was {}",
+                    response.status()
+                )),
             },
-            Err(e) => {
-                Err(format!("Error while requesting height from masp indexer: {}", e.to_string()))
-            },
+            Err(e) => Err(format!(
+                "Error while requesting height from masp indexer: {}",
+                e.to_string()
+            )),
         }
     }
 
