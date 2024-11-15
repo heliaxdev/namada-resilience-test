@@ -2,15 +2,7 @@ use std::{collections::HashMap, fmt::Display, str::FromStr, time::Instant};
 
 use crate::{
     build::{
-        batch::{build_bond_batch, build_random_batch},
-        bond::build_bond,
-        faucet_transfer::build_faucet_transfer,
-        init_account::build_init_account,
-        new_wallet_keypair::build_new_wallet_keypair,
-        redelegate::build_redelegate,
-        shielding::build_shielding,
-        transparent_transfer::build_transparent_transfer,
-        unbond::build_unbond,
+        batch::{build_bond_batch, build_random_batch}, bond::build_bond, claim_rewards::build_claim_rewards, faucet_transfer::build_faucet_transfer, init_account::build_init_account, new_wallet_keypair::build_new_wallet_keypair, redelegate::build_redelegate, shielding::build_shielding, transparent_transfer::build_transparent_transfer, unbond::build_unbond
     },
     build_checks,
     check::Check,
@@ -18,6 +10,7 @@ use crate::{
     execute::{
         batch::execute_tx_batch,
         bond::{build_tx_bond, execute_tx_bond},
+        claim_rewards::{build_tx_claim_rewards, execute_tx_claim_rewards},
         faucet_transfer::execute_faucet_transfer,
         init_account::build_tx_init_account,
         new_wallet_keypair::execute_new_wallet_key_pair,
@@ -72,6 +65,7 @@ pub enum StepType {
     InitAccount,
     Redelegate,
     Unbond,
+    ClaimRewards,
     BatchBond,
     BatchRandom,
     Shielding,
@@ -87,6 +81,7 @@ impl Display for StepType {
             StepType::InitAccount => write!(f, "init-account"),
             StepType::Redelegate => write!(f, "redelegate"),
             StepType::Unbond => write!(f, "unbond"),
+            StepType::ClaimRewards => write!(f, "claim-rewards"),
             StepType::Shielding => write!(f, "shielding"),
             StepType::BatchRandom => write!(f, "batch-random"),
             StepType::BatchBond => write!(f, "batch-bond"),
@@ -164,6 +159,7 @@ impl WorkloadExecutor {
             StepType::Unbond => state.any_bond(),
             StepType::InitAccount => state.min_n_implicit_accounts(3),
             StepType::Redelegate => state.any_bond(),
+            StepType::ClaimRewards => state.any_bond(),
             StepType::Shielding => state.any_account_with_min_balance(2),
             StepType::BatchBond => state.min_n_account_with_min_balance(3, 2),
             StepType::BatchRandom => {
@@ -186,6 +182,7 @@ impl WorkloadExecutor {
             StepType::InitAccount => build_init_account(state).await?,
             StepType::Redelegate => build_redelegate(sdk, state).await?,
             StepType::Unbond => build_unbond(sdk, state).await?,
+            StepType::ClaimRewards => build_claim_rewards(state),
             StepType::Shielding => build_shielding(state).await?,
             StepType::BatchBond => build_bond_batch(sdk, 3, state).await?,
             StepType::BatchRandom => build_random_batch(sdk, 3, state).await?,
@@ -269,6 +266,9 @@ impl WorkloadExecutor {
                     )
                     .await
                 }
+                Task::ClaimRewards(_source, _validator, _) => {
+                    vec![]
+                }
                 Task::Shielding(source, target, amount, _) => {
                     build_checks::shielding::shielding(
                         sdk,
@@ -348,6 +348,9 @@ impl WorkloadExecutor {
                                     .entry(target.clone())
                                     .and_modify(|balance| *balance += *amount as i64)
                                     .or_insert(*amount as i64);
+                            }
+                            Task::ClaimRewards(_source, _validator, _task_settings) => {
+
                             }
                             _ => panic!(),
                         };
@@ -1003,6 +1006,11 @@ impl WorkloadExecutor {
                         build_tx_unbond(sdk, source, validator, amount, settings).await?;
                     execute_tx_unbond(sdk, &mut tx, signing_data, &tx_args).await?
                 }
+                Task::ClaimRewards(source, validator, settings) => {
+                    let (mut tx, signing_data, tx_args) =
+                        build_tx_claim_rewards(sdk, source, validator, settings).await?;
+                    execute_tx_claim_rewards(sdk, &mut tx, signing_data, &tx_args).await?
+                }
                 Task::Shielding(source, target, amount, settings) => {
                     let (mut tx, signing_data, tx_args) =
                         build_tx_shielding(sdk, source, target, amount, settings).await?;
@@ -1028,6 +1036,9 @@ impl WorkloadExecutor {
                             }
                             Task::Shielding(source, target, amount, settings) => {
                                 build_tx_shielding(sdk, source, target, amount, settings).await?
+                            }
+                            Task::ClaimRewards(source, validator, settings) => {
+                                build_tx_claim_rewards(sdk, source, validator, settings).await?
                             }
                             _ => panic!(),
                         };
