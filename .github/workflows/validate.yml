@@ -2,6 +2,19 @@ name: Validate docker compose
 
 on:
   workflow_dispatch:
+    inputs:
+        namada_tag:
+          description: "The namada images tag"
+          required: true
+          type: string
+        workload_tag:
+          description: "The workload tag"
+          required: true
+          type: string
+        masp_tag:
+          description: "The masp indexer tag"
+          required: true
+          type: string
 
 jobs:
   validate:
@@ -26,4 +39,8 @@ jobs:
         run: |
           pip3 install pyyaml
           python3 .github/workflows/scripts/validate.py
+        env:
+          NAMADA_TAG: ${{ github.event.inputs.namada_tag }}
+          WORKLOAD_TAG: ${{ github.event.inputs.workload_tag }}
+          MASP_TAG: ${{ github.event.inputs.masp_tag }}
           
