@@ -16,7 +16,7 @@ while [[ -z $CHAIN_ID ]]
 do
     echo Waiting for the chain ID
     CHAIN_ID=$(find /container_ready -type f -name "devnet*")
-    sleep 10
+    sleep 2
 done
 
 CHAIN_ID=$(basename $CHAIN_ID)
@@ -26,7 +26,7 @@ json_rpc_ready=0
 while [ $json_rpc_ready -eq 0 ]
 do
     json_rpc_ready=$(curl -I http:://30.0.0.20:5000/api/v1/health | grep 200 | wc -l)
-    sleep 5
+    sleep 2
 done
 
 # Ready to start workload
