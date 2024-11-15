@@ -73,7 +73,7 @@ if [[ ! -v ANTITHESIS_OUTPUT_DIR ]]; then
             echo "<ERROR> init account"
         fi
 
-        source /opt/antithesis/test/v1/namada/parallel_redelegate.sh
+        source /opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh
         if [ $? -eq 0 ] 
         then 
             echo "<OK> redelegate" 
@@ -81,7 +81,7 @@ if [[ ! -v ANTITHESIS_OUTPUT_DIR ]]; then
             echo "<ERROR> redelegate"
         fi
 
-        source /opt/antithesis/test/v1/namada/parallel_unbond.sh
+        source /opt/antithesis/test/v1/namada/parallel_driver_unbond.sh
         if [ $? -eq 0 ] 
         then 
             echo "<OK> unbond" 
