@@ -199,7 +199,10 @@ impl WorkloadExecutor {
         Ok(steps)
     }
 
-    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State) -> Vec<Check> {
+    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, state: &State, no_check: bool) -> Vec<Check> {
+        if no_check {
+            return vec![]
+        }
         let retry_config = Self::retry_config();
 
         let mut checks = vec![];
