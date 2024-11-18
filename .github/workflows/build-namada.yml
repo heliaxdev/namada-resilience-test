@@ -64,8 +64,8 @@ jobs:
           registry_url="${{ env.antithesis_registry_url }}" sha=${{ github.event.inputs.commit }} genesis_template_version=${{ github.event.inputs.genesis_template_version }} make ${{ matrix.images.make }}
           docker push ${{ env.antithesis_registry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
 
-          docker tag ${{ env.antithesis_registry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }} ghcr.io/heliaxdev/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
-          docker push ghcr.io/heliaxdev/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
+          docker tag ${{ env.antithesis_registry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }} ghcr.io/heliaxdev/ant-${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
+          docker push ghcr.io/heliaxdev/ant-${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
   
   check-container:
     runs-on: ubuntu-latest
@@ -89,5 +89,5 @@ jobs:
           registry_url="${{ env.antithesis_registry_url }}" make build-check
           docker push ${{ env.antithesis_registry_url }}/check:latest
 
-          docker tag ${{ env.antithesis_registry_url }}/check:latest ghcr.io/heliaxdev/check:latest
-          docker push ghcr.io/heliaxdev/check:latest
+          docker tag ${{ env.antithesis_registry_url }}/ant-check:latest ghcr.io/heliaxdev/check:latest
+          docker push ghcr.io/heliaxdev/ant-check:latest
