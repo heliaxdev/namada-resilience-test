@@ -17,22 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       antithesis_registry_url: us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository
-    strategy:
-      fail-fast: true
-      matrix:
-        images:
-          - make: "build-config"
-            image: "namada-config"
-            tag: ""
-          - make: "build-genesis"
-            image: "namada-genesis"
-            tag: ""
-          - make: "build-namada"
-            image: "namada"
-            tag: ""
-          - make: "build-namada-inst"
-            image: "namada"
-            tag: -inst
 
     steps:
       - name: Checkout repo
