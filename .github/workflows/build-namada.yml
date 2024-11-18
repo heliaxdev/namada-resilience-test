@@ -84,6 +84,12 @@ jobs:
           registry: ${{ env.antithesis_registry_url }}
           username: _json_key
           password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build & Push Image Check Container
         run: |
           registry_url="${{ env.antithesis_registry_url }}" make build-check
