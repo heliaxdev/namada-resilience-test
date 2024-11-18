@@ -71,4 +71,3 @@ docker-compose-local.yml
 workload/base
 state-*.json
 test.sh
-config
