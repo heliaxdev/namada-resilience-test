@@ -89,5 +89,5 @@ jobs:
           registry_url="${{ env.antithesis_registry_url }}" make build-check
           docker push ${{ env.antithesis_registry_url }}/check:latest
 
-          docker tag ${{ env.antithesis_registry_url }}/ant-check:latest ghcr.io/heliaxdev/ant-check:latest
+          docker tag ${{ env.antithesis_registry_url }}/check:latest ghcr.io/heliaxdev/ant-check:latest
           docker push ghcr.io/heliaxdev/ant-check:latest
