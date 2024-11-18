@@ -93,8 +93,8 @@ jobs:
         run: |
           registry_url="${{ env.registry_url }}" sha="${{ env.workload_commit }}" make build-workload
           docker push ${{ env.registry_url }}/workload:${{ env.workload_commit }}
-          docker tag ${{ env.registry_url }}/workload:${{ env.workload_commit }} ${{ env.registry_url }}/workload:latest
-          docker push {{ env.registry_url }}/workload:latest
+          # docker tag ${{ env.registry_url }}/workload:${{ env.workload_commit }} ${{ env.registry_url }}/workload:latest
+          # docker push {{ env.registry_url }}/workload:latest
     
   masp-indexer:
     runs-on: ubuntu-latest
@@ -121,10 +121,10 @@ jobs:
           docker push ${{ env.registry_url }}/masp-indexer-chain:latest
           docker push ${{ env.registry_url }}/masp-indexer-block-filter:latest
 
-          docker tag ${{ env.registry_url }}/masp-indexer-webserver:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-webserver:latest
-          docker tag ${{ env.registry_url }}/masp-indexer-chain:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-chain:latest
-          docker tag ${{ env.registry_url }}/masp-indexer-block-filter:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-block-filter:latest
+          # docker tag ${{ env.registry_url }}/masp-indexer-webserver:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-webserver:latest
+          # docker tag ${{ env.registry_url }}/masp-indexer-chain:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-chain:latest
+          # docker tag ${{ env.registry_url }}/masp-indexer-block-filter:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-block-filter:latest
 
-          docker push ${{ env.registry_url }}/masp-indexer-webserver:latest
-          docker push ${{ env.registry_url }}/masp-indexer-chain:latest
-          docker push ${{ env.registry_url }}/masp-indexer-block-filter:latest
+          # docker push ${{ env.registry_url }}/masp-indexer-webserver:latest
+          # docker push ${{ env.registry_url }}/masp-indexer-chain:latest
+          # docker push ${{ env.registry_url }}/masp-indexer-block-filter:latest
