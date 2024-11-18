@@ -330,12 +330,13 @@ impl WorkloadExecutor {
                                     .and_modify(|balance| *balance -= *amount as i64)
                                     .or_insert(-(*amount as i64));
                             }
-                            Task::Unbond(source, validator, amount, _epoch, _task_settings) => {
+                            Task::Unbond(source, validator, amount, epoch, _task_settings) => {
                                 bonds
                                     .entry(format!("{}@{}", source.name, validator))
                                     .and_modify(|(_epoch, bond_amount)| {
                                         *bond_amount -= *amount as i64
-                                    });
+                                    })
+                                    .or_insert((*epoch, -(*amount as i64)));
                             }
                             Task::Redelegate(source, from, to, amount, epoch, _task_settings) => {
                                 bonds
