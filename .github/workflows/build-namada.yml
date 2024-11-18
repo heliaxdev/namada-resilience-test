@@ -12,6 +12,12 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -47,10 +53,19 @@ jobs:
           registry: ${{ env.antithesis_registry_url }}
           username: _json_key
           password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit ${{ github.event.inputs.commit }}/${{ github.event.inputs.genesis_template_version }}
         run: |
           registry_url="${{ env.antithesis_registry_url }}" sha=${{ github.event.inputs.commit }} genesis_template_version=${{ github.event.inputs.genesis_template_version }} make ${{ matrix.images.make }}
           docker push ${{ env.antithesis_registry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
+
+          docker tag ${{ env.antithesis_registry_url }}/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }} ghcr.io/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
+          docker push ghcr.io/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
   
   check-container:
     runs-on: ubuntu-latest
@@ -73,3 +88,6 @@ jobs:
         run: |
           registry_url="${{ env.antithesis_registry_url }}" make build-check
           docker push ${{ env.antithesis_registry_url }}/check:latest
+
+          docker tag ${{ env.antithesis_registry_url }}/check:latest ghcr.io/check:latest
+          docker push ghcr.io/check:latest

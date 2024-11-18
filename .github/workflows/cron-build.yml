@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "0 12 * * *"
 
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
 jobs:  
   docker:
     runs-on: ubuntu-latest
@@ -117,9 +123,9 @@ jobs:
       - name: Build & Push Image Masp Indexer Containers
         run: |
           registry_url="${{ env.registry_url }}" masp_sha=${{ env.masp_commit }} make build-masp-indexer
-          docker push ${{ env.registry_url }}/masp-indexer-webserver:latest
-          docker push ${{ env.registry_url }}/masp-indexer-chain:latest
-          docker push ${{ env.registry_url }}/masp-indexer-block-filter:latest
+          docker push ${{ env.registry_url }}/masp-indexer-webserver:${{ env.masp_commit }}
+          docker push ${{ env.registry_url }}/masp-indexer-chain:${{ env.masp_commit }}
+          docker push ${{ env.registry_url }}/masp-indexer-block-filter:${{ env.masp_commit }}
 
           # docker tag ${{ env.registry_url }}/masp-indexer-webserver:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-webserver:latest
           # docker tag ${{ env.registry_url }}/masp-indexer-chain:${{ env.masp_commit }} ${{ env.registry_url }}/masp-indexer-chain:latest

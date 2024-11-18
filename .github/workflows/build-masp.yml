@@ -8,6 +8,12 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
 jobs:
   masp-indexer:
     runs-on: ubuntu-latest
@@ -26,9 +32,19 @@ jobs:
           registry: ${{ env.antithesis_registry_url }}
           username: _json_key
           password: ${{ secrets.ANTITHESIS_GAR_JSON_KEY }}
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build & Push Image Masp Indexer Containers
         run: |
           registry_url="${{ env.antithesis_registry_url }}" masp_sha=${{ github.event.inputs.masp_commit }} make build-masp-indexer
           docker push ${{ env.antithesis_registry_url }}/masp-indexer-webserver:${{ github.event.inputs.masp_commit }}
           docker push ${{ env.antithesis_registry_url }}/masp-indexer-chain:${{ github.event.inputs.masp_commit }}
           docker push ${{ env.antithesis_registry_url }}/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }}
+
+          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-webserver:${{ github.event.inputs.masp_commit }} ghcr.io/masp-indexer-webserver:${{ github.event.inputs.masp_commit }} 
+          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-chain:${{ github.event.inputs.masp_commit }} ghcr.io/masp-indexer-chain:${{ github.event.inputs.masp_commit }}
+          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }} ghcr.io/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }}
