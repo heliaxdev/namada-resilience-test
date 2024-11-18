@@ -92,6 +92,7 @@ namadac --base-dir=${network_config_path} utils init-network --chain-prefix ${CH
 
 # Get the CHAIN ID from the release archive
 CHAIN_ID=$(find ${namada_path}/ -type f -name "devnet*" | sed 's/namada//' | tr -d '/')
+echo "CHAIN-ID: $CHAIN_ID"
 CHAIN_ID=$(basename $CHAIN_ID .tar.gz)
 
 # Provide the chain ID for the workload to read
