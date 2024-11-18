@@ -5,11 +5,11 @@ import os
 default_image_map = {
     "namada-genesis": os.environ.get("NAMADA_TAG", "main"),
     "namada": os.environ.get("NAMADA_TAG", "main"),
-    "workload": os.environ.get("WORKLOAD_TAG", "latest"),
+    "workload": os.environ.get("WORKLOAD_TAG", "master"),
     "check": os.environ.get("CHECK_TAG", "latest"),
-    "masp-indexer-chain": os.environ.get("MASP_TAG", "latest"),
-    "masp-indexer-webserver": os.environ.get("MASP_TAG", "latest"),
-    "masp-indexer-block-filter": os.environ.get("MASP_TAG", "latest"),
+    "masp-indexer-chain": os.environ.get("MASP_TAG", "master"),
+    "masp-indexer-webserver": os.environ.get("MASP_TAG", "master"),
+    "masp-indexer-block-filter": os.environ.get("MASP_TAG", "master"),
 }
 
 print("Using the following tags:")
@@ -22,8 +22,9 @@ for service in current_docker_compose['services']:
     current_image = current_docker_compose['services'][service]['image'].split(':')[0]
     if current_image in default_image_map:
         tag = default_image_map[current_image]
-        updated_image = "us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/{}:{}".format(current_image, tag)
+        updated_image = "ghcr.io/heliaxdev/ant-{}:{}".format(current_image, tag)
         current_docker_compose['services'][service]['image'] = updated_image
+        subprocess.run(["docker", "pull", updated_image]) 
 
 
 updated_docker_compose_path = "config/docker-compose-test.yml"
@@ -31,4 +32,4 @@ with open(updated_docker_compose_path, 'w') as outfile:
     yaml.dump(current_docker_compose, outfile)
 
 
-subprocess.run(["docker", "compose", "-f", updated_docker_compose_path, "up"]) 
+# subprocess.run(["docker-compose", "-f", updated_docker_compose_path, "up"]) 

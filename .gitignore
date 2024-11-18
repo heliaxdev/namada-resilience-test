@@ -67,6 +67,8 @@ check/target
 workload/run.sh
 workload/run-campfire.sh
 docker-compose-test.yml
+docker-compose-local.yml
 workload/base
 state-*.json
 test.sh
+config
