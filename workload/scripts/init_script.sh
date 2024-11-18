@@ -7,7 +7,7 @@ json_rpc_ready=1
 while [ $json_rpc_ready -eq 1 ]
 do
     echo "Checking node rpc ${RPC}/status ..."
-    json_rpc_ready=$(curl -I "http://${RPC}/status" | grep 200 | wc -l)
+    json_rpc_ready=$(curl --silent --fail "http://${RPC}/status")
     echo "Node rpc query result: $json_rpc_ready"
     sleep 2
 done
@@ -28,7 +28,7 @@ json_rpc_ready=1
 while [ $json_rpc_ready -eq 1 ]
 do
     echo "Checking masp indexer ${MASP_INDEXER_URL}/api/v1/health ..."
-    json_rpc_ready=$(curl -I "${MASP_INDEXER_URL}/api/v1/health" | grep 200 | wc -l)
+    json_rpc_ready=$(curl --silent --fail "${MASP_INDEXER_URL}/api/v1/health")
     echo "Masp indexer query result: $json_rpc_ready"
     sleep 2
 done
