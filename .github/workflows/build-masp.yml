@@ -45,6 +45,10 @@ jobs:
           docker push ${{ env.antithesis_registry_url }}/masp-indexer-chain:${{ github.event.inputs.masp_commit }}
           docker push ${{ env.antithesis_registry_url }}/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }}
 
-          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-webserver:${{ github.event.inputs.masp_commit }} ghcr.io/masp-indexer-webserver:${{ github.event.inputs.masp_commit }} 
-          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-chain:${{ github.event.inputs.masp_commit }} ghcr.io/masp-indexer-chain:${{ github.event.inputs.masp_commit }}
-          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }} ghcr.io/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }}
+          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-webserver:${{ github.event.inputs.masp_commit }} ghcr.io/heliaxdev/masp-indexer-webserver:${{ github.event.inputs.masp_commit }} 
+          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-chain:${{ github.event.inputs.masp_commit }} ghcr.io/heliaxdev/masp-indexer-chain:${{ github.event.inputs.masp_commit }}
+          docker tag ${{ env.antithesis_registry_url }}/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }} ghcr.io/heliaxdev/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }}
+
+          docker push ghcr.io/heliaxdev/masp-indexer-webserver:${{ github.event.inputs.masp_commit }} 
+          docker push ghcr.io/heliaxdev/masp-indexer-chain:${{ github.event.inputs.masp_commit }}
+          docker push ghcr.io/heliaxdev/masp-indexer-block-filter:${{ github.event.inputs.masp_commit }}

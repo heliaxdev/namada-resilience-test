@@ -43,5 +43,5 @@ jobs:
           registry_url="${{ env.antithesis_registry_url }}" sha="${{ github.event.inputs.workload_commit }}" make build-workload
           docker push ${{ env.antithesis_registry_url }}/workload:${{ github.event.inputs.workload_commit }}
 
-          docker tag ${{ env.antithesis_registry_url }}/workload:${{ github.event.inputs.workload_commit }} ghcr.io/workload:${{ github.event.inputs.workload_commit }}
-          docker push ghcr.io/workload:${{ github.event.inputs.workload_commit }}
+          docker tag ${{ env.antithesis_registry_url }}/workload:${{ github.event.inputs.workload_commit }} ghcr.io/heliaxdev/workload:${{ github.event.inputs.workload_commit }}
+          docker push ghcr.io/heliaxdev/workload:${{ github.event.inputs.workload_commit }}
