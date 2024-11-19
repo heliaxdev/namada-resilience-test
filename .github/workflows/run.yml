@@ -11,6 +11,10 @@ on:
         description: 'The docker tag of the namada docker images'
         required: true
         type: string
+      workload_tag:
+        description: 'The docker tag of the workload docker images'
+        required: true
+        type: string
       duration:
         description: Duration of the experiment
       faults:
@@ -29,7 +33,7 @@ jobs:
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
           password: ${{ secrets.ANTITHESIS_PASSWORD }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          images: namada-genesis:${{ github.event.inputs.namada_genesis_docker_tag }},namada:${{ github.event.inputs.namada_docker_tag }},workload:latest,check:latest,masp-indexer-block-filter:latest,masp-indexer-webserver:latest,masp-indexer-chain:latest
+          images: namada-genesis:${{ github.event.inputs.namada_genesis_docker_tag }},namada:${{ github.event.inputs.namada_docker_tag }},workload:${{ github.event.inputs.workload_tag }},check:latest,masp-indexer-block-filter:master,masp-indexer-webserver:master,masp-indexer-chain:master
           email_recipients: |
             gianmarco@heliax.dev,heliax-antithesis-aaaammxjv6zgaqxcdury4ktshq@antithesisgroup.slack.com
           additional_parameters: |
