@@ -71,3 +71,4 @@ docker-compose-local.yml
 workload/base
 state-*.json
 test.sh
+.github/workflows/scripts/local.py

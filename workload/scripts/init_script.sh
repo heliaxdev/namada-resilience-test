@@ -1,13 +1,11 @@
 #!/bin/bash
 
-set -e
-
 # Wait for the JSON RPC to come up for validator 2
-json_rpc_ready=1
-while [ $json_rpc_ready -eq 1 ]
+json_rpc_ready=0
+while [ $json_rpc_ready != 200 ]
 do
     echo "Checking node rpc ${RPC}/status ..."
-    json_rpc_ready=$(curl --silent --fail "http://${RPC}/status")
+    json_rpc_ready=$(curl -s -o /dev/null -w "%{http_code}" "http://${RPC}/status")
     echo "Node rpc query result: $json_rpc_ready"
     sleep 2
 done
@@ -24,11 +22,11 @@ done
 CHAIN_ID=$(basename $CHAIN_ID)
 
 # Wait for the JSON RPC to come up for masp indexer
-json_rpc_ready=1
-while [ $json_rpc_ready -eq 1 ]
+json_rpc_ready=0
+while [ $json_rpc_ready != 200 ]
 do
-    echo "Checking masp indexer ${MASP_INDEXER_URL}/api/v1/health ..."
-    json_rpc_ready=$(curl --silent --fail "${MASP_INDEXER_URL}/api/v1/health")
+    echo "Checking masp indexer ${MASP_INDEXER_URL}/health ..."
+    json_rpc_ready=$(curl -s -o /dev/null -w "%{http_code}" "${MASP_INDEXER_URL}/health")
     echo "Masp indexer query result: $json_rpc_ready"
     sleep 2
 done

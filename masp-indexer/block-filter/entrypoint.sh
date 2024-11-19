@@ -7,4 +7,14 @@ until pg_isready -h 30.0.0.21 -p 5432 | grep 'accepting connections'; do
 done
 echo "PostgreSQL is now accepting connections!"
 
+# Wait for the JSON RPC to come up for some validator
+json_rpc_ready=0
+while [ $json_rpc_ready != 200 ]
+do
+    echo "Checking node rpc ${COMETBFT_URL}/status ..."
+    json_rpc_ready=$(curl -s -o /dev/null -w "%{http_code}" "${COMETBFT_URL}/status")
+    echo "Node rpc query result: $json_rpc_ready"
+    sleep 2
+done
+
 ./block-index

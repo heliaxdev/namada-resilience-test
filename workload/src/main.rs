@@ -51,7 +51,7 @@ async fn main() {
 
     tracing::info!("Using base dir: {}", state.base_dir.as_path().display());
     tracing::info!("Using seed: {}", state.seed);
-    tracing::info!("With checks: {}", config.no_check);
+    tracing::info!("With checks: {}", !config.no_check);
 
     let url = Url::from_str(&config.rpc).expect("invalid RPC address");
     let http_client = HttpClient::new(url).unwrap();

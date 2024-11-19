@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 touch state-$WORKLOAD_ID.json
 echo "" > state-$WORKLOAD_ID.json
 touch /opt/antithesis/test/v1/namada/state-$WORKLOAD_ID.json
