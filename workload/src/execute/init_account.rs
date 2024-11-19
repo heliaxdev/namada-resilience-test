@@ -9,6 +9,8 @@ use namada_sdk::{
 
 use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError, task::TaskSettings};
 
+use super::utils;
+
 pub async fn build_tx_init_account(
     sdk: &Sdk,
     target: Alias,
@@ -29,7 +31,8 @@ pub async fn build_tx_init_account(
     let mut init_account_builder = sdk
         .namada
         .new_init_account(public_keys, Some(threshold as u8))
-        .initialized_account_alias(target.name);
+        .initialized_account_alias(target.name)
+        .wallet_alias_force(true);
 
     init_account_builder = init_account_builder.gas_limit(GasLimit::from(settings.gas_limit));
     init_account_builder = init_account_builder.wrapper_fee_payer(fee_payer);
@@ -48,4 +51,13 @@ pub async fn build_tx_init_account(
         .map_err(|e| StepError::Build(e.to_string()))?;
 
     Ok((init_account, signing_data, init_account_builder.tx))
+}
+
+pub async fn execute_tx_init_account(
+    sdk: &Sdk,
+    tx: &mut Tx,
+    signing_data: SigningTxData,
+    tx_args: &args::Tx,
+) -> Result<Option<u64>, StepError> {
+    utils::execute_tx(sdk, tx, vec![signing_data], tx_args).await
 }

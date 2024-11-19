@@ -10,7 +10,10 @@ use crate::{
 use super::utils;
 
 pub async fn build_init_account(state: &mut State) -> Result<Vec<Task>, StepError> {
-    let account_alias = utils::random_alias(state);
+    let random_alias = utils::random_alias(state);
+    let account_alias = Alias {
+        name: format!("{}-enstablished", random_alias.name),
+    };
     let total_signers = utils::random_between(state, 1, 4);
     let required_signers = utils::random_between(state, 1, total_signers);
 

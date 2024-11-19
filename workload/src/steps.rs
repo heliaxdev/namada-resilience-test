@@ -21,7 +21,7 @@ use crate::{
         bond::{build_tx_bond, execute_tx_bond},
         claim_rewards::{build_tx_claim_rewards, execute_tx_claim_rewards},
         faucet_transfer::execute_faucet_transfer,
-        init_account::build_tx_init_account,
+        init_account::{build_tx_init_account, execute_tx_init_account},
         new_wallet_keypair::execute_new_wallet_key_pair,
         redelegate::{build_tx_redelegate, execute_tx_redelegate},
         reveal_pk::execute_reveal_pk,
@@ -893,6 +893,7 @@ impl WorkloadExecutor {
                 Check::AccountExist(target, threshold, sources, pre_state) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
+                    wallet.save().unwrap();
                     drop(wallet);
 
                     match tryhard::retry_fn(|| rpc::get_account_info(client, &source_address))
@@ -1005,7 +1006,7 @@ impl WorkloadExecutor {
                 Task::InitAccount(source, sources, threshold, settings) => {
                     let (mut tx, signing_data, tx_args) =
                         build_tx_init_account(sdk, source, sources, threshold, settings).await?;
-                    execute_tx_bond(sdk, &mut tx, signing_data, &tx_args).await?
+                    execute_tx_init_account(sdk, &mut tx, signing_data, &tx_args).await?
                 }
                 Task::Redelegate(source, from, to, amount, _epoch, settings) => {
                     let (mut tx, signing_data, tx_args) =
