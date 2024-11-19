@@ -30,7 +30,7 @@ impl TaskSettings {
         Self {
             signers: BTreeSet::from_iter(vec![Alias::faucet()]),
             gas_payer: Alias::faucet(),
-            gas_limit: DEFAULT_GAS_LIMIT * size as u64 * 10,
+            gas_limit: DEFAULT_GAS_LIMIT * size as u64 * 2,
         }
     }
 }
