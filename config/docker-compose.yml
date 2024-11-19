@@ -115,7 +115,6 @@ services:
       - NO_CHECK=false
     volumes:
       - ./container_ready/:/container_ready
-      - ./workload.sh:/app/entrypoint.sh
     networks:
       namada-net:
         ipv4_address: 30.0.0.16
@@ -132,7 +131,6 @@ services:
       - NO_CHECK=false
     volumes:
       - ./container_ready/:/container_ready
-      - ./workload.sh:/app/entrypoint.sh
     networks:
       namada-net:
         ipv4_address: 30.0.0.17
@@ -149,7 +147,6 @@ services:
       - NO_CHECK=false
     volumes:
       - ./container_ready/:/container_ready
-      - ./workload.sh:/app/entrypoint.sh
     networks:
       namada-net:
         ipv4_address: 30.0.0.18
