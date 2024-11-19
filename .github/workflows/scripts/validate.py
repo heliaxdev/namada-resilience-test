@@ -32,4 +32,4 @@ with open(updated_docker_compose_path, 'w') as outfile:
     yaml.dump(current_docker_compose, outfile)
 
 
-subprocess.run(["docker-compose", "-f", updated_docker_compose_path, "up"]) 
+subprocess.run(["docker", "compose", "-f", updated_docker_compose_path, "up"]) 
