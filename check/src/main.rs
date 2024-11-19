@@ -77,7 +77,7 @@ async fn main() {
     loop {
         let client = reqwest::Client::new();
         if let Ok(res) = client
-            .get(format!("{}/api/v1/health", config.masp_indexer_url))
+            .get(format!("{}/health", config.masp_indexer_url))
             .send()
             .await
         {
