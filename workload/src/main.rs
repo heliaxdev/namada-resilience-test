@@ -18,6 +18,11 @@ use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() {
+    let exit_code = inner_main().await;
+    std::process::exit(exit_code);
+}
+
+async fn inner_main() -> i32 {
     antithesis_init();
 
     let filter = EnvFilter::builder()
@@ -113,7 +118,7 @@ async fn main() {
     let next_step = config.step_type;
     if !workload_executor.is_valid(&next_step, &state) {
         tracing::info!("Invalid step: {}", next_step);
-        return;
+        return 8_i32;
     }
 
     let init_block_height = fetch_current_block_height(&sdk).await;
@@ -122,19 +127,12 @@ async fn main() {
     let tasks = match workload_executor.build(next_step, &sdk, &mut state).await {
         Ok(tasks) if tasks.len() == 0 => {
             tracing::info!("Couldn't build {:?}, skipping...", next_step);
-            return;
+            return 6_i32;
         }
         Ok(tasks) => tasks,
         Err(e) => {
-            match e {
-                namada_chain_workload::steps::StepError::Execution(_) => {
-                    tracing::error!("Error build {:?} -> {}", next_step, e.to_string());
-                }
-                _ => {
-                    tracing::warn!("Warning build {:?} -> {}", next_step, e.to_string());
-                }
-            }
-            return;
+            tracing::warn!("Warning build {:?} -> {}", next_step, e.to_string());
+            return 7_i32;
         }
     };
     tracing::info!(
@@ -164,6 +162,7 @@ async fn main() {
             match e {
                 namada_chain_workload::steps::StepError::Execution(_) => {
                     tracing::error!("Error executing{:?} -> {}", next_step, e.to_string());
+                    return 3_i32
                 }
                 namada_chain_workload::steps::StepError::Broadcast(e) => {
                     tracing::info!(
@@ -177,28 +176,31 @@ async fn main() {
                             break;
                         }
                     }
+                    return 4_i32
                 }
                 _ => {
                     tracing::warn!("Warning executing {:?} -> {}", next_step, e.to_string());
+                    return 5_i32
                 }
             }
-            state.serialize_to_file();
-            return;
         }
     };
 
-    if let Err(e) = workload_executor
+    let exit_code = if let Err(e) = workload_executor
         .checks(&sdk, checks.clone(), execution_height)
         .await
     {
         tracing::error!("Error final checks {:?} -> {}", next_step, e.to_string());
+        1_i32
     } else if checks.is_empty() {
         workload_executor.update_state(tasks, &mut state);
         tracing::info!("Checks are empty, skipping checks and upadating state...");
+        2_i32
     } else {
         workload_executor.update_state(tasks, &mut state);
         tracing::info!("Checks were successful, updating state...");
-    }
+        return 0_i32
+    };
 
     tracing::info!("Statistics: {:>?}", state.stats);
 
@@ -209,6 +211,8 @@ async fn main() {
     let file = File::open(path).unwrap();
     file.unlock().unwrap();
     tracing::info!("Done {:?}!", next_step);
+
+    return exit_code
 }
 
 async fn fetch_current_block_height(sdk: &Sdk) -> u64 {
