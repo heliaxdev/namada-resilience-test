@@ -1,4 +1,8 @@
-use std::{str::FromStr, thread, time::Duration};
+use std::{
+    str::FromStr,
+    thread,
+    time::{Duration, Instant},
+};
 
 use namada_sdk::{
     address::Address,
@@ -130,6 +134,8 @@ pub async fn get_bond(
 }
 
 pub async fn shield_sync(sdk: &Sdk) -> Result<(), StepError> {
+    let now = Instant::now();
+    tracing::info!("Started shieldsync...");
     let wallet = sdk.namada.wallet.read().await;
     let vks: Vec<_> = sdk
         .namada
@@ -148,7 +154,7 @@ pub async fn shield_sync(sdk: &Sdk) -> Result<(), StepError> {
         reqwest::Client::new(),
         Url::parse(&sdk.masp_indexer_url).unwrap(),
         true,
-        100,
+        10,
     );
     let task_env = MaspLocalTaskEnv::new(4).map_err(|e| StepError::ShieldSync(e.to_string()))?;
     let shutdown_signal = install_shutdown_signal(true);
@@ -166,6 +172,8 @@ pub async fn shield_sync(sdk: &Sdk) -> Result<(), StepError> {
         .sync(task_env, config, None, &[], &vks)
         .await
         .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
+
+    tracing::info!("Done shieldsync (took {}s)!", now.elapsed().as_secs());
 
     Ok(())
 }

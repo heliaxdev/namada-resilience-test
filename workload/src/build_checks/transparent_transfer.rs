@@ -23,7 +23,7 @@ pub async fn transparent_transfer(
     {
         Check::BalanceTarget(target, pre_balance, amount, state.clone())
     } else {
-        return vec![];
+        return vec![source_check];
     };
 
     vec![source_check, target_check]

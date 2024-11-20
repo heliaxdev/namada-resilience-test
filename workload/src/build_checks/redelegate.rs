@@ -42,7 +42,7 @@ pub async fn redelegate(
     {
         Check::BondIncrease(source, to_validator, pre_bond, amount, state.clone())
     } else {
-        return vec![];
+        return vec![from_validator_bond_check];
     };
     vec![from_validator_bond_check, to_validator_bond_check]
 }

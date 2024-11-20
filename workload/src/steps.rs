@@ -608,7 +608,7 @@ impl WorkloadExecutor {
                             };
                             antithesis_sdk::assert_always!(
                                 post_balance.eq(&check_balance),
-                                "BalanceShielded target decreased.",
+                                "BalanceShielded target increased.",
                                 &json!({
                                     "target_alias": target,
                                     "pre_balance": pre_balance,
