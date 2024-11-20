@@ -31,5 +31,20 @@ do
     sleep 2
 done
 
+source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
+
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
+
 # Ready to start workload
 echo "Ready to start the workload"
