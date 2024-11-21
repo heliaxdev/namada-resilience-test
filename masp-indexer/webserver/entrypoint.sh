@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 
+
 echo "entered entrypoint"
 until pg_isready -h 30.0.0.21 -p 5432 | grep 'accepting connections'; do
   echo "Waiting for PostgreSQL to be ready..."
