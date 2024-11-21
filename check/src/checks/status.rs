@@ -27,7 +27,7 @@ impl DoCheck for StatusCheck {
     }
 
     fn timing() -> u32 {
-        2
+        20
     }
 
     fn to_string() -> String {

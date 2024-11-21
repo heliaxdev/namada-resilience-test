@@ -37,7 +37,7 @@ impl DoCheck for InflationCheck {
     }
 
     fn timing() -> u32 {
-        30
+        20
     }
 
     fn to_string() -> String {

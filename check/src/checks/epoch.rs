@@ -31,7 +31,7 @@ impl DoCheck for EpochCheck {
     }
 
     fn timing() -> u32 {
-        30
+        15
     }
 
     fn to_string() -> String {

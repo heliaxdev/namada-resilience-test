@@ -35,7 +35,7 @@ impl DoCheck for HeightCheck {
     }
 
     fn timing() -> u32 {
-        10
+        6
     }
 
     fn to_string() -> String {

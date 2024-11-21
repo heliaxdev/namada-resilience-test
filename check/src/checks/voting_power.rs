@@ -73,7 +73,7 @@ impl DoCheck for VotingPowerCheck {
     }
 
     fn timing() -> u32 {
-        30
+        20
     }
 
     fn to_string() -> String {
