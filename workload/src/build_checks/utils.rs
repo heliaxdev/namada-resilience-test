@@ -16,6 +16,7 @@ use namada_sdk::{
 };
 use reqwest::Url;
 use serde_json::json;
+use tokio::time::sleep;
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
 use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError};
@@ -152,7 +153,7 @@ pub async fn get_bond(
 pub async fn shield_sync(sdk: &Sdk, height: Option<u64>) -> Result<(), StepError> {
     let now = Instant::now();
     tracing::info!("Started shieldsync...");
-    
+
     let wallet = sdk.namada.wallet.read().await;
     let vks: Vec<_> = sdk
         .namada
@@ -166,35 +167,45 @@ pub async fn shield_sync(sdk: &Sdk, height: Option<u64>) -> Result<(), StepError
 
     let mut shielded_ctx = sdk.namada.shielded_mut().await;
 
-    // let masp_client = LedgerMaspClient::new(sdk.namada.clone_client(), 10);
-    let masp_client = IndexerMaspClient::new(
-        reqwest::Client::new(),
-        Url::parse(&sdk.masp_indexer_url).unwrap(),
-        true,
-        10,
-    );
-    let task_env = MaspLocalTaskEnv::new(4).map_err(|e| StepError::ShieldSync(e.to_string()))?;
-    let shutdown_signal = install_shutdown_signal(true);
+    let mut max_retries = 3;
+    loop {
+        // let masp_client = LedgerMaspClient::new(sdk.namada.clone_client(), 10);
+        let masp_client = IndexerMaspClient::new(
+            reqwest::Client::new(),
+            Url::parse(&sdk.masp_indexer_url).unwrap(),
+            true,
+            10,
+        );
+        let task_env = MaspLocalTaskEnv::new(4).map_err(|e| StepError::ShieldSync(e.to_string()))?;
+        let shutdown_signal = install_shutdown_signal(true);
 
-    let config = ShieldedSyncConfig::builder()
-        .client(masp_client)
-        .fetched_tracker(DevNullProgressBar)
-        .scanned_tracker(DevNullProgressBar)
-        .applied_tracker(DevNullProgressBar)
-        .shutdown_signal(shutdown_signal);
+        let config = ShieldedSyncConfig::builder()
+            .client(masp_client)
+            .fetched_tracker(DevNullProgressBar)
+            .scanned_tracker(DevNullProgressBar)
+            .applied_tracker(DevNullProgressBar)
+            .shutdown_signal(shutdown_signal);
 
-    let config = if height.is_some() {
-        config.wait_for_last_query_height(true).build()
-    } else {
-        config.wait_for_last_query_height(false).build()
-    };
-    
+        let config = if height.is_some() {
+            config.wait_for_last_query_height(true).build()
+        } else {
+            config.wait_for_last_query_height(false).build()
+        };
 
-    let height = height.map(|h| h.into());
-    shielded_ctx
-        .sync(task_env, config, height, &[], &vks)
-        .await
-        .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
+        let height = height.map(|h| h.into());
+        let res = shielded_ctx
+            .sync(task_env, config, height, &[], &vks)
+            .await;
+        if res.is_err() {
+            if max_retries == 0 {
+                res.map_err(|e| StepError::ShieldedSync(e.to_string()))?
+            }
+            max_retries -= 1;
+            sleep(Duration::from_secs(2)).await
+        } else {
+            break
+        }
+    }
 
     shielded_ctx
         .save()
