@@ -435,7 +435,7 @@ impl WorkloadExecutor {
 
                     for (alias, amount) in shielded_balances {
                         if let Ok(Some(pre_balance)) =
-                            build_checks::utils::get_shielded_balance(sdk, alias.clone()).await
+                            build_checks::utils::get_shielded_balance(sdk, alias.clone(), None).await
                         {
                             if amount >= 0 {
                                 checks.push(Check::BalanceShieldedTarget(
@@ -603,7 +603,13 @@ impl WorkloadExecutor {
                     }
                 }
                 Check::BalanceShieldedTarget(target, pre_balance, amount, pre_state) => {
-                    match build_checks::utils::get_shielded_balance(sdk, target.clone()).await {
+                    match build_checks::utils::get_shielded_balance(
+                        sdk,
+                        target.clone(),
+                        Some(execution_height),
+                    )
+                    .await
+                    {
                         Ok(Some(post_balance)) => {
                             let check_balance = if let Some(balance) =
                                 pre_balance.checked_add(token::Amount::from_u64(amount))
@@ -647,6 +653,18 @@ impl WorkloadExecutor {
                             }
                         }
                         Ok(None) => {
+                            antithesis_sdk::assert_unreachable!(
+                                "BalanceShieldedTarget target doesn't exist.",
+                                &json!({
+                                    "target_alias": target,
+                                    "pre_balance": pre_balance,
+                                    "amount": amount,
+                                    "pre_state": pre_state,
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
+                                })
+                            );
                             return Err(format!(
                                 "BalanceShieldedTarget check error: amount doesn't exist"
                             ));

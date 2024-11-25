@@ -48,8 +48,9 @@ pub async fn get_balance(
 pub async fn get_shielded_balance(
     sdk: &Sdk,
     source: Alias,
+    height: Option<u64>,
 ) -> Result<Option<token::Amount>, StepError> {
-    let shiedsync_res = shield_sync(sdk).await;
+    let shiedsync_res = shield_sync(sdk, height).await;
     antithesis_sdk::assert_always!(
         shiedsync_res.is_ok(),
         "Shieldsync was successful.",
@@ -148,9 +149,10 @@ pub async fn get_bond(
     .ok()
 }
 
-pub async fn shield_sync(sdk: &Sdk) -> Result<(), StepError> {
+pub async fn shield_sync(sdk: &Sdk, height: Option<u64>) -> Result<(), StepError> {
     let now = Instant::now();
     tracing::info!("Started shieldsync...");
+    
     let wallet = sdk.namada.wallet.read().await;
     let vks: Vec<_> = sdk
         .namada
@@ -179,16 +181,25 @@ pub async fn shield_sync(sdk: &Sdk) -> Result<(), StepError> {
         .fetched_tracker(DevNullProgressBar)
         .scanned_tracker(DevNullProgressBar)
         .applied_tracker(DevNullProgressBar)
-        .shutdown_signal(shutdown_signal)
-        // .wait_for_last_query_height(true)
-        .build();
+        .shutdown_signal(shutdown_signal);
 
+    let config = if height.is_some() {
+        config.wait_for_last_query_height(true).build()
+    } else {
+        config.wait_for_last_query_height(false).build()
+    };
+    
+
+    let height = height.map(|h| h.into());
     shielded_ctx
-        .sync(task_env, config, None, &[], &vks)
+        .sync(task_env, config, height, &[], &vks)
         .await
         .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
 
-    shielded_ctx.save().await.map_err(|e| StepError::ShieldedSync(e.to_string()))?;
+    shielded_ctx
+        .save()
+        .await
+        .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
 
     tracing::info!("Done shieldsync (took {}s)!", now.elapsed().as_secs());
 
