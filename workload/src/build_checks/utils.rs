@@ -197,6 +197,7 @@ pub async fn shield_sync(sdk: &Sdk, height: Option<u64>) -> Result<(), StepError
             .sync(task_env, config, height, &[], &vks)
             .await;
         if res.is_err() {
+            tracing::info!("Retry shieldsyncing ({}/3)...", max_retries);
             if max_retries == 0 {
                 res.map_err(|e| StepError::ShieldedSync(e.to_string()))?
             }
