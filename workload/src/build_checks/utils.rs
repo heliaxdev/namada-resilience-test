@@ -189,7 +189,7 @@ pub async fn shield_sync(sdk: &Sdk, height: Option<u64>) -> Result<(), StepError
         let config = if height.is_some() {
             config.wait_for_last_query_height(true).build()
         } else {
-            config.wait_for_last_query_height(false).build()
+            config.build()
         };
 
         let height = height.map(|h| h.into());
