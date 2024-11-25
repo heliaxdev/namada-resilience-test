@@ -293,6 +293,7 @@ impl WorkloadExecutor {
                         source,
                         target,
                         amount,
+                        true,
                         retry_config,
                         state,
                     )
@@ -435,7 +436,7 @@ impl WorkloadExecutor {
 
                     for (alias, amount) in shielded_balances {
                         if let Ok(Some(pre_balance)) =
-                            build_checks::utils::get_shielded_balance(sdk, alias.clone(), None).await
+                            build_checks::utils::get_shielded_balance(sdk, alias.clone(), None, true).await
                         {
                             if amount >= 0 {
                                 checks.push(Check::BalanceShieldedTarget(
@@ -607,6 +608,7 @@ impl WorkloadExecutor {
                         sdk,
                         target.clone(),
                         Some(execution_height),
+                        false
                     )
                     .await
                     {

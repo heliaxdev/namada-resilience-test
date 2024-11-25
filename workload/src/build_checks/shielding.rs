@@ -7,6 +7,7 @@ pub async fn shielding(
     source: Alias,
     target: Alias,
     amount: u64,
+    with_indexer: bool,
     retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
     state: &State,
 ) -> Vec<Check> {
@@ -19,7 +20,7 @@ pub async fn shielding(
     };
 
     let target_check = if let Ok(Some(pre_balance)) =
-        super::utils::get_shielded_balance(sdk, target.clone(), None).await
+        super::utils::get_shielded_balance(sdk, target.clone(), None, with_indexer).await
     {
         Check::BalanceShieldedTarget(target, pre_balance, amount, state.clone())
     } else {
