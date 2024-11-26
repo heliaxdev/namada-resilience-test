@@ -55,31 +55,48 @@ pub async fn get_shielded_balance(
     height: Option<u64>,
     with_indexer: bool
 ) -> Result<Option<token::Amount>, StepError> {
-    let shiedsync_res = shield_sync(sdk, height, with_indexer).await;
+    let (res, error) = match shield_sync(sdk, height, with_indexer).await {
+        Ok(_) => (true, "".to_string()),
+        Err(e) => {
+            (false, e.to_string())
+        },
+    };
+
     if with_indexer {
         antithesis_sdk::assert_sometimes!(
-            shiedsync_res.is_ok(),
+            res,
             "Shieldsync (indexer) was successful.",
             &json!({
                 "source": source,
+                "error": error
             })
         );
     } else {
-        antithesis_sdk::assert_always!(
-            shiedsync_res.is_ok(),
+        antithesis_sdk::assert_always_or_unreachable!(
+            res,
             "Shieldsync (node) was successful.",
             &json!({
                 "source": source,
+                "error": error
             })
         );
     }
-    if shiedsync_res.is_err() {
-        tracing::info!(
-            "Shieldsync error: {}",
-            shiedsync_res.clone().err().unwrap().to_string()
+
+    if with_indexer && !res {
+        let (res, error) = match shield_sync(sdk, height, false).await {
+            Ok(_) => (true, "".to_string()),
+            Err(e) => (false, e.to_string()),
+        };
+
+        antithesis_sdk::assert_always_or_unreachable!(
+            res,
+            "Shieldsync (node) was successful.",
+            &json!({
+                "source": source,
+                "error": error
+            })
         );
     }
-    shiedsync_res?;
 
     let client = sdk.namada.clone_client();
     let mut wallet = sdk.namada.wallet.write().await;
