@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     str::FromStr,
     thread,
     time::{Duration, Instant},
@@ -7,14 +8,14 @@ use std::{
 use namada_sdk::{
     address::Address,
     control_flow::install_shutdown_signal,
-    io::DevNullProgressBar,
+    io::{DevNullProgressBar, Io, NullIo},
     masp::{
         shielded_wallet::ShieldedApi, IndexerMaspClient, LedgerMaspClient, MaspLocalTaskEnv,
         ShieldedSyncConfig,
     },
     masp_primitives::{transaction::components::ValueSum, zip32},
     rpc,
-    token::{self, MaspDigitPos},
+    token::{self, DenominatedAmount, MaspDigitPos, MaspEpoch},
     Namada,
 };
 use reqwest::Url;
@@ -53,13 +54,11 @@ pub async fn get_shielded_balance(
     sdk: &Sdk,
     source: Alias,
     height: Option<u64>,
-    with_indexer: bool
+    with_indexer: bool,
 ) -> Result<Option<token::Amount>, StepError> {
     let (res, error) = match shield_sync(sdk, height, with_indexer).await {
         Ok(_) => (true, "".to_string()),
-        Err(e) => {
-            (false, e.to_string())
-        },
+        Err(e) => (false, e.to_string()),
     };
 
     if with_indexer {
@@ -99,6 +98,15 @@ pub async fn get_shielded_balance(
     }
 
     let client = sdk.namada.clone_client();
+
+    let masp_epoch = rpc::query_epoch(&client)
+        .await
+        .map(|epoch| MaspEpoch::try_from_epoch(epoch, 2).unwrap())
+        .map_err(|e| StepError::ShieldSync(e.to_string()))?;
+    let native_token = rpc::query_native_token(&client)
+        .await
+        .map_err(|e| StepError::ShieldSync(e.to_string()))?;
+
     let mut wallet = sdk.namada.wallet.write().await;
     let spending_key = format!(
         "{}-spending-key",
@@ -118,33 +126,23 @@ pub async fn get_shielded_balance(
         .vk;
 
     let balance = shielded_ctx
-        .compute_shielded_balance(&viewing_key)
+        .compute_exchanged_balance(&client, &NullIo, &viewing_key, masp_epoch)
         .await
-        .unwrap()
-        .unwrap_or_else(|| ValueSum::zero());
+        .map_err(|e| StepError::ShieldSync(e.to_string()))?;
 
-    let mut amount = 0 as u64;
-    let mut retry = 0;
-    for (asset_type, value) in balance.components() {
-        let decoded = loop {
-            let decoded = shielded_ctx.decode_asset_type(&client, *asset_type).await;
-            if decoded.is_some() {
-                break decoded.unwrap();
-            } else {
-                retry += 1;
-                if retry == 6 {
-                    return Ok(None);
-                }
-                thread::sleep(Duration::from_millis(100 * retry));
-            }
-        };
-        assert!(matches!(decoded.position, MaspDigitPos::Zero));
-        amount += u64::try_from(*value).unwrap()
-    }
+    let balance = if let Some(balance) = balance {
+        balance
+    } else {
+        return Ok(Some(token::Amount::from_u64(0)));
+    };
 
-    let token_balance = token::Amount::from_u64(amount);
+    let total_balance = shielded_ctx
+        .decode_combine_sum_to_epoch(&client, balance, masp_epoch)
+        .await
+        .0
+        .get(&native_token);
 
-    Ok(Some(token_balance))
+    Ok(Some(total_balance.into()))
 }
 
 pub async fn get_bond(
@@ -205,7 +203,6 @@ pub async fn shield_sync(
     let mut max_retries = 3;
     if with_indexer {
         loop {
-            // let masp_client = LedgerMaspClient::new(sdk.namada.clone_client(), 10);
             let masp_client = IndexerMaspClient::new(
                 reqwest::Client::new(),
                 Url::parse(&sdk.masp_indexer_url).unwrap(),
