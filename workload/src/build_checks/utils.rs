@@ -126,7 +126,7 @@ pub async fn get_shielded_balance(
         .vk;
 
     let balance = shielded_ctx
-        .compute_exchanged_balance(&client, &NullIo, &viewing_key, masp_epoch)
+        .compute_shielded_balance(&viewing_key)
         .await
         .map_err(|e| StepError::ShieldSync(e.to_string()))?;
 
