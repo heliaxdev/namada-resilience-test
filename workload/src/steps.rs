@@ -608,7 +608,7 @@ impl WorkloadExecutor {
                         sdk,
                         target.clone(),
                         Some(execution_height),
-                        false
+                        true
                     )
                     .await
                     {
