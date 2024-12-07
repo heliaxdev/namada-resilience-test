@@ -293,7 +293,7 @@ impl WorkloadExecutor {
                         source,
                         target,
                         amount,
-                        false,
+                        true,
                         retry_config,
                         state,
                     )
