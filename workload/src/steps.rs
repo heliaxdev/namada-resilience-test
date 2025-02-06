@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Display, str::FromStr, time::Instant};
 use crate::{
     build::{
         batch::{build_bond_batch, build_random_batch},
+        become_validator::build_become_validator,
         bond::build_bond,
         claim_rewards::build_claim_rewards,
         faucet_transfer::build_faucet_transfer,
@@ -18,6 +19,7 @@ use crate::{
     entities::Alias,
     execute::{
         batch::execute_tx_batch,
+        become_validator::build_tx_become_validator,
         bond::{build_tx_bond, execute_tx_bond},
         claim_rewards::{build_tx_claim_rewards, execute_tx_claim_rewards},
         faucet_transfer::execute_faucet_transfer,
@@ -42,6 +44,7 @@ use namada_sdk::{
     state::Epoch,
     token::{self},
 };
+use namada_wallet::alias;
 use serde_json::json;
 use thiserror::Error;
 use tokio::time::{sleep, Duration};
@@ -78,6 +81,7 @@ pub enum StepType {
     BatchBond,
     BatchRandom,
     Shielding,
+    BecomeValidator,
 }
 
 impl Display for StepType {
@@ -94,6 +98,7 @@ impl Display for StepType {
             StepType::Shielding => write!(f, "shielding"),
             StepType::BatchRandom => write!(f, "batch-random"),
             StepType::BatchBond => write!(f, "batch-bond"),
+            StepType::BecomeValidator => write!(f, "become-validator"),
         }
     }
 }
@@ -174,6 +179,7 @@ impl WorkloadExecutor {
             StepType::BatchRandom => {
                 state.min_n_account_with_min_balance(3, 2) && state.min_bonds(3)
             }
+            StepType::BecomeValidator => state.min_n_enstablished_accounts(1),
         }
     }
 
@@ -195,6 +201,7 @@ impl WorkloadExecutor {
             StepType::Shielding => build_shielding(state).await?,
             StepType::BatchBond => build_bond_batch(sdk, 3, state).await?,
             StepType::BatchRandom => build_random_batch(sdk, 3, state).await?,
+            StepType::BecomeValidator => build_become_validator(state).await?,
         };
         Ok(steps)
     }
@@ -298,6 +305,9 @@ impl WorkloadExecutor {
                         state,
                     )
                     .await
+                }
+                Task::BecomeValidator(source, _, _, _, _, _, _, _) => {
+                    build_checks::become_validator::become_validator(source).await
                 }
                 Task::Batch(tasks, _) => {
                     let mut checks = vec![];
@@ -435,8 +445,13 @@ impl WorkloadExecutor {
                     }
 
                     for (alias, amount) in shielded_balances {
-                        if let Ok(Some(pre_balance)) =
-                            build_checks::utils::get_shielded_balance(sdk, alias.clone(), None, true).await
+                        if let Ok(Some(pre_balance)) = build_checks::utils::get_shielded_balance(
+                            sdk,
+                            alias.clone(),
+                            None,
+                            true,
+                        )
+                        .await
                         {
                             if amount >= 0 {
                                 checks.push(Check::BalanceShieldedTarget(
@@ -608,7 +623,7 @@ impl WorkloadExecutor {
                         sdk,
                         target.clone(),
                         Some(execution_height),
-                        true
+                        true,
                     )
                     .await
                     {
@@ -998,6 +1013,27 @@ impl WorkloadExecutor {
                         Err(e) => return Err(format!("AccountExist check error: {}", e)),
                     };
                 }
+                Check::IsValidatorAccount(target) => {
+                    let wallet = sdk.namada.wallet.read().await;
+                    let source_address = wallet.find_address(&target.name).unwrap().into_owned();
+                    wallet.save().unwrap();
+                    drop(wallet);
+
+                    let is_validator = rpc::is_validator(client, &source_address)
+                        .await
+                        .unwrap_or_default();
+                    antithesis_sdk::assert_always!(
+                        is_validator,
+                        "OnChain account is a valiadtor.",
+                        &json!({
+                            "target_alias": target,
+                            "target": source_address.to_pretty_string(),
+                            "timeout": random_timeout,
+                            "execution_height": execution_height,
+                            "check_height": latest_block
+                        })
+                    );
+                }
             }
         }
 
@@ -1055,6 +1091,21 @@ impl WorkloadExecutor {
                 Task::Shielding(source, target, amount, settings) => {
                     let (mut tx, signing_data, tx_args) =
                         build_tx_shielding(sdk, source, target, amount, settings).await?;
+                    execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
+                }
+                Task::BecomeValidator(alias, t, t1, t2, t3, comm, max_comm_change, settings) => {
+                    let (mut tx, signing_data, tx_args) = build_tx_become_validator(
+                        sdk,
+                        alias,
+                        t,
+                        t1,
+                        t2,
+                        t3,
+                        comm,
+                        max_comm_change,
+                        settings,
+                    )
+                    .await?;
                     execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
                 }
                 Task::Batch(tasks, task_settings) => {
