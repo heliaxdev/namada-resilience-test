@@ -123,6 +123,13 @@ async fn main() {
                 &json!({"outcome":exit_code})
             );
         }
+        StepType::ChangeMetadata => {
+            antithesis_sdk::assert_always!(
+                exit_code != 1,
+                "Done executing ChangeMetadata",
+                &json!({"outcome":exit_code})
+            );
+        }
     }
 
     std::process::exit(exit_code);
@@ -323,7 +330,7 @@ async fn inner_main() -> (i32, StepType) {
     } else if checks.is_empty() {
         workload_executor.update_state(tasks, &mut state);
         tracing::info!("Checks are empty, skipping checks and upadating state...");
-        2_i32
+        0_i32
     } else {
         workload_executor.update_state(tasks, &mut state);
         tracing::info!("Checks were successful, updating state...");
