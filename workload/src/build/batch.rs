@@ -9,8 +9,9 @@ use crate::{
 
 use super::{
     bond::build_bond, claim_rewards::build_claim_rewards, redelegate::build_redelegate,
-    shielding::build_shielding, transparent_transfer::build_transparent_transfer,
-    unbond::build_unbond,
+    shielded_transfer::build_shielded_transfer, shielding::build_shielding,
+    transparent_transfer::build_transparent_transfer, unbond::build_unbond,
+    unshielding::build_unshielding,
 };
 
 pub async fn build_bond_batch(
@@ -34,6 +35,7 @@ pub async fn build_random_batch(
             BatchType::Redelegate,
             BatchType::Unbond,
             BatchType::Shielding,
+            BatchType::Unshielding,
             // BatchType::ClaimRewards, introducing this would fail every balance check :(
         ],
         max_size,
@@ -79,6 +81,16 @@ async fn _build_batch(
                 tmp_state.update(tasks.clone(), false);
                 tasks
             }
+            BatchType::ShieldedTransfer => {
+                let tasks = build_shielded_transfer(&mut tmp_state).await?;
+                tmp_state.update(tasks.clone(), false);
+                tasks
+            }
+            BatchType::Unshielding => {
+                let tasks = build_unshielding(&mut tmp_state).await?;
+                tmp_state.update(tasks.clone(), false);
+                tasks
+            }
             BatchType::ClaimRewards => {
                 let tasks = build_claim_rewards(&mut tmp_state);
                 tmp_state.update(tasks.clone(), false);
@@ -105,6 +117,8 @@ enum BatchType {
     Bond,
     Unbond,
     Shielding,
+    Unshielding,
+    ShieldedTransfer,
     ClaimRewards,
 }
 
@@ -116,7 +130,9 @@ impl Distribution<BatchType> for Standard {
             2 => BatchType::Unbond,
             3 => BatchType::Shielding,
             4 => BatchType::ClaimRewards,
-            _ => BatchType::Bond,
+            5 => BatchType::Bond,
+            6 => BatchType::ShieldedTransfer,
+            _ => BatchType::Unshielding,
         }
     }
 }

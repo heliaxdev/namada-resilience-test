@@ -66,7 +66,7 @@ pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub masp_accounts: HashMap<Alias, MaspAccount>,
     pub balances: HashMap<Alias, u64>,
-    pub masp_balances: HashMap<Alias, u64>,
+    pub masp_balances: HashMap<Alias, u64>, // why do we have masp balances if tha aliases for masp accounts has a sufix?
     pub bonds: HashMap<Alias, HashMap<String, u64>>,
     pub unbonds: HashMap<Alias, HashMap<String, u64>>,
     pub redelegations: HashMap<Alias, HashMap<String, u64>>,
@@ -152,11 +152,23 @@ impl State {
                     }
                     self.add_enstablished_account(alias, sources, threshold);
                 }
+                Task::ShieldedTransfer(source, target, amount, setting) => {
+                    if with_fee {
+                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    }
+                    self.modify_shielded_transfer(source, target, amount);
+                }
                 Task::Shielding(source, target, amount, setting) => {
                     if with_fee {
                         self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
                     }
                     self.modify_shielding(source, target, amount)
+                }
+                Task::Unshielding(source, target, amount, setting) => {
+                    if with_fee {
+                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                    }
+                    self.modify_unshielding(source, target, amount)
                 }
                 Task::BecomeValidator(alias, _, _, _, _, _, _, setting) => {
                     if with_fee {
@@ -213,6 +225,24 @@ impl State {
 
     pub fn at_least_accounts(&self, sample: u64) -> bool {
         self.accounts.len() >= sample as usize
+    }
+
+    pub fn at_least_masp_accounts(&self, sample: u64) -> bool {
+        self.masp_accounts.len() >= sample as usize
+    }
+
+    pub fn at_least_masp_account_with_minimal_balance(
+        &self,
+        number_of_accounts: usize,
+        min_balance: u64,
+    ) -> bool {
+        self.masp_accounts
+            .iter()
+            .filter(|(_, account)| {
+                self.get_shielded_balance_for(&account.payment_address) >= min_balance
+            })
+            .count()
+            >= number_of_accounts
     }
 
     pub fn any_account_with_min_balance(&self, min_balance: u64) -> bool {
@@ -283,6 +313,26 @@ impl State {
             .filter(|(alias, _)| !blacklist.contains(alias))
             .choose(&mut self.rng)
             .map(|(_, account)| account.clone())
+    }
+
+    pub fn random_masp_account_with_min_balance(
+        &mut self,
+        blacklist: Vec<Alias>,
+        min_value: u64,
+    ) -> Option<MaspAccount> {
+        self.masp_balances
+            .iter()
+            .filter_map(|(alias, balance)| {
+                if blacklist.contains(alias) {
+                    return None;
+                }
+                if balance >= &min_value {
+                    Some(self.masp_accounts.get(alias).unwrap().clone())
+                } else {
+                    None
+                }
+            })
+            .choose(&mut self.rng)
     }
 
     pub fn random_payment_address(&mut self, blacklist: Vec<Alias>) -> Option<MaspAccount> {
@@ -366,6 +416,20 @@ impl State {
 
     pub fn get_balance_for(&self, alias: &Alias) -> u64 {
         self.balances.get(alias).cloned().unwrap_or_default()
+    }
+
+    pub fn get_shielded_balance_for(&self, alias: &Alias) -> u64 {
+        let stripped_alias = Alias {
+            name: alias
+                .name
+                .strip_suffix("-payment-address")
+                .unwrap()
+                .to_string(),
+        };
+        self.masp_balances
+            .get(&stripped_alias)
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn get_redelegations_targets_for(&mut self, alias: &Alias) -> HashSet<String> {
@@ -484,6 +548,39 @@ impl State {
         *self.masp_balances.get_mut(&target_alias).unwrap() += amount;
     }
 
+    pub fn modify_unshielding(&mut self, source: Alias, target: Alias, amount: u64) {
+        let source_alias = Alias {
+            name: source
+                .name
+                .strip_suffix("-spending-key")
+                .unwrap()
+                .to_string(),
+        };
+
+        *self.masp_balances.get_mut(&source_alias).unwrap() -= amount;
+        *self.balances.get_mut(&target).unwrap() += amount;
+    }
+
+    pub fn modify_shielded_transfer(&mut self, source: Alias, target: Alias, amount: u64) {
+        let target_alias = Alias {
+            name: target
+                .name
+                .strip_suffix("-payment-address")
+                .unwrap()
+                .to_string(),
+        };
+        *self.masp_balances.get_mut(&target_alias).unwrap() += amount;
+
+        let source_alias = Alias {
+            name: source
+                .name
+                .strip_suffix("-spending-key")
+                .unwrap()
+                .to_string(),
+        };
+        *self.masp_balances.get_mut(&source_alias).unwrap() -= amount;
+    }
+
     pub fn set_enstablished_as_validator(&mut self, alias: Alias) {
         let account = self.accounts.remove(&alias).unwrap();
         self.validators.insert(alias, account);
@@ -499,7 +596,7 @@ impl RngCore for AntithesisRng {
     }
 
     fn next_u64(&mut self) -> u64 {
-        antithesis_sdk::random::get_random() 
+        antithesis_sdk::random::get_random()
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {

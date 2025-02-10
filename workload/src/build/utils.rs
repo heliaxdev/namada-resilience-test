@@ -11,9 +11,9 @@ pub(crate) fn random_between<T: SampleUniform + std::cmp::PartialOrd>(
     to: T,
 ) -> T {
     if from == to {
-        return from;
+        from
     } else {
-        state.rng.gen_range(from..to)
+        state.rng.gen_range(from..=to)
     }
 }
 
