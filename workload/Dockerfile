@@ -43,6 +43,10 @@ COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_shie
 COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_unshielding.sh /opt/antithesis/test/v1/namada/parallel_driver_unshielding.sh
 COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_shielded.sh /opt/antithesis/test/v1/namada/parallel_driver_shielded.sh
 COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_claim_rewards.sh /opt/antithesis/test/v1/namada/parallel_driver_claim_rewards.sh
+COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_become_validator.sh /opt/antithesis/test/v1/namada/parallel_driver_become_validator.sh
+COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_change_metadata.sh /opt/antithesis/test/v1/namada/parallel_driver_change_metadata.sh
+COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_update_account.sh /opt/antithesis/test/v1/namada/parallel_driver_update_account.sh
+COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_change_consensus_keys.sh /opt/antithesis/test/v1/namada/parallel_driver_change_consensus_keys.sh
 COPY --chmod=0755 --from=builder /app/repo/workload/scripts/parallel_driver_random_batch.sh /opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh
 
 # download masp parameters
