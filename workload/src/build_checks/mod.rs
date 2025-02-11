@@ -1,5 +1,6 @@
 pub mod become_validator;
 pub mod bond;
+pub mod deactivate_validator;
 pub mod faucet;
 pub mod init_account;
 pub mod redelegate;

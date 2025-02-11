@@ -74,6 +74,7 @@ pub enum Task {
     ),
     ChangeMetadata(Source, String, String, String, String, String, TaskSettings),
     ChangeConsensusKeys(Source, Alias, TaskSettings),
+    DeactivateValidator(Source, TaskSettings),
     UpdateAccount(Source, BTreeSet<Source>, Threshold, TaskSettings),
 }
 
@@ -96,6 +97,7 @@ impl Task {
             Task::ChangeMetadata(_, _, _, _, _, _, _) => "change-metadata".to_string(),
             Task::ChangeConsensusKeys(_, _, _) => "change-consensus-keys".to_string(),
             Task::UpdateAccount(_, _, _, _) => "update-account".to_string(),
+            Task::DeactivateValidator(_, _) => "deactivate-validator".to_string(),
         }
     }
 }
@@ -133,9 +135,11 @@ impl Display for Task {
             Task::Unshielding(source, target, amount, _) => {
                 write!(f, "unshielding/{}/{}/{}", source.name, target.name, amount)
             }
-            Task::InitAccount(alias, _, _, _) => write!(f, "init-account/{}", alias.name),
+            Task::InitAccount(alias, _, threshold, _) => {
+                write!(f, "init-account/{}/{}", alias.name, threshold)
+            }
             Task::BecomeValidator(alias, _, _, _, _, _, _, _) => {
-                write!(f, " become-validator/{}", alias.name)
+                write!(f, "become-validator/{}", alias.name)
             }
             Task::ClaimRewards(alias, validator, _) => {
                 write!(f, "claim-rewards/{}/{}", alias.name, validator)
@@ -151,6 +155,9 @@ impl Display for Task {
             }
             Task::UpdateAccount(source, _, _, _) => {
                 write!(f, "update-account/{}", source.name)
+            }
+            Task::DeactivateValidator(source, _) => {
+                write!(f, "deactivate-validator/{}", source.name)
             }
             Task::Batch(tasks, _) => {
                 let tasks = tasks

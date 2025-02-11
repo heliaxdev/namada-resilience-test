@@ -8,6 +8,7 @@ use crate::{
         change_consensus_keys::build_change_consensus_keys,
         change_metadata::build_change_metadata,
         claim_rewards::build_claim_rewards,
+        deactivate_validator::build_deactivate_validator,
         faucet_transfer::build_faucet_transfer,
         init_account::build_init_account,
         new_wallet_keypair::build_new_wallet_keypair,
@@ -29,6 +30,7 @@ use crate::{
         change_consensus_keys::{build_tx_change_consensus_key, execute_tx_change_consensus_key},
         change_metadata::build_tx_change_metadata,
         claim_rewards::{build_tx_claim_rewards, execute_tx_claim_rewards},
+        deactivate_validator::{build_tx_deactivate_validator, execute_tx_deactivate_validator},
         faucet_transfer::execute_faucet_transfer,
         init_account::{build_tx_init_account, execute_tx_init_account},
         new_wallet_keypair::execute_new_wallet_key_pair,
@@ -50,6 +52,7 @@ use namada_sdk::{
     address::Address,
     io::Client,
     key::common,
+    proof_of_stake::types::ValidatorState,
     rpc::{self},
     state::Epoch,
     token::{self},
@@ -98,6 +101,7 @@ pub enum StepType {
     ChangeMetadata,
     ChangeConsensusKeys,
     UpdateAccount,
+    DeactivateValidator,
 }
 
 impl Display for StepType {
@@ -120,6 +124,7 @@ impl Display for StepType {
             StepType::ChangeMetadata => write!(f, "change-metadata"),
             StepType::ChangeConsensusKeys => write!(f, "change-consensus-keys"),
             StepType::UpdateAccount => write!(f, "update-account"),
+            StepType::DeactivateValidator => write!(f, "deactivate-validator"),
         }
     }
 }
@@ -211,6 +216,7 @@ impl WorkloadExecutor {
             StepType::BecomeValidator => state.min_n_enstablished_accounts(1),
             StepType::ChangeMetadata => state.min_n_validators(1),
             StepType::ChangeConsensusKeys => state.min_n_validators(1),
+            StepType::DeactivateValidator => state.min_n_validators(1),
             StepType::UpdateAccount => {
                 state.min_n_enstablished_accounts(1) && state.min_n_implicit_accounts(3)
             }
@@ -240,6 +246,7 @@ impl WorkloadExecutor {
             StepType::BecomeValidator => build_become_validator(state).await?,
             StepType::ChangeMetadata => build_change_metadata(state).await?,
             StepType::ChangeConsensusKeys => build_change_consensus_keys(state).await?,
+            StepType::DeactivateValidator => build_deactivate_validator(state).await?,
             StepType::UpdateAccount => build_update_account(state).await?,
         };
         Ok(steps)
@@ -384,6 +391,15 @@ impl WorkloadExecutor {
                         target,
                         sources,
                         threshold,
+                        retry_config,
+                        state,
+                    )
+                    .await
+                }
+                Task::DeactivateValidator(target, _) => {
+                    build_checks::deactivate_validator::deactivate_validator_build_checks(
+                        sdk,
+                        target,
                         retry_config,
                         state,
                     )
@@ -1191,7 +1207,7 @@ impl WorkloadExecutor {
                                 })
                             );
                             return Err(format!(
-                                "AccountExist check error: account {} is doesn't exist",
+                                "AccountExist check error: account {} doesn't exist",
                                 target.name
                             ));
                         }
@@ -1209,7 +1225,7 @@ impl WorkloadExecutor {
                         .unwrap_or_default();
                     antithesis_sdk::assert_always!(
                         is_validator,
-                        "OnChain account is a valiadtor.",
+                        "OnChain account is a validator.",
                         &json!({
                             "target_alias": target,
                             "target": source_address.to_pretty_string(),
@@ -1218,6 +1234,84 @@ impl WorkloadExecutor {
                             "check_height": latest_block
                         })
                     );
+                }
+                Check::ValidatorStatus(target, status) => {
+                    let wallet = sdk.namada.wallet.read().await;
+                    let source_address = wallet.find_address(&target.name).unwrap().into_owned();
+                    wallet.save().unwrap();
+                    drop(wallet);
+
+                    let epoch = if let Ok(epoch) = tryhard::retry_fn(|| rpc::query_epoch(&client))
+                        .with_config(config)
+                        .on_retry(|attempt, _, error| {
+                            let error = error.to_string();
+                            async move {
+                                tracing::info!("Retry {} due to {}...", attempt, error);
+                            }
+                        })
+                        .await
+                    {
+                        epoch
+                    } else {
+                        continue;
+                    };
+
+                    match tryhard::retry_fn(|| {
+                        rpc::get_validator_state(
+                            &client,
+                            &source_address,
+                            Some(epoch.next().next()),
+                        )
+                    })
+                    .with_config(config)
+                    .on_retry(|attempt, _, error| {
+                        let error = error.to_string();
+                        async move {
+                            tracing::info!("Retry {} due to {}...", attempt, error);
+                        }
+                    })
+                    .await
+                    {
+                        Ok((Some(state), _epoch)) => {
+                            let is_valid_status = match status {
+                                crate::check::ValidatorStatus::Active => {
+                                    state.ne(&ValidatorState::Inactive)
+                                }
+                                crate::check::ValidatorStatus::Inactive => {
+                                    state.eq(&ValidatorState::Inactive)
+                                }
+                            };
+                            antithesis_sdk::assert_always!(
+                                is_valid_status,
+                                "Validator status correctly changed.",
+                                &json!({
+                                    "target_alias": target,
+                                    "target": source_address.to_pretty_string(),
+                                    "to_status": status.to_string(),
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
+                                })
+                            );
+                        }
+                        Ok((None, _epoch)) => {
+                            antithesis_sdk::assert_unreachable!(
+                                "OnChain validator account doesn't exist.",
+                                &json!({
+                                    "target_alias": target,
+                                    "target": source_address.to_pretty_string(),
+                                    "timeout": random_timeout,
+                                    "execution_height": execution_height,
+                                    "check_height": latest_block
+                                })
+                            );
+                            return Err(format!(
+                                "Validator status check error: validator {} doesn't exist",
+                                target.name
+                            ));
+                        }
+                        Err(e) => return Err(format!("ValidatorStatus check error: {}", e)),
+                    };
                 }
             }
         }
@@ -1287,6 +1381,11 @@ impl WorkloadExecutor {
                     let (mut tx, signing_data, tx_args) =
                         build_tx_unshielding(sdk, source, target, amount, settings).await?;
                     execute_tx_unshielding(sdk, &mut tx, signing_data, &tx_args).await?
+                }
+                Task::DeactivateValidator(target, settings) => {
+                    let (mut tx, signing_data, tx_args) =
+                        build_tx_deactivate_validator(sdk, target, settings).await?;
+                    execute_tx_deactivate_validator(sdk, &mut tx, signing_data, &tx_args).await?
                 }
                 Task::ChangeMetadata(
                     source,
