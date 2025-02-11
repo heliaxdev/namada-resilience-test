@@ -1,24 +1,15 @@
-name: Rebuild Workload image
+name: Rebuild Check image
 
 on:
   workflow_dispatch:
-    inputs:
-      workload_commit:
-        description: "The container tag"
-        required: true
-        type: string
   pull_request:
     paths:
-      - 'workload/**'
+      - 'check/**'
   push:
     branches:
       - master
     paths:
-      - 'workload/**'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+      - 'check/**'
 
 permissions:
   contents: read
@@ -26,8 +17,12 @@ permissions:
   attestations: write
   id-token: write
 
-jobs:
-  workload-container:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs: 
+  check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -51,10 +46,10 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: workload
+          context: check
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ghcr.io/heliaxdev/ant-workload:${{ github.event.inputs.tag || github.sha }}
-            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/workload:${{ github.event.inputs.tag || github.sha }}
-          cache-from: type=gha,scope=workload-image
-          cache-to: type=gha,scope=workload-image,mode=max
+            ghcr.io/heliaxdev/ant-check:latest
+            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/check:latest
+          cache-from: type=gha,scope=check-image
+          cache-to: type=gha,scope=check-image,mode=max
