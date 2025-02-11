@@ -1,0 +1,50 @@
+name: Run Rust Format and Clippy
+
+on:
+  pull_request:
+    paths:
+      - 'workload/**'
+      - 'check/**'
+  push:
+    branches:
+      - master
+    paths:
+      - 'workload/**'
+      - 'check/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint-fmt:
+    name: Run fmt and clippy
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [check, workload]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.81.0
+          components: rustfmt,clippy
+          cache: true
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+
+      - name: Check fmt for ${{ matrix.project }}
+        run: |
+          cd ${{ matrix.project }}
+          cargo fmt -- --check
+
+      - name: Run Clippy for ${{ matrix.project }}
+        run: |
+          cd ${{ matrix.project }}
+          cargo clippy -- -D warnings
