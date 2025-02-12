@@ -38,14 +38,14 @@ impl Code {
     fn code(&self) -> i32 {
         match self {
             Code::Success(_) => 0,
+            Code::InvalidStep(_) => 0,
             Code::Fatal(_, _) => 1,
             Code::ExecutionFailure(_, _) => 2,
             Code::BroadcastFailure(_, _) => 3,
             Code::OtherFailure(_, _) => 4,
             Code::BuildFailure(_, _) => 5,
-            Code::InvalidStep(_) => 6,
-            Code::NoTask(_) => 7,
-            Code::EmptyBatch(_) => 8,
+            Code::NoTask(_) => 6,
+            Code::EmptyBatch(_) => 7,
         }
     }
 
@@ -65,7 +65,7 @@ impl Code {
 
     fn output_logs(&self) {
         match self {
-            Code::Success(step_type) => tracing::info!("{step_type} was successful"),
+            Code::Success(step_type) => tracing::info!("Done {step_type} successfully!"),
             Code::Fatal(step_type, reason) => {
                 tracing::error!("State check error for {step_type} -> {reason}")
             }
@@ -78,7 +78,7 @@ impl Code {
             Code::OtherFailure(step_type, reason) => {
                 tracing::warn!("Failure for {step_type} -> {reason}")
             }
-            Code::InvalidStep(step_type) => tracing::warn!("Invalid step for {step_type}"),
+            Code::InvalidStep(step_type) => tracing::warn!("Invalid step for {step_type}, skipping..."),
             Code::NoTask(step_type) => tracing::info!("No task for {step_type}, skipping..."),
             Code::BuildFailure(step_type, reason) => {
                 tracing::warn!("Build failure for {step_type} -> {reason}")
@@ -286,6 +286,7 @@ async fn inner_main() -> Code {
 
     let next_step = config.step_type;
     if !workload_executor.is_valid(&next_step, current_epoch, &state) {
+        tracing::warn!("Invalid step: {}, skipping... {:>?}", next_step, state);
         return Code::InvalidStep(next_step);
     }
 
@@ -362,7 +363,6 @@ async fn inner_main() -> Code {
         .join(format!("state-{}.json", config.id));
     let file = File::open(path).unwrap();
     file.unlock().unwrap();
-    tracing::info!("Done {next_step}!");
 
     exit_code
 }
