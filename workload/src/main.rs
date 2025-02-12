@@ -62,126 +62,143 @@ impl Code {
             Code::EmptyBatch(st) => *st,
         }
     }
+
+    fn output_logs(&self) {
+        match self {
+            Code::Success(step_type) => tracing::info!("{step_type} was successful"),
+            Code::Fatal(step_type, reason) => {
+                tracing::error!("State check error for {step_type} -> {reason}")
+            }
+            Code::ExecutionFailure(step_type, reason) => {
+                tracing::error!("Transaction execution failure for {step_type} -> {reason}")
+            }
+            Code::BroadcastFailure(step_type, reason) => tracing::info!(
+                "Transaction broadcast failure for {step_type} -> {reason}, waiting for next block"
+            ),
+            Code::OtherFailure(step_type, reason) => {
+                tracing::warn!("Failure for {step_type} -> {reason}")
+            }
+            Code::InvalidStep(step_type) => tracing::warn!("Invalid step for {step_type}"),
+            Code::NoTask(step_type) => tracing::info!("No task for {step_type}, skipping..."),
+            Code::BuildFailure(step_type, reason) => {
+                tracing::warn!("Build failure for {step_type} -> {reason}")
+            }
+            Code::EmptyBatch(step_type) => {
+                tracing::error!("Building an empty batch for {step_type}")
+            }
+        }
+    }
+
+    fn assert(&self) {
+        let is_fatal = matches!(self, Code::Fatal(_, _));
+        let details = json!({"outcome": self.code()});
+        match self.step_type() {
+            StepType::NewWalletKeyPair => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing NewWalletKeyPair",
+                    &details
+                );
+            }
+            StepType::FaucetTransfer => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing FaucetTransfer", &details);
+            }
+            StepType::TransparentTransfer => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing TransparentTransfer",
+                    &details
+                );
+            }
+            StepType::Bond => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing Bond", &details);
+            }
+            StepType::InitAccount => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing InitAccount", &details);
+            }
+            StepType::Redelegate => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing Redelegate", &details);
+            }
+            StepType::Unbond => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing Unbond", &details);
+            }
+            StepType::ClaimRewards => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing ClaimRewards", &details);
+            }
+            StepType::BatchBond => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing BatchBond", &details);
+            }
+            StepType::BatchRandom => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing BatchRandom", &details);
+            }
+            StepType::Shielding => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing Shielding", &details);
+            }
+            StepType::Shielded => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing Shielded", &details);
+            }
+            StepType::Unshielding => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing Unshielding", &details);
+            }
+            StepType::BecomeValidator => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing BecomeValidator",
+                    &details
+                );
+            }
+            StepType::ChangeMetadata => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing ChangeMetadata", &details);
+            }
+            StepType::ChangeConsensusKeys => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing ChangeConsensusKeys",
+                    &details
+                );
+            }
+            StepType::UpdateAccount => {
+                antithesis_sdk::assert_always!(is_fatal, "Done executing UpdateAccount", &details);
+            }
+            StepType::DeactivateValidator => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing DeactivateValidator",
+                    &details
+                );
+            }
+            StepType::ReactivateValidator => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing ReactivateValidator",
+                    &details
+                );
+            }
+            StepType::DefaultProposal => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing DefaultProposal",
+                    &details
+                );
+            }
+            StepType::VoteProposal => {
+                antithesis_sdk::assert_always!(
+                    is_fatal,
+                    "Done executing VoteProposal",
+                    &details
+                );
+            }
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() {
     let exit_code = inner_main().await;
 
-    // output logs
-    match &exit_code {
-        Code::Success(_) => {}
-        Code::Fatal(step_type, reason) => {
-            tracing::error!("State check error for {step_type} -> {reason}")
-        }
-        Code::ExecutionFailure(step_type, reason) => {
-            tracing::error!("Transaction execution failure for {step_type} -> {reason}")
-        }
-        Code::BroadcastFailure(step_type, reason) => tracing::info!(
-            "Transaction broadcast failure for {step_type} -> {reason}, waiting for next block"
-        ),
-        Code::OtherFailure(step_type, reason) => {
-            tracing::warn!("Failure for {step_type} -> {reason}")
-        }
-        Code::InvalidStep(step_type) => tracing::warn!("Invalid step for {step_type}"),
-        Code::NoTask(step_type) => tracing::info!("No task for {step_type}, skipping..."),
-        Code::BuildFailure(step_type, reason) => {
-            tracing::warn!("Build failure for {step_type} -> {reason}")
-        }
-        Code::EmptyBatch(step_type) => tracing::error!("Building an empty batch for {step_type}"),
-    }
+    exit_code.output_logs();
 
-    let is_fatal = matches!(exit_code, Code::Fatal(_, _));
-    let details = json!({"outcome": exit_code.code()});
-    match exit_code.step_type() {
-        StepType::NewWalletKeyPair => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing NewWalletKeyPair", &details);
-        }
-        StepType::FaucetTransfer => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing FaucetTransfer", &details);
-        }
-        StepType::TransparentTransfer => {
-            antithesis_sdk::assert_always!(
-                is_fatal,
-                "Done executing TransparentTransfer",
-                &details
-            );
-        }
-        StepType::Bond => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing Bond", &details);
-        }
-        StepType::InitAccount => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing InitAccount", &details);
-        }
-        StepType::Redelegate => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing Redelegate", &details);
-        }
-        StepType::Unbond => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing Unbond", &details);
-        }
-        StepType::ClaimRewards => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing ClaimRewards", &details);
-        }
-        StepType::BatchBond => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing BatchBond", &details);
-        }
-        StepType::BatchRandom => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing BatchRandom", &details);
-        }
-        StepType::Shielding => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing Shielding", &details);
-        }
-        StepType::Shielded => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing Shielded", &details);
-        }
-        StepType::Unshielding => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing Unshielding", &details);
-        }
-        StepType::BecomeValidator => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing BecomeValidator", &details);
-        }
-        StepType::ChangeMetadata => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing ChangeMetadata", &details);
-        }
-        StepType::ChangeConsensusKeys => {
-            antithesis_sdk::assert_always!(
-                is_fatal,
-                "Done executing ChangeConsensusKeys",
-                &details
-            );
-        }
-        StepType::UpdateAccount => {
-            antithesis_sdk::assert_always!(is_fatal, "Done executing UpdateAccount", &details);
-        }
-        StepType::DeactivateValidator => {
-            antithesis_sdk::assert_always!(
-                is_fatal,
-                "Done executing DeactivateValidator",
-                &details
-            );
-        }
-        StepType::ReactivateValidator => {
-            antithesis_sdk::assert_always!(
-                exit_code != 1,
-                "Done executing ReactivateValidator",
-                &json!({"outcome":exit_code})
-            );
-        }
-        StepType::DefaultProposal => {
-            antithesis_sdk::assert_always!(
-                exit_code != 1,
-                "Done executing DefaultProposal",
-                &json!({"outcome":exit_code})
-            );
-        }
-        StepType::VoteProposal => {
-            antithesis_sdk::assert_always!(
-                exit_code != 1,
-                "Done executing VoteProposal",
-                &json!({"outcome":exit_code})
-            );
-        }
-    }
+    exit_code.assert();
 
     std::process::exit(exit_code.code());
 }
@@ -243,17 +260,20 @@ async fn inner_main() -> Code {
                 }
             }
             Err(err) => {
-                tracing::info!("no response from cometbft, retrying in 5... {}", err);
-                thread::sleep(Duration::from_secs(5));
+                tracing::info!("No response from CometBFT, retrying... -> {err}");
             }
         }
+        thread::sleep(Duration::from_secs(5));
     }
 
     let sdk = loop {
         match setup_sdk(&http_client, &state, &config).await {
             Ok(sdk) => break sdk,
-            Err(_) => std::thread::sleep(Duration::from_secs(2)),
+            Err(_) => {
+                tracing::info!("Setup SDK failed, retrying...")
+            }
         }
+        thread::sleep(Duration::from_secs(2));
     };
 
     let workload_executor = WorkloadExecutor::new();

@@ -58,7 +58,6 @@ use clap::ValueEnum;
 use namada_sdk::{
     address::Address,
     io::Client,
-    key::common,
     proof_of_stake::types::ValidatorState,
     rpc::{self},
     state::Epoch,
@@ -165,8 +164,8 @@ impl WorkloadExecutor {
     }
 
     pub async fn init(&self, sdk: &Sdk) {
-        let client = sdk.namada.clone_client();
-        let wallet = sdk.namada.wallet.write().await;
+        let client = &sdk.namada.client;
+        let wallet = sdk.namada.wallet.read().await;
         let faucet_address = wallet.find_address("faucet").unwrap().into_owned();
         let nam_address = wallet.find_address("nam").unwrap().into_owned();
         let faucet_public_key = wallet.find_public_key("faucet").unwrap().to_owned();
@@ -174,7 +173,7 @@ impl WorkloadExecutor {
 
         loop {
             if let Ok(res) =
-                rpc::get_token_balance(&client, &nam_address, &faucet_address, None).await
+                rpc::get_token_balance(client, &nam_address, &faucet_address, None).await
             {
                 if res.is_zero() {
                     tracing::error!("Faucet has no money RIP.");
@@ -183,23 +182,22 @@ impl WorkloadExecutor {
                     tracing::info!("Faucet has $$$ ({})", res);
                     break;
                 }
-            } else {
-                tracing::warn!("Retry querying for  faucet balance...");
-                sleep(Duration::from_secs(2)).await;
             }
+            tracing::warn!("Retry querying for faucet balance...");
+            sleep(Duration::from_secs(2)).await;
         }
 
         loop {
-            if let Ok(res) = rpc::is_public_key_revealed(&client, &faucet_address).await {
-                if !res {
-                    let _ = Self::reveal_pk(sdk, faucet_public_key.clone()).await;
-                } else {
+            if let Ok(is_revealed) = rpc::is_public_key_revealed(client, &faucet_address).await {
+                if is_revealed {
                     break;
                 }
-            } else {
-                tracing::warn!("Retry revealing faucet pk...");
-                sleep(Duration::from_secs(2)).await;
             }
+            if let Ok(Some(_)) = execute_reveal_pk(sdk, faucet_public_key.clone()).await {
+                break;
+            }
+            tracing::warn!("Retry revealing faucet pk...");
+            sleep(Duration::from_secs(2)).await;
         }
     }
 
@@ -1400,7 +1398,7 @@ impl WorkloadExecutor {
             let execution_height = match task {
                 Task::NewWalletKeyPair(alias) => {
                     let public_key = execute_new_wallet_key_pair(sdk, alias).await?;
-                    Self::reveal_pk(sdk, public_key).await?
+                    execute_reveal_pk(sdk, public_key).await?
                 }
                 Task::FaucetTransfer(target, amount, settings) => {
                     execute_faucet_transfer(sdk, target, amount, settings).await?
@@ -1573,10 +1571,6 @@ impl WorkloadExecutor {
 
     pub fn update_state(&self, tasks: Vec<Task>, state: &mut State) {
         state.update(tasks, true);
-    }
-
-    async fn reveal_pk(sdk: &Sdk, public_key: common::PublicKey) -> Result<Option<u64>, StepError> {
-        execute_reveal_pk(sdk, public_key).await
     }
 
     fn retry_config() -> RetryFutureConfig<ExponentialBackoff, NoOnRetry> {
