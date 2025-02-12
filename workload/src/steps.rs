@@ -69,7 +69,7 @@ use thiserror::Error;
 use tokio::time::{sleep, Duration};
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum StepError {
     #[error("building an empty batch")]
     EmptyBatch,
@@ -87,6 +87,8 @@ pub enum StepError {
     Rpc(String),
     #[error("shield-sync `{0}`")]
     ShieldSync(String),
+    #[error("state check: `{0}`")]
+    StateCheck(String),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
@@ -634,7 +636,7 @@ impl WorkloadExecutor {
         sdk: &Sdk,
         checks: Vec<Check>,
         execution_height: Option<u64>,
-    ) -> Result<(), String> {
+    ) -> Result<(), StepError> {
         let config = Self::retry_config();
         let random_timeout = 0.0f64;
         let client = sdk.namada.clone_client();
@@ -680,34 +682,36 @@ impl WorkloadExecutor {
                         .await
                     {
                         Ok(was_pk_revealed) => {
+                            let public_key = source.to_pretty_string();
                             antithesis_sdk::assert_always!(
                                 was_pk_revealed,
                                 "The public key was revealed correctly.",
                                 &json!({
-                                    "public-key": source.to_pretty_string(),
+                                    "public_key": public_key,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block,
                                 })
                             );
                             if !was_pk_revealed {
-                                return Err(format!(
-                                    "RevealPk check error: pk for {} was not revealed",
-                                    source.to_pretty_string()
-                                ));
+                                return Err(StepError::StateCheck(format!(
+                                    "RevealPk check error: pk for {public_key} was not revealed",
+                                )));
                             }
                         }
                         Err(e) => {
                             tracing::error!(
                                 "{}",
                                 json!({
-                                    "public-key": source.to_pretty_string(),
+                                    "public_key": source.to_pretty_string(),
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block,
                                 })
                             );
-                            return Err(format!("RevealPk check error: {}", e));
+                            return Err(StepError::StateCheck(format!(
+                                "RevealPk check error: {e}"
+                            )));
                         }
                     }
                 }
@@ -740,9 +744,9 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
-                                    "BalanceTarget check error: balance is overflowing".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "BalanceTarget check error: balance is overflowing".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_amount.eq(&check_balance),
@@ -774,10 +778,14 @@ impl WorkloadExecutor {
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceTarget check error: post target amount is not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
+                                return Err(StepError::StateCheck(format!("BalanceTarget check error: post target amount is not equal to pre balance: pre {pre_balance}, post: {post_amount}, {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceTarget check error: {e}"
+                            )))
+                        }
                     }
                 }
                 Check::BalanceShieldedSource(target, pre_balance, amount, pre_state) => {
@@ -795,10 +803,10 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
+                                return Err(StepError::StateCheck(
                                     "BalanceShieldedSource check error: balance is underflowing"
                                         .to_string(),
-                                );
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_balance.eq(&check_balance),
@@ -828,7 +836,7 @@ impl WorkloadExecutor {
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceShieldedSource check error: post source amount is not equal to pre balance - amount: {} - {} = {} != {}", pre_balance, amount, check_balance, post_balance));
+                                return Err(StepError::StateCheck(format!("BalanceShieldedSource check error: post source amount is not equal to pre balance - amount: {pre_balance} - {amount} = {check_balance} != {post_balance}")));
                             }
                         }
                         Ok(None) => {
@@ -844,11 +852,15 @@ impl WorkloadExecutor {
                                     "check_height": latest_block
                                 })
                             );
-                            return Err("BalanceShieldedSource check error: amount doesn't exist"
-                                .to_string());
+                            return Err(StepError::StateCheck(
+                                "BalanceShieldedSource check error: amount doesn't exist"
+                                    .to_string(),
+                            ));
                         }
                         Err(e) => {
-                            return Err(format!("BalanceShieldedSource check error: {e}",));
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceShieldedSource check error: {e}"
+                            )));
                         }
                     };
                 }
@@ -867,10 +879,10 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
+                                return Err(StepError::StateCheck(
                                     "BalanceShieldedTarget check error: balance is overflowing"
                                         .to_string(),
-                                );
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_balance.eq(&check_balance),
@@ -900,7 +912,7 @@ impl WorkloadExecutor {
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceShieldedTarget check error: post target amount is not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_balance, amount));
+                                return Err(StepError::StateCheck(format!("BalanceShieldedTarget check error: post target amount is not equal to pre balance: pre {pre_balance}, post: {post_balance}, {amount}")));
                             }
                         }
                         Ok(None) => {
@@ -916,11 +928,15 @@ impl WorkloadExecutor {
                                     "check_height": latest_block
                                 })
                             );
-                            return Err("BalanceShieldedTarget check error: amount doesn't exist"
-                                .to_string());
+                            return Err(StepError::StateCheck(
+                                "BalanceShieldedTarget check error: amount doesn't exist"
+                                    .to_string(),
+                            ));
                         }
                         Err(e) => {
-                            return Err(format!("BalanceShieldedTarget check error: {e}",));
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceShieldedTarget check error: {e}"
+                            )));
                         }
                     };
                 }
@@ -942,7 +958,7 @@ impl WorkloadExecutor {
                     .on_retry(|attempt, _, error| {
                         let error = error.to_string();
                         async move {
-                            tracing::info!("Retry {} due to {}...", attempt, error);
+                            tracing::info!("Retry {attempt} due to {error}...");
                         }
                     })
                     .await
@@ -953,9 +969,9 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
-                                    "BalanceTarget check error: balance is negative".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "BalanceTarget check error: balance is negative".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_amount.eq(&check_balance),
@@ -987,10 +1003,14 @@ impl WorkloadExecutor {
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceSource check error: post target amount not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
+                                return Err(StepError::StateCheck(format!("BalanceSource check error: post target amount not equal to pre balance: pre {pre_balance}, post: {post_amount}, {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("BalanceSource check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceSource check error: {e}"
+                            )))
+                        }
                     }
                 }
                 Check::BondIncrease(target, validator, pre_bond, amount, pre_state) => {
@@ -1037,9 +1057,9 @@ impl WorkloadExecutor {
                             {
                                 bond
                             } else {
-                                return Err(
-                                    "Bond increase check error: bond is negative".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "Bond increase check error: bond is negative".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_bond.eq(&check_bond),
@@ -1075,10 +1095,12 @@ impl WorkloadExecutor {
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("Bond increase check error: post target amount is not equal to pre balance: pre {}, post {}, amount: {}", pre_bond, post_bond, amount));
+                                return Err(StepError::StateCheck(format!("Bond increase check error: post target amount is not equal to pre balance: pre {pre_bond}, post {post_bond}, amount: {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("Bond check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!("Bond check error: {e}")))
+                        }
                     }
                 }
                 Check::BondDecrease(target, validator, pre_bond, amount, pre_state) => {
@@ -1092,7 +1114,7 @@ impl WorkloadExecutor {
                         .on_retry(|attempt, _, error| {
                             let error = error.to_string();
                             async move {
-                                tracing::info!("Retry {} due to {}...", attempt, error);
+                                tracing::info!("Retry {attempt} due to {error}...");
                             }
                         })
                         .await
@@ -1125,9 +1147,9 @@ impl WorkloadExecutor {
                             {
                                 bond
                             } else {
-                                return Err(
-                                    "Bond decrease check error: bond is negative".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "Bond decrease check error: bond is negative".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_bond.eq(&check_bond),
@@ -1163,10 +1185,12 @@ impl WorkloadExecutor {
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("Bond decrease check error: post target amount is not equal to pre balance: pre {}, post {}, amount: {}", pre_bond, post_bond, amount));
+                                return Err(StepError::StateCheck(format!("Bond decrease check error: post target amount is not equal to pre balance: pre {pre_bond}, post {post_bond}, amount: {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("Bond check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!("Bond check error: {e}")))
+                        }
                     }
                 }
                 Check::AccountExist(target, threshold, sources, pre_state) => {
@@ -1219,10 +1243,10 @@ impl WorkloadExecutor {
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!(
+                                return Err(StepError::StateCheck(format!(
                                     "AccountExist check error: account {} is invalid",
                                     source_address
-                                ));
+                                )));
                             }
                         }
                         Ok(None) => {
@@ -1240,12 +1264,16 @@ impl WorkloadExecutor {
                                     "check_height": latest_block
                                 })
                             );
-                            return Err(format!(
+                            return Err(StepError::StateCheck(format!(
                                 "AccountExist check error: account {} doesn't exist",
                                 target.name
-                            ));
+                            )));
                         }
-                        Err(e) => return Err(format!("AccountExist check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "AccountExist check error: {e}"
+                            )))
+                        }
                     };
                 }
                 Check::IsValidatorAccount(target) => {
@@ -1280,7 +1308,7 @@ impl WorkloadExecutor {
                         .on_retry(|attempt, _, error| {
                             let error = error.to_string();
                             async move {
-                                tracing::info!("Retry {} due to {}...", attempt, error);
+                                tracing::info!("Retry {attempt} due to {error}...");
                             }
                         })
                         .await
@@ -1301,7 +1329,7 @@ impl WorkloadExecutor {
                     .on_retry(|attempt, _, error| {
                         let error = error.to_string();
                         async move {
-                            tracing::info!("Retry {} due to {}...", attempt, error);
+                            tracing::info!("Retry {attempt} due to {error}...");
                         }
                     })
                     .await
@@ -1342,12 +1370,16 @@ impl WorkloadExecutor {
                                     "check_height": latest_block
                                 })
                             );
-                            return Err(format!(
+                            return Err(StepError::StateCheck(format!(
                                 "Validator status check error: validator {} doesn't exist",
                                 target.name
-                            ));
+                            )));
                         }
-                        Err(e) => return Err(format!("ValidatorStatus check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "ValidatorStatus check error: {e}"
+                            )))
+                        }
                     };
                 }
             }

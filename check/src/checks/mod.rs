@@ -99,7 +99,7 @@ trait DoCheck {
 }
 
 fn is_successful(checker: Checker, res: Result<(), String>) {
-    let details = if let Err(e) = res.clone() {
+    let details = if let Err(ref e) = res {
         let is_timeout = e.to_lowercase().contains("timed out");
         let is_connection_closed = e.to_lowercase().contains("connection closed before");
         if is_timeout {
