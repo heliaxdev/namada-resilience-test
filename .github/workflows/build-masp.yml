@@ -18,7 +18,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 permissions:
   contents: read
@@ -71,8 +71,8 @@ jobs:
           context: ${{ matrix.images.context }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ghcr.io/heliaxdev/ant-${{ matrix.images.name }}:${{ github.event.inputs.tag || github.sha }}
-            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.name }}:${{ github.event.inputs.tag || github.sha }}
+            ghcr.io/heliaxdev/ant-${{ matrix.images.name }}:${{ github.event.inputs.tag || github.head_ref || github.ref_name }}
+            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.name }}:${{ github.event.inputs.tag || github.head_ref || github.ref_name }}
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
