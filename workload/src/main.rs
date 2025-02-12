@@ -37,13 +37,12 @@ enum Code {
 impl Code {
     fn code(&self) -> i32 {
         match self {
-            Code::Success(_) => 0,
-            Code::InvalidStep(_) => 0,
+            Code::Success(_) | Code::InvalidStep(_) => 0,
             Code::Fatal(_, _) => 1,
-            Code::ExecutionFailure(_, _) => 2,
-            Code::BroadcastFailure(_, _) => 3,
-            Code::OtherFailure(_, _) => 4,
-            Code::BuildFailure(_, _) => 5,
+            Code::BuildFailure(_, _) => 2,
+            Code::ExecutionFailure(_, _) => 3,
+            Code::BroadcastFailure(_, _) => 4,
+            Code::OtherFailure(_, _) => 5,
             Code::NoTask(_) => 6,
             Code::EmptyBatch(_) => 7,
         }
@@ -78,7 +77,9 @@ impl Code {
             Code::OtherFailure(step_type, reason) => {
                 tracing::warn!("Failure for {step_type} -> {reason}")
             }
-            Code::InvalidStep(step_type) => tracing::warn!("Invalid step for {step_type}, skipping..."),
+            Code::InvalidStep(step_type) => {
+                tracing::warn!("Invalid step for {step_type}, skipping...")
+            }
             Code::NoTask(step_type) => tracing::info!("No task for {step_type}, skipping..."),
             Code::BuildFailure(step_type, reason) => {
                 tracing::warn!("Build failure for {step_type} -> {reason}")
@@ -286,7 +287,7 @@ async fn inner_main() -> Code {
 
     let next_step = config.step_type;
     if !workload_executor.is_valid(&next_step, current_epoch, &state) {
-        tracing::warn!("Invalid step: {}, skipping... {:>?}", next_step, state);
+        tracing::warn!("Invalid step: {next_step} -> {state:>?}");
         return Code::InvalidStep(next_step);
     }
 
