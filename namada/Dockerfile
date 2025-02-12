@@ -2,10 +2,10 @@
 # Following the instruction from https://docs.namada.net/introduction/install/source
 # This is so we can do the localnet setup
 FROM docker.io/rust:1.81-slim-bookworm AS builder
+WORKDIR /namada
 
-# Pinning a release tag
 ARG GIT_SHA
-ARG PROFILE="release"
+RUN [ -z "$GIT_SHA" ] && echo "GIT_SHA is required" && exit 1 || true
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
     make \
@@ -22,10 +22,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ADD --keep-git-dir=true https://github.com/anoma/namada.git#$GIT_SHA /namada
-RUN cd /namada
-
-WORKDIR /namada
+ADD --keep-git-dir=true https://github.com/anoma/namada.git#$GIT_SHA .
 
 # Be aware the patch could potentially be version dependent
 # getting rid of the sudo
