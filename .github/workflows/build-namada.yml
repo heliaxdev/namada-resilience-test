@@ -40,8 +40,8 @@ jobs:
         images:
           - context: "config"
             image: "namada-config"
-            tag: "config"
-            cache_scope: "config-scope"
+            tag: ""
+            cache_scope: "config-image"
           - context: "genesis"
             image: "namada-genesis"
             tag: ""
