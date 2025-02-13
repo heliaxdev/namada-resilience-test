@@ -15,15 +15,17 @@ jobs:
             genesis: "main"
             masp_indexer: "master"
             duration: 4
+            config: "main"
           - image: "v1.1.2-inst"
             genesis: "v1.1.2"
+            config: "v1.1.2"
             masp_indexer: "master"
             duration: 4
             
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.7
         with:
-          config_image: namada-config:main
+          config_image: namada-config:${{ matrix.runs.config }}
           notebook_name: namada2
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
