@@ -3,6 +3,7 @@ pub mod bond;
 pub mod deactivate_validator;
 pub mod faucet;
 pub mod init_account;
+pub mod proposal;
 pub mod reactivate_validator;
 pub mod redelegate;
 pub mod shielded_transfer;
