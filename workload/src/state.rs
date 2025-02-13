@@ -1,18 +1,29 @@
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
-    env,
-    fs::{self},
+    env, fs,
     path::PathBuf,
 };
 
+use fs2::FileExt;
 use rand::{seq::IteratorRandom, Rng, RngCore};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::{
     constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE, PROPOSAL_DEPOSIT},
     entities::Alias,
     task::Task,
 };
+
+#[derive(Error, Debug)]
+pub enum StateError {
+    #[error("File error: `{0}`")]
+    File(std::io::Error),
+    #[error("Encode/Decode error: `{0}`")]
+    Serde(serde_json::Error),
+    #[error("State file is empty")]
+    EmptyFile,
+}
 
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AddressType {
@@ -73,15 +84,16 @@ pub struct State {
     pub validators: HashMap<Alias, Account>,
     pub deactivated_validators: HashMap<Alias, Account>,
     pub proposals: HashMap<u64, (u64, u64)>,
+    pub id: u64,
     pub seed: u64,
     pub rng: AntithesisRng,
-    pub path: PathBuf,
     pub base_dir: PathBuf,
     pub stats: HashMap<String, u64>,
 }
 
 impl State {
-    pub fn new(id: u64, seed: u64) -> Self {
+    pub fn new(id: u64, seed: Option<u64>) -> Self {
+        let seed = seed.unwrap_or(rand::thread_rng().gen_range(0..u64::MAX));
         Self {
             accounts: HashMap::default(),
             masp_accounts: HashMap::default(),
@@ -93,11 +105,9 @@ impl State {
             validators: HashMap::default(),
             deactivated_validators: HashMap::default(),
             proposals: HashMap::default(),
+            id,
             seed,
             rng: AntithesisRng::default(),
-            path: env::current_dir()
-                .unwrap()
-                .join(format!("state-{}.json", id)),
             base_dir: env::current_dir().unwrap().join("base"),
             stats: HashMap::default(),
         }
@@ -267,37 +277,59 @@ impl State {
         }
     }
 
-    pub fn serialize_to_file(&self) {
-        fs::write(&self.path, serde_json::to_string_pretty(&self).unwrap()).unwrap()
+    /// File
+
+    pub fn state_file_path(id: u64) -> PathBuf {
+        env::current_dir()
+            .expect("current directory")
+            .join(format!("state-{id}.json"))
     }
 
-    pub fn from_file(id: u64, seed: Option<u64>) -> Self {
-        let path = env::current_dir()
-            .unwrap()
-            .join(format!("state-{}.json", id));
-        match fs::read_to_string(path) {
-            Ok(data) => match serde_json::from_str(&data) {
-                Ok(state) => state,
-                Err(_) => {
-                    tracing::warn!("Can't deserialize state file, creating new one.");
-                    let state = State::new(
-                        id,
-                        seed.unwrap_or(rand::thread_rng().gen_range(0..u64::MAX)),
-                    );
-                    state.serialize_to_file();
-                    state
-                }
-            },
-            Err(_) => {
-                tracing::warn!("Can't read state file, creating new one.");
-                let state = State::new(
-                    id,
-                    seed.unwrap_or(rand::thread_rng().gen_range(0..u64::MAX)),
-                );
-                state.serialize_to_file();
-                state
-            }
+    pub fn save(&self, locked_file: Option<fs::File>) -> Result<(), StateError> {
+        let path = Self::state_file_path(self.id);
+        let state_json = serde_json::to_string_pretty(&self).map_err(StateError::Serde)?;
+        fs::write(path, state_json).map_err(StateError::File)?;
+
+        if let Some(file) = locked_file {
+            file.unlock().map_err(StateError::File)?;
         }
+
+        Ok(())
+    }
+
+    pub fn create_new(id: u64, seed: Option<u64>) -> Result<(Self, fs::File), StateError> {
+        // Lock the state file before writing the new
+        let file = Self::lock_state_file(id)?;
+
+        let state = Self::new(id, seed);
+        state.save(None)?;
+
+        Ok((state, file))
+    }
+
+    pub fn load(id: u64) -> Result<(Self, fs::File), StateError> {
+        let path = Self::state_file_path(id);
+
+        // Lock the state file before loading
+        let file = Self::lock_state_file(id)?;
+
+        let data = fs::read_to_string(path).map_err(StateError::File)?;
+        if data.is_empty() {
+            return Err(StateError::EmptyFile);
+        }
+        let state = serde_json::from_str(&data).map_err(StateError::Serde)?;
+
+        // Returns the file to be unlocked later
+        Ok((state, file))
+    }
+
+    fn lock_state_file(id: u64) -> Result<fs::File, StateError> {
+        let path = Self::state_file_path(id);
+
+        let file = fs::File::open(&path).map_err(StateError::File)?;
+        file.lock_exclusive().map_err(StateError::File)?;
+
+        Ok(file)
     }
 
     /// READ

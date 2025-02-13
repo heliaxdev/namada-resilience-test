@@ -1,6 +1,6 @@
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-use crate::{check::Check, entities::Alias, sdk::namada::Sdk, state::State};
+use crate::{check::Check, entities::Alias, sdk::namada::Sdk};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn redelegate(
@@ -11,7 +11,6 @@ pub async fn redelegate(
     amount: u64,
     epoch: u64,
     retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
-    state: &State,
 ) -> Vec<Check> {
     let from_validator_bond_check = if let Some(pre_bond) = super::utils::get_bond(
         sdk,
@@ -22,13 +21,7 @@ pub async fn redelegate(
     )
     .await
     {
-        Check::BondDecrease(
-            source.clone(),
-            from_validator,
-            pre_bond,
-            amount,
-            state.clone(),
-        )
+        Check::BondDecrease(source.clone(), from_validator, pre_bond, amount)
     } else {
         return vec![];
     };
@@ -41,7 +34,7 @@ pub async fn redelegate(
     )
     .await
     {
-        Check::BondIncrease(source, to_validator, pre_bond, amount, state.clone())
+        Check::BondIncrease(source, to_validator, pre_bond, amount)
     } else {
         return vec![from_validator_bond_check];
     };

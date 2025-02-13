@@ -271,13 +271,7 @@ impl WorkloadExecutor {
         Ok(steps)
     }
 
-    pub async fn build_check(
-        &self,
-        sdk: &Sdk,
-        tasks: Vec<Task>,
-        state: &State,
-        no_check: bool,
-    ) -> Vec<Check> {
+    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, no_check: bool) -> Vec<Check> {
         if no_check {
             return vec![];
         }
@@ -288,14 +282,8 @@ impl WorkloadExecutor {
             let check = match task {
                 Task::NewWalletKeyPair(source) => vec![Check::RevealPk(source)],
                 Task::FaucetTransfer(target, amount, _) => {
-                    build_checks::faucet::faucet_build_check(
-                        sdk,
-                        target,
-                        amount,
-                        retry_config,
-                        state,
-                    )
-                    .await
+                    build_checks::faucet::faucet_build_check(sdk, target, amount, retry_config)
+                        .await
                 }
                 Task::TransparentTransfer(source, target, amount, _) => {
                     build_checks::transparent_transfer::transparent_transfer(
@@ -304,21 +292,12 @@ impl WorkloadExecutor {
                         target,
                         amount,
                         retry_config,
-                        state,
                     )
                     .await
                 }
                 Task::Bond(source, validator, amount, epoch, _) => {
-                    build_checks::bond::bond(
-                        sdk,
-                        source,
-                        validator,
-                        amount,
-                        epoch,
-                        retry_config,
-                        state,
-                    )
-                    .await
+                    build_checks::bond::bond(sdk, source, validator, amount, epoch, retry_config)
+                        .await
                 }
                 Task::InitAccount(alias, sources, threshold, _) => {
                     build_checks::init_account::init_account_build_checks(
@@ -327,7 +306,6 @@ impl WorkloadExecutor {
                         sources,
                         threshold,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -340,7 +318,6 @@ impl WorkloadExecutor {
                         amount,
                         epoch,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -352,7 +329,6 @@ impl WorkloadExecutor {
                         amount,
                         epoch,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -367,7 +343,6 @@ impl WorkloadExecutor {
                         amount,
                         false,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -379,7 +354,6 @@ impl WorkloadExecutor {
                         amount,
                         false,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -391,7 +365,6 @@ impl WorkloadExecutor {
                         amount,
                         false,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -411,7 +384,6 @@ impl WorkloadExecutor {
                         sources,
                         threshold,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -426,7 +398,6 @@ impl WorkloadExecutor {
                         sdk,
                         target,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -435,7 +406,6 @@ impl WorkloadExecutor {
                         sdk,
                         target,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -550,14 +520,12 @@ impl WorkloadExecutor {
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             } else {
                                 checks.push(Check::BalanceSource(
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             }
                         }
@@ -580,7 +548,6 @@ impl WorkloadExecutor {
                                     validator.to_owned(),
                                     pre_bond,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             } else {
                                 checks.push(Check::BondDecrease(
@@ -588,7 +555,6 @@ impl WorkloadExecutor {
                                     validator.to_owned(),
                                     pre_bond,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             }
                         }
@@ -608,14 +574,12 @@ impl WorkloadExecutor {
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             } else {
                                 checks.push(Check::BalanceShieldedSource(
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             }
                         }
@@ -713,7 +677,7 @@ impl WorkloadExecutor {
                         }
                     }
                 }
-                Check::BalanceTarget(target, pre_balance, amount, pre_state) => {
+                Check::BalanceTarget(target, pre_balance, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let native_token_address = wallet.find_address("nam").unwrap().into_owned();
                     let target_address = wallet.find_address(&target.name).unwrap().into_owned();
@@ -755,7 +719,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -770,7 +733,6 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_amount,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
@@ -786,7 +748,7 @@ impl WorkloadExecutor {
                         }
                     }
                 }
-                Check::BalanceShieldedSource(target, pre_balance, amount, pre_state) => {
+                Check::BalanceShieldedSource(target, pre_balance, amount) => {
                     match build_checks::utils::get_shielded_balance(
                         sdk,
                         target.clone(),
@@ -814,7 +776,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_balance,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -828,7 +789,6 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_balance,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
@@ -844,7 +804,6 @@ impl WorkloadExecutor {
                                     "source_alias": target,
                                     "pre_balance": pre_balance,
                                     "amount": amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -862,7 +821,7 @@ impl WorkloadExecutor {
                         }
                     };
                 }
-                Check::BalanceShieldedTarget(target, pre_balance, amount, pre_state) => {
+                Check::BalanceShieldedTarget(target, pre_balance, amount) => {
                     match build_checks::utils::get_shielded_balance(
                         sdk,
                         target.clone(),
@@ -890,7 +849,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_balance,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -904,7 +862,6 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_balance,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
@@ -920,7 +877,6 @@ impl WorkloadExecutor {
                                     "target_alias": target,
                                     "pre_balance": pre_balance,
                                     "amount": amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -938,7 +894,7 @@ impl WorkloadExecutor {
                         }
                     };
                 }
-                Check::BalanceSource(target, pre_balance, amount, pre_state) => {
+                Check::BalanceSource(target, pre_balance, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let native_token_address = wallet.find_address("nam").unwrap().into_owned();
                     let target_address = wallet.find_address(&target.name).unwrap().into_owned();
@@ -980,7 +936,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -995,7 +950,6 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_amount,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
@@ -1011,7 +965,7 @@ impl WorkloadExecutor {
                         }
                     }
                 }
-                Check::BondIncrease(target, validator, pre_bond, amount, pre_state) => {
+                Check::BondIncrease(target, validator, pre_bond, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
 
@@ -1069,7 +1023,6 @@ impl WorkloadExecutor {
                                     "pre_bond": pre_bond,
                                     "amount": amount,
                                     "post_bond": post_bond,
-                                    "pre_state": pre_state,
                                     "epoch": epoch,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
@@ -1086,7 +1039,6 @@ impl WorkloadExecutor {
                                         "pre_bond": pre_bond,
                                         "amount": amount,
                                         "post_bond": post_bond,
-                                        "pre_state": pre_state,
                                         "epoch": epoch,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
@@ -1101,7 +1053,7 @@ impl WorkloadExecutor {
                         }
                     }
                 }
-                Check::BondDecrease(target, validator, pre_bond, amount, pre_state) => {
+                Check::BondDecrease(target, validator, pre_bond, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
 
@@ -1159,7 +1111,6 @@ impl WorkloadExecutor {
                                     "pre_bond": pre_bond,
                                     "amount": amount,
                                     "post_bond": post_bond,
-                                    "pre_state": pre_state,
                                     "epoch": epoch,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
@@ -1176,7 +1127,6 @@ impl WorkloadExecutor {
                                         "pre_bond": pre_bond,
                                         "amount": amount,
                                         "post_bond": post_bond,
-                                        "pre_state": pre_state,
                                         "epoch": epoch,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
@@ -1191,7 +1141,7 @@ impl WorkloadExecutor {
                         }
                     }
                 }
-                Check::AccountExist(target, threshold, sources, pre_state) => {
+                Check::AccountExist(target, threshold, sources) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
                     wallet.save().unwrap();
@@ -1220,7 +1170,6 @@ impl WorkloadExecutor {
                                     "account": account,
                                     "threshold": threshold,
                                     "sources": sources,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -1235,7 +1184,6 @@ impl WorkloadExecutor {
                                         "account": account,
                                         "threshold": threshold,
                                         "sources": sources,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
@@ -1256,7 +1204,6 @@ impl WorkloadExecutor {
                                     "account": "",
                                     "threshold": threshold,
                                     "sources": sources,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block

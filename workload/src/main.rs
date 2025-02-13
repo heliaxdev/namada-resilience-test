@@ -1,12 +1,11 @@
-use std::{env, fs::File, str::FromStr, thread, time::Duration};
+use std::{env, str::FromStr, thread, time::Duration};
 
 use antithesis_sdk::antithesis_init;
 use clap::Parser;
-use fs2::FileExt;
 use namada_chain_workload::{
     config::AppConfig,
     sdk::namada::Sdk,
-    state::State,
+    state::{State, StateError},
     steps::{StepError, StepType, WorkloadExecutor},
 };
 use namada_sdk::{
@@ -21,7 +20,6 @@ use tokio::time::sleep;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
-#[derive(PartialEq)]
 enum Code {
     Success(StepType),
     Fatal(StepType, StepError),
@@ -32,6 +30,7 @@ enum Code {
     InvalidStep(StepType),
     NoTask(StepType),
     EmptyBatch(StepType),
+    StateFatal(StateError),
 }
 
 impl Code {
@@ -45,20 +44,22 @@ impl Code {
             Code::OtherFailure(_, _) => 5,
             Code::NoTask(_) => 6,
             Code::EmptyBatch(_) => 7,
+            Code::StateFatal(_) => 8,
         }
     }
 
-    fn step_type(&self) -> StepType {
+    fn step_type(&self) -> Option<StepType> {
         match self {
-            Code::Success(st) => *st,
-            Code::Fatal(st, _) => *st,
-            Code::ExecutionFailure(st, _) => *st,
-            Code::BroadcastFailure(st, _) => *st,
-            Code::OtherFailure(st, _) => *st,
-            Code::BuildFailure(st, _) => *st,
-            Code::InvalidStep(st) => *st,
-            Code::NoTask(st) => *st,
-            Code::EmptyBatch(st) => *st,
+            Code::Success(st) => Some(*st),
+            Code::Fatal(st, _) => Some(*st),
+            Code::ExecutionFailure(st, _) => Some(*st),
+            Code::BroadcastFailure(st, _) => Some(*st),
+            Code::OtherFailure(st, _) => Some(*st),
+            Code::BuildFailure(st, _) => Some(*st),
+            Code::InvalidStep(st) => Some(*st),
+            Code::NoTask(st) => Some(*st),
+            Code::EmptyBatch(st) => Some(*st),
+            Code::StateFatal(_) => None,
         }
     }
 
@@ -87,93 +88,126 @@ impl Code {
             Code::EmptyBatch(step_type) => {
                 tracing::error!("Building an empty batch for {step_type}")
             }
+            Code::StateFatal(reason) => {
+                tracing::error!("State error -> {reason}")
+            }
         }
     }
 
     fn assert(&self) {
-        let is_fatal = matches!(self, Code::Fatal(_, _));
+        let is_fatal = matches!(self, Code::Fatal(_, _) | Code::StateFatal(_));
         let details = json!({"outcome": self.code()});
-        match self.step_type() {
-            StepType::NewWalletKeyPair => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing NewWalletKeyPair",
-                    &details
-                );
-            }
-            StepType::FaucetTransfer => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing FaucetTransfer", &details);
-            }
-            StepType::TransparentTransfer => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing TransparentTransfer",
-                    &details
-                );
-            }
-            StepType::Bond => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing Bond", &details);
-            }
-            StepType::InitAccount => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing InitAccount", &details);
-            }
-            StepType::Redelegate => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing Redelegate", &details);
-            }
-            StepType::Unbond => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing Unbond", &details);
-            }
-            StepType::ClaimRewards => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing ClaimRewards", &details);
-            }
-            StepType::BatchBond => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing BatchBond", &details);
-            }
-            StepType::BatchRandom => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing BatchRandom", &details);
-            }
-            StepType::Shielding => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing Shielding", &details);
-            }
-            StepType::Shielded => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing Shielded", &details);
-            }
-            StepType::Unshielding => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing Unshielding", &details);
-            }
-            StepType::BecomeValidator => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing BecomeValidator",
-                    &details
-                );
-            }
-            StepType::ChangeMetadata => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing ChangeMetadata", &details);
-            }
-            StepType::ChangeConsensusKeys => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing ChangeConsensusKeys",
-                    &details
-                );
-            }
-            StepType::UpdateAccount => {
-                antithesis_sdk::assert_always!(is_fatal, "Done executing UpdateAccount", &details);
-            }
-            StepType::DeactivateValidator => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing DeactivateValidator",
-                    &details
-                );
-            }
-            StepType::ReactivateValidator => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing ReactivateValidator",
-                    &details
-                );
+        if let Some(step_type) = self.step_type() {
+            match step_type {
+                StepType::NewWalletKeyPair => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing NewWalletKeyPair",
+                        &details
+                    );
+                }
+                StepType::FaucetTransfer => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing FaucetTransfer",
+                        &details
+                    );
+                }
+                StepType::TransparentTransfer => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing TransparentTransfer",
+                        &details
+                    );
+                }
+                StepType::Bond => {
+                    antithesis_sdk::assert_always!(is_fatal, "Done executing Bond", &details);
+                }
+                StepType::InitAccount => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing InitAccount",
+                        &details
+                    );
+                }
+                StepType::Redelegate => {
+                    antithesis_sdk::assert_always!(is_fatal, "Done executing Redelegate", &details);
+                }
+                StepType::Unbond => {
+                    antithesis_sdk::assert_always!(is_fatal, "Done executing Unbond", &details);
+                }
+                StepType::ClaimRewards => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing ClaimRewards",
+                        &details
+                    );
+                }
+                StepType::BatchBond => {
+                    antithesis_sdk::assert_always!(is_fatal, "Done executing BatchBond", &details);
+                }
+                StepType::BatchRandom => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing BatchRandom",
+                        &details
+                    );
+                }
+                StepType::Shielding => {
+                    antithesis_sdk::assert_always!(is_fatal, "Done executing Shielding", &details);
+                }
+                StepType::Shielded => {
+                    antithesis_sdk::assert_always!(is_fatal, "Done executing Shielded", &details);
+                }
+                StepType::Unshielding => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing Unshielding",
+                        &details
+                    );
+                }
+                StepType::BecomeValidator => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing BecomeValidator",
+                        &details
+                    );
+                }
+                StepType::ChangeMetadata => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing ChangeMetadata",
+                        &details
+                    );
+                }
+                StepType::ChangeConsensusKeys => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing ChangeConsensusKeys",
+                        &details
+                    );
+                }
+                StepType::UpdateAccount => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing UpdateAccount",
+                        &details
+                    );
+                }
+                StepType::DeactivateValidator => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing DeactivateValidator",
+                        &details
+                    );
+                }
+                StepType::ReactivateValidator => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing ReactivateValidator",
+                        &details
+                    );
+                }
             }
             StepType::DefaultProposal => {
                 antithesis_sdk::assert_always!(
@@ -226,17 +260,17 @@ async fn inner_main() -> Code {
     tracing::info!("Using config: {:#?}", config);
     tracing::info!("Sha commit: {}", env!("VERGEN_GIT_SHA").to_string());
 
-    tracing::info!("Trying to get the lock...");
-    let path = env::current_dir()
-        .unwrap()
-        .join(format!("state-{}.json", config.id));
-
-    let file = File::open(&path).unwrap_or_else(|_| panic!("Could not open {:?}", path));
-
-    file.lock_exclusive().unwrap();
-    tracing::info!("State locked.");
-
-    let mut state = State::from_file(config.id, config.seed);
+    let (mut state, locked_file) = match State::load(config.id) {
+        Ok(result) => result,
+        Err(StateError::EmptyFile) => {
+            tracing::warn!("State file is empty, creating new one");
+            match State::create_new(config.id, config.seed) {
+                Ok(result) => result,
+                Err(e) => return Code::StateFatal(e),
+            }
+        }
+        Err(e) => return Code::StateFatal(e),
+    };
 
     tracing::info!("Using base dir: {}", state.base_dir.as_path().display());
     tracing::info!("Using seed: {}", state.seed);
@@ -306,7 +340,7 @@ async fn inner_main() -> Code {
     tracing::info!("Built {next_step} -> {tasks:?}");
 
     let checks = workload_executor
-        .build_check(&sdk, tasks.clone(), &state, config.no_check)
+        .build_check(&sdk, tasks.clone(), config.no_check)
         .await;
     tracing::info!("Built checks for {next_step}");
 
@@ -358,12 +392,9 @@ async fn inner_main() -> Code {
 
     tracing::info!("Statistics: {:>?}", state.stats);
 
-    state.serialize_to_file();
-    let path = env::current_dir()
-        .unwrap()
-        .join(format!("state-{}.json", config.id));
-    let file = File::open(path).unwrap();
-    file.unlock().unwrap();
+    if let Err(e) = state.save(Some(locked_file)) {
+        return Code::StateFatal(e);
+    }
 
     exit_code
 }
