@@ -314,7 +314,7 @@ impl State {
         let file = Self::lock_state_file(id)?;
 
         let data = fs::read_to_string(path).map_err(StateError::File)?;
-        if data.is_empty() {
+        if data.trim().is_empty() {
             return Err(StateError::EmptyFile);
         }
         let state = serde_json::from_str(&data).map_err(StateError::Serde)?;
