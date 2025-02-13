@@ -27,29 +27,6 @@ use crate::{
     check::Check,
     constants::{MIN_TRANSFER_BALANCE, PROPOSAL_DEPOSIT},
     entities::Alias,
-    execute::{
-        batch::execute_tx_batch,
-        become_validator::build_tx_become_validator,
-        bond::{build_tx_bond, execute_tx_bond},
-        change_consensus_keys::{build_tx_change_consensus_key, execute_tx_change_consensus_key},
-        change_metadata::build_tx_change_metadata,
-        claim_rewards::{build_tx_claim_rewards, execute_tx_claim_rewards},
-        deactivate_validator::{build_tx_deactivate_validator, execute_tx_deactivate_validator},
-        default_proposal::{build_tx_default_proposal, execute_tx_default_proposal},
-        faucet_transfer::execute_faucet_transfer,
-        init_account::{build_tx_init_account, execute_tx_init_account},
-        new_wallet_keypair::execute_new_wallet_key_pair,
-        reactivate_validator::{build_tx_reactivate_validator, execute_tx_reactivate_validator},
-        redelegate::{build_tx_redelegate, execute_tx_redelegate},
-        reveal_pk::execute_reveal_pk,
-        shielded::{build_tx_shielded_transfer, execute_tx_shielded_transfer},
-        shielding::{build_tx_shielding, execute_tx_shielding},
-        transparent_transfer::{build_tx_transparent_transfer, execute_tx_transparent_transfer},
-        unbond::{build_tx_unbond, execute_tx_unbond},
-        unshielding::{build_tx_unshielding, execute_tx_unshielding},
-        update_account::{build_tx_update_account, execute_tx_update_account},
-        vote::{build_tx_vote, execute_tx_vote},
-    },
     sdk::namada::Sdk,
     state::State,
     task::Task,
@@ -1336,176 +1313,13 @@ impl WorkloadExecutor {
     pub async fn execute(
         &self,
         sdk: &Sdk,
-        tasks: Vec<Task>,
+        tasks: &Vec<Task>,
     ) -> Result<Vec<ExecutionResult>, StepError> {
         let mut execution_results = vec![];
 
         for task in tasks {
             let now = Instant::now();
-            let execution_height = match task {
-                Task::NewWalletKeyPair(alias) => {
-                    let public_key = execute_new_wallet_key_pair(sdk, alias).await?;
-                    execute_reveal_pk(sdk, public_key).await?
-                }
-                Task::FaucetTransfer(target, amount, settings) => {
-                    execute_faucet_transfer(sdk, target, amount, settings).await?
-                }
-                Task::TransparentTransfer(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_transparent_transfer(sdk, source, target, amount, settings)
-                            .await?;
-                    execute_tx_transparent_transfer(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Bond(source, validator, amount, _epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_bond(sdk, source, validator, amount, settings).await?;
-                    execute_tx_bond(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::InitAccount(source, sources, threshold, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_init_account(sdk, source, sources, threshold, settings).await?;
-                    execute_tx_init_account(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Redelegate(source, from, to, amount, _epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_redelegate(sdk, source, from, to, amount, settings).await?;
-                    execute_tx_redelegate(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Unbond(source, validator, amount, _epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_unbond(sdk, source, validator, amount, settings).await?;
-                    execute_tx_unbond(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ClaimRewards(source, validator, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_claim_rewards(sdk, source, validator, settings).await?;
-                    execute_tx_claim_rewards(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ShieldedTransfer(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_shielded_transfer(sdk, source, target, amount, settings).await?;
-                    execute_tx_shielded_transfer(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Shielding(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_shielding(sdk, source, target, amount, settings).await?;
-                    execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Unshielding(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_unshielding(sdk, source, target, amount, settings).await?;
-                    execute_tx_unshielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::DeactivateValidator(target, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_deactivate_validator(sdk, target, settings).await?;
-                    execute_tx_deactivate_validator(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ReactivateValidator(target, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_reactivate_validator(sdk, target, settings).await?;
-                    execute_tx_reactivate_validator(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Vote(source, proposal_id, vote, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_vote(sdk, source, proposal_id, vote, settings).await?;
-                    execute_tx_vote(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ChangeMetadata(
-                    source,
-                    website,
-                    email,
-                    discord,
-                    description,
-                    avatar,
-                    settings,
-                ) => {
-                    let (mut tx, signing_data, tx_args) = build_tx_change_metadata(
-                        sdk,
-                        source,
-                        website,
-                        email,
-                        discord,
-                        description,
-                        avatar,
-                        settings,
-                    )
-                    .await?;
-                    execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ChangeConsensusKeys(source, alias, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_change_consensus_key(sdk, source, alias, settings).await?;
-                    execute_tx_change_consensus_key(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::UpdateAccount(target, sources, threshold, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_update_account(sdk, target, sources, threshold, settings).await?;
-                    execute_tx_update_account(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::BecomeValidator(alias, t, t1, t2, t3, comm, max_comm_change, settings) => {
-                    let (mut tx, signing_data, tx_args) = build_tx_become_validator(
-                        sdk,
-                        alias,
-                        t,
-                        t1,
-                        t2,
-                        t3,
-                        comm,
-                        max_comm_change,
-                        settings,
-                    )
-                    .await?;
-                    execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::DefaultProposal(source, start_epoch, end_epoch, grace_epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) = build_tx_default_proposal(
-                        sdk,
-                        source,
-                        start_epoch,
-                        end_epoch,
-                        grace_epoch,
-                        settings,
-                    )
-                    .await?;
-                    execute_tx_default_proposal(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Batch(tasks, task_settings) => {
-                    let mut txs = vec![];
-                    for task in tasks {
-                        let (tx, signing_data, _) = match task {
-                            Task::TransparentTransfer(source, target, amount, settings) => {
-                                build_tx_transparent_transfer(sdk, source, target, amount, settings)
-                                    .await?
-                            }
-                            Task::Bond(source, validator, amount, _epoch, settings) => {
-                                build_tx_bond(sdk, source, validator, amount, settings).await?
-                            }
-                            Task::Redelegate(source, from, to, amount, _epoch, task_settings) => {
-                                build_tx_redelegate(sdk, source, from, to, amount, task_settings)
-                                    .await?
-                            }
-                            Task::Unbond(source, validator, amount, _epoch, settings) => {
-                                build_tx_unbond(sdk, source, validator, amount, settings).await?
-                            }
-                            Task::ShieldedTransfer(source, target, amount, settings) => {
-                                build_tx_shielded_transfer(sdk, source, target, amount, settings)
-                                    .await?
-                            }
-                            Task::Shielding(source, target, amount, settings) => {
-                                build_tx_shielding(sdk, source, target, amount, settings).await?
-                            }
-                            Task::ClaimRewards(source, validator, settings) => {
-                                build_tx_claim_rewards(sdk, source, validator, settings).await?
-                            }
-                            _ => panic!(),
-                        };
-                        txs.push((tx, signing_data));
-                    }
-
-                    execute_tx_batch(sdk, txs, task_settings).await?
-                }
-            };
+            let execution_height = task.execute(sdk).await?;
             let execution_result = ExecutionResult {
                 time_taken: now.elapsed().as_secs(),
                 execution_height,

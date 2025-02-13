@@ -8,33 +8,43 @@ use namada_sdk::{
     Namada,
 };
 
-use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError, task::TaskSettings};
+use crate::{
+    entities::Alias,
+    sdk::namada::Sdk,
+    steps::StepError,
+    task::{Address as ValidatorAddress, TaskSettings},
+};
 
-use super::utils;
+use super::utils::execute_tx;
 
 pub async fn build_tx_claim_rewards(
     sdk: &Sdk,
-    source: Alias,
-    from_validator: String,
-    settings: TaskSettings,
+    source: &Alias,
+    from_validator: &ValidatorAddress,
+    settings: &TaskSettings,
 ) -> Result<(Tx, SigningTxData, args::Tx), StepError> {
-    let wallet = sdk.namada.wallet.write().await;
+    let wallet = sdk.namada.wallet.read().await;
 
-    let source_address = wallet.find_address(source.name).unwrap().as_ref().clone();
+    let source_address = wallet
+        .find_address(&source.name)
+        .ok_or_else(|| StepError::Wallet(format!("No source address: {}", source.name)))?;
     let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
-    let from_validator = Address::from_str(&from_validator).unwrap(); // safe
+    let from_validator =
+        Address::from_str(&from_validator).expect("ValidatorAddress should be converted");
 
     let mut claim_rewards_tx_builder = sdk.namada.new_claim_rewards(from_validator);
-    claim_rewards_tx_builder.source = Some(source_address);
+    claim_rewards_tx_builder.source = Some(source_address.as_ref().clone());
     claim_rewards_tx_builder =
         claim_rewards_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
     claim_rewards_tx_builder = claim_rewards_tx_builder.wrapper_fee_payer(fee_payer);
     let mut signing_keys = vec![];
-    for signer in settings.signers {
-        let public_key = wallet.find_public_key(&signer.name).unwrap();
+    for signer in &settings.signers {
+        let public_key = wallet
+            .find_public_key(&signer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         signing_keys.push(public_key)
     }
-    claim_rewards_tx_builder = claim_rewards_tx_builder.signing_keys(signing_keys.clone());
+    claim_rewards_tx_builder = claim_rewards_tx_builder.signing_keys(signing_keys);
     drop(wallet);
 
     let (claim_tx, signing_data) = claim_rewards_tx_builder
@@ -47,9 +57,12 @@ pub async fn build_tx_claim_rewards(
 
 pub async fn execute_tx_claim_rewards(
     sdk: &Sdk,
-    tx: &mut Tx,
-    signing_data: SigningTxData,
-    tx_args: &args::Tx,
+    source: &Alias,
+    from_validator: &ValidatorAddress,
+    settings: &TaskSettings,
 ) -> Result<Option<u64>, StepError> {
-    utils::execute_tx(sdk, tx, vec![signing_data], tx_args).await
+    let (claim_tx, signing_data, tx_args) =
+        build_tx_claim_rewards(sdk, source, from_validator, settings).await?;
+
+    execute_tx(sdk, claim_tx, vec![signing_data], &tx_args).await
 }

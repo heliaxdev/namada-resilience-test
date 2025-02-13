@@ -208,20 +208,20 @@ impl Code {
                         &details
                     );
                 }
-            }
-            StepType::DefaultProposal => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing DefaultProposal",
-                    &details
-                );
-            }
-            StepType::VoteProposal => {
-                antithesis_sdk::assert_always!(
-                    is_fatal,
-                    "Done executing VoteProposal",
-                    &details
-                );
+                StepType::DefaultProposal => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing DefaultProposal",
+                        &details
+                    );
+                }
+                StepType::VoteProposal => {
+                    antithesis_sdk::assert_always!(
+                        is_fatal,
+                        "Done executing VoteProposal",
+                        &details
+                    );
+                }
             }
         }
     }
@@ -274,10 +274,9 @@ async fn inner_main() -> Code {
 
     tracing::info!("Using base dir: {}", state.base_dir.as_path().display());
     tracing::info!("Using seed: {}", state.seed);
-    tracing::info!("With checks: {}", !config.no_check);
 
     let url = Url::from_str(&config.rpc).expect("invalid RPC address");
-    tracing::info!("Opening connection agains {:?}", url);
+    tracing::debug!("Opening connection to {url}");
     let http_client = HttpClient::new(url).unwrap();
 
     // Wait for the first 2 blocks
@@ -312,10 +311,7 @@ async fn inner_main() -> Code {
     };
 
     let workload_executor = WorkloadExecutor::new();
-
-    tracing::info!("Starting initialization...");
     workload_executor.init(&sdk).await;
-    tracing::info!("Done initialization!");
 
     let current_epoch = fetch_current_epoch(&sdk).await;
 
@@ -344,7 +340,7 @@ async fn inner_main() -> Code {
         .await;
     tracing::info!("Built checks for {next_step}");
 
-    let execution_height = match workload_executor.execute(&sdk, tasks.clone()).await {
+    let execution_height = match workload_executor.execute(&sdk, &tasks).await {
         Ok(result) => {
             let total_time_takes: u64 = result.iter().map(|execution| execution.time_taken).sum();
             tracing::info!("Execution took {total_time_takes}s...");
@@ -379,11 +375,7 @@ async fn inner_main() -> Code {
         .await
     {
         Ok(_) => {
-            if checks.is_empty() {
-                tracing::info!("Checks are empty, skipping checks and upadating state...");
-            } else {
-                tracing::info!("Checks were successful, updating state...");
-            }
+            tracing::info!("Checks were successful, updating state...");
             workload_executor.update_state(tasks, &mut state);
             Code::Success(next_step)
         }

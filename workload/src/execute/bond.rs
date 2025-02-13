@@ -9,36 +9,45 @@ use namada_sdk::{
     Namada,
 };
 
-use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError, task::TaskSettings};
+use crate::{
+    entities::Alias, sdk::namada::Sdk, steps::StepError, task::Address as ValidatorAddress,
+    task::TaskSettings,
+};
 
-use super::utils;
+use super::utils::execute_tx;
 
 pub async fn build_tx_bond(
     sdk: &Sdk,
-    source: Alias,
-    validator: String,
+    source: &Alias,
+    validator: &ValidatorAddress,
     amount: u64,
-    settings: TaskSettings,
+    settings: &TaskSettings,
 ) -> Result<(Tx, SigningTxData, args::Tx), StepError> {
-    let wallet = sdk.namada.wallet.write().await;
+    let wallet = sdk.namada.wallet.read().await;
 
-    let source_address = wallet.find_address(source.name).unwrap().as_ref().clone();
+    let source_address = wallet
+        .find_address(&source.name)
+        .ok_or_else(|| StepError::Wallet(format!("No source address: {}", source.name)))?;
     let token_amount = token::Amount::from_u64(amount);
-    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
+    let fee_payer = wallet
+        .find_public_key(&settings.gas_payer.name)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
     let validator = Address::from_str(&validator).unwrap(); // safe
 
     let mut bond_tx_builder = sdk
         .namada
         .new_bond(validator, token_amount)
-        .source(source_address);
+        .source(source_address.as_ref().clone());
     bond_tx_builder = bond_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
     bond_tx_builder = bond_tx_builder.wrapper_fee_payer(fee_payer);
     let mut signing_keys = vec![];
-    for signer in settings.signers {
-        let public_key = wallet.find_public_key(&signer.name).unwrap();
+    for signer in &settings.signers {
+        let public_key = wallet
+            .find_public_key(&signer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         signing_keys.push(public_key)
     }
-    bond_tx_builder = bond_tx_builder.signing_keys(signing_keys.clone());
+    bond_tx_builder = bond_tx_builder.signing_keys(signing_keys);
     drop(wallet);
 
     let (bond_tx, signing_data) = bond_tx_builder
@@ -51,9 +60,13 @@ pub async fn build_tx_bond(
 
 pub async fn execute_tx_bond(
     sdk: &Sdk,
-    tx: &mut Tx,
-    signing_data: SigningTxData,
-    tx_args: &args::Tx,
+    source: &Alias,
+    validator: &ValidatorAddress,
+    amount: u64,
+    settings: &TaskSettings,
 ) -> Result<Option<u64>, StepError> {
-    utils::execute_tx(sdk, tx, vec![signing_data], tx_args).await
+    let (bond_tx, signing_data, tx_args) =
+        build_tx_bond(sdk, source, validator, amount, settings).await?;
+
+    execute_tx(sdk, bond_tx, vec![signing_data], &tx_args).await
 }
