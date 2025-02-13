@@ -3,8 +3,8 @@ name: Rebuild MASP indexer images
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: "The container tag"
+      commit:
+        description: "The namada masp indexer SHA commit to build"
         required: true
         type: string
   pull_request:
@@ -78,16 +78,16 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
             GIT_SHA=${{ matrix.images.sha || 'master' }}
-      - name: Build and push (schedule)
+      - name: Build and push (workflow dispatch)
         if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.images.context }}
           push: true
           tags: |
-            ghcr.io/heliaxdev/ant-${{ matrix.images.name }}:${{ github.event.inputs.tag }}
-            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.name }}:${{ github.event.inputs.tag }}
+            ghcr.io/heliaxdev/ant-${{ matrix.images.name }}:${{ github.event.inputs.commit }}
+            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.name }}:${{ github.event.inputs.commit }}
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
-            GIT_SHA=${{ matrix.images.sha || 'master' }}
+            GIT_SHA=${{ matrix.images.commit || 'master' }}
