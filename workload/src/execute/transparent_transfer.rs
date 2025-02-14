@@ -41,9 +41,9 @@ pub async fn build_tx_transparent_transfer(
     let token_amount = token::Amount::from_u64(amount);
 
     let tx_transfer_data = TxTransparentTransferData {
-        source: source_address.as_ref().clone(),
-        target: target_address.as_ref().clone(),
-        token: token_address.as_ref().clone(),
+        source: source_address.into_owned(),
+        target: target_address.into_owned(),
+        token: token_address.into_owned(),
         amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
     };
 

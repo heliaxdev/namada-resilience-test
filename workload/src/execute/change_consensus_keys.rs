@@ -9,17 +9,15 @@ use rand::rngs::OsRng;
 
 use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError, task::TaskSettings};
 
-use super::utils;
+use super::utils::execute_tx;
 
 pub async fn build_tx_change_consensus_key(
     sdk: &Sdk,
-    source: Alias,
-    consensus_alias: Alias,
-    settings: TaskSettings,
+    source: &Alias,
+    consensus_alias: &Alias,
+    settings: &TaskSettings,
 ) -> Result<(Tx, SigningTxData, args::Tx), StepError> {
     let mut wallet = sdk.namada.wallet.write().await;
-    let source_address = wallet.find_address(source.name).unwrap().into_owned();
-    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
 
     let consensus_pk = wallet
         .gen_store_secret_key(
@@ -33,20 +31,30 @@ pub async fn build_tx_change_consensus_key(
         .1
         .ref_to();
 
+    let source_address = wallet
+        .find_address(&source.name)
+        .ok_or_else(|| StepError::Wallet(format!("No source address: {}", source.name)))?;
+    let fee_payer = wallet
+        .find_public_key(&settings.gas_payer.name)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
+
     let mut change_consensus_key_builder = sdk
         .namada
-        .new_change_consensus_key(source_address.clone(), consensus_pk);
+        .new_change_consensus_key(source_address.into_owned(), consensus_pk);
 
     change_consensus_key_builder =
         change_consensus_key_builder.gas_limit(GasLimit::from(settings.gas_limit));
     change_consensus_key_builder = change_consensus_key_builder.wrapper_fee_payer(fee_payer);
 
     let mut signing_keys = vec![];
-    for signer in settings.signers {
-        let public_key = wallet.find_public_key(&signer.name).unwrap();
+    for signer in &settings.signers {
+        let public_key = wallet
+            .find_public_key(&signer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         signing_keys.push(public_key)
     }
-    change_consensus_key_builder = change_consensus_key_builder.signing_keys(signing_keys.clone());
+    change_consensus_key_builder = change_consensus_key_builder.signing_keys(signing_keys);
+    drop(wallet);
 
     let (change_consensus_key, signing_data) = change_consensus_key_builder
         .build(&sdk.namada)
@@ -62,9 +70,12 @@ pub async fn build_tx_change_consensus_key(
 
 pub async fn execute_tx_change_consensus_key(
     sdk: &Sdk,
-    tx: &mut Tx,
-    signing_data: SigningTxData,
-    tx_args: &args::Tx,
+    source: &Alias,
+    consensus_alias: &Alias,
+    settings: &TaskSettings,
 ) -> Result<Option<u64>, StepError> {
-    utils::execute_tx(sdk, tx, vec![signing_data], tx_args).await
+    let (change_consensus_key_tx, signing_data, tx_args) =
+        build_tx_change_consensus_key(sdk, source, consensus_alias, settings).await?;
+
+    execute_tx(sdk, change_consensus_key_tx, vec![signing_data], &tx_args).await
 }

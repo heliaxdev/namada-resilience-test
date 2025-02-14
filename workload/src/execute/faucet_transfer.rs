@@ -22,23 +22,28 @@ pub async fn build_faucet_transfer(
     let native_token_alias = Alias::nam();
 
     let source_address = wallet
-        .find_address(faucet_alias.name)
-        .unwrap()
-        .as_ref()
-        .clone();
-    let target_address = wallet.find_address(&target.name).unwrap().as_ref().clone();
+        .find_address(&faucet_alias.name)
+        .ok_or_else(|| StepError::Wallet(format!("No source address: {}", faucet_alias.name)))?;
+    let target_address = wallet
+        .find_address(&target.name)
+        .ok_or_else(|| StepError::Wallet(format!("No target address: {}", target.name)))?;
     let token_address = wallet
-        .find_address(native_token_alias.name)
-        .unwrap()
-        .as_ref()
-        .clone();
-    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
+        .find_address(&native_token_alias.name)
+        .ok_or_else(|| {
+            StepError::Wallet(format!(
+                "No native token address: {}",
+                native_token_alias.name
+            ))
+        })?;
+    let fee_payer = wallet
+        .find_public_key(&settings.gas_payer.name)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
     let token_amount = token::Amount::from_u64(amount);
 
     let tx_transfer_data = TxTransparentTransferData {
-        source: source_address.clone(),
-        target: target_address.clone(),
-        token: token_address,
+        source: source_address.into_owned(),
+        target: target_address.into_owned(),
+        token: token_address.into_owned(),
         amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
     };
 
@@ -49,7 +54,9 @@ pub async fn build_faucet_transfer(
 
     let mut signing_keys = vec![];
     for signer in &settings.signers {
-        let public_key = wallet.find_public_key(&signer.name).unwrap();
+        let public_key = wallet
+            .find_public_key(&signer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         signing_keys.push(public_key)
     }
     transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys);

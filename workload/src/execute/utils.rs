@@ -25,7 +25,7 @@ fn is_tx_rejected(
 ) -> bool {
     match tx_response {
         Ok(tx_result) => tx_result
-            .is_applied_and_valid(wrapper_hash.as_ref(), &cmt)
+            .is_applied_and_valid(wrapper_hash.as_ref(), cmt)
             .is_none(),
         Err(_) => true,
     }
@@ -41,7 +41,7 @@ fn get_tx_errors(
             tracing::info!("batch result: {:#?}", batch);
 
             return batch
-                .get_inner_tx_result(wrapper_hash.as_ref(), either::Right(&cmt))
+                .get_inner_tx_result(wrapper_hash.as_ref(), either::Right(cmt))
                 .map(|res| {
                     res.as_ref()
                         .map(|res| {
@@ -93,17 +93,19 @@ async fn default_tx_arg(sdk: &Sdk) -> args::Tx {
 pub async fn merge_tx(
     sdk: &Sdk,
     txs: Vec<(Tx, SigningTxData)>,
-    settings: TaskSettings,
+    settings: &TaskSettings,
 ) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
     if txs.is_empty() {
         return Err(StepError::Build("Empty tx batch".to_string()));
     }
     let tx_args = default_tx_arg(sdk).await;
 
-    let wallet = sdk.namada.wallet.write().await;
+    let wallet = sdk.namada.wallet.read().await;
 
     let faucet_alias = Alias::faucet();
-    let gas_payer = wallet.find_public_key(faucet_alias.name).unwrap();
+    let gas_payer = wallet
+        .find_public_key(faucet_alias.name)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
     drop(wallet);
 
     let (tx, signing_datas) = if txs.len() == 1 {
@@ -114,7 +116,7 @@ pub async fn merge_tx(
             tx::build_batch(txs.clone()).map_err(|e| StepError::Build(e.to_string()))?;
         tx.header.atomic = true;
 
-        let mut wrapper = tx.header.wrapper().unwrap();
+        let mut wrapper = tx.header.wrapper().expect("wrapper should exist");
         wrapper.gas_limit = GasLimit::from(settings.gas_limit);
         wrapper.pk = gas_payer.clone();
         tx.header.tx_type = TxType::Wrapper(Box::new(wrapper));

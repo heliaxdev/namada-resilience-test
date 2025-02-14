@@ -34,17 +34,19 @@ pub async fn build_tx_unbond(
     let fee_payer = wallet
         .find_public_key(&settings.gas_payer.name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
-    let validator = Address::from_str(&validator).unwrap(); // safe
+    let validator = Address::from_str(validator).expect("ValidatorAddress should be converted");
 
     let mut unbond_tx_builder = sdk
         .namada
         .new_unbond(validator, token_amount)
-        .source(source_address.as_ref().clone());
+        .source(source_address.into_owned());
     unbond_tx_builder = unbond_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
     unbond_tx_builder = unbond_tx_builder.wrapper_fee_payer(fee_payer);
     let mut signing_keys = vec![];
     for signer in &settings.signers {
-        let public_key = wallet.find_public_key(&signer.name).unwrap();
+        let public_key = wallet
+            .find_public_key(&signer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         signing_keys.push(public_key)
     }
     unbond_tx_builder = unbond_tx_builder.signing_keys(signing_keys);

@@ -32,12 +32,12 @@ pub async fn build_tx_bond(
     let fee_payer = wallet
         .find_public_key(&settings.gas_payer.name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
-    let validator = Address::from_str(&validator).unwrap(); // safe
+    let validator = Address::from_str(validator).expect("ValidatorAddress should be converted");
 
     let mut bond_tx_builder = sdk
         .namada
         .new_bond(validator, token_amount)
-        .source(source_address.as_ref().clone());
+        .source(source_address.into_owned());
     bond_tx_builder = bond_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
     bond_tx_builder = bond_tx_builder.wrapper_fee_payer(fee_payer);
     let mut signing_keys = vec![];

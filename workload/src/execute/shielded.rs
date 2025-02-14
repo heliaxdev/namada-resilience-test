@@ -50,7 +50,7 @@ pub async fn build_tx_shielded_transfer(
     let tx_transfer_data = TxShieldedTransferData {
         source: pseudo_spending_key_from_spending_key,
         target: target_payment_address,
-        token: token.as_ref().clone(),
+        token: token.into_owned(),
         amount,
     };
 

@@ -51,7 +51,7 @@ pub async fn build_tx_unshielding(
 
     let tx_transfer_data = TxUnshieldingTransferData {
         target: target_address.into_owned(),
-        token: token.as_ref().clone(),
+        token: token.into_owned(),
         amount,
     };
 

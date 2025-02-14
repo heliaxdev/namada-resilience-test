@@ -36,12 +36,12 @@ pub async fn build_tx_redelegate(
         .find_public_key(&settings.gas_payer.name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
     let from_validator =
-        Address::from_str(&from_validator).expect("ValidatorAddress should be converted");
+        Address::from_str(from_validator).expect("ValidatorAddress should be converted");
     let to_validator =
-        Address::from_str(&to_validator).expect("ValidatorAddress should be converted");
+        Address::from_str(to_validator).expect("ValidatorAddress should be converted");
 
     let mut redelegate_tx_builder = sdk.namada.new_redelegation(
-        source_address.as_ref().clone(),
+        source_address.into_owned(),
         from_validator,
         to_validator,
         token_amount,

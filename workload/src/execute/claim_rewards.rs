@@ -28,12 +28,14 @@ pub async fn build_tx_claim_rewards(
     let source_address = wallet
         .find_address(&source.name)
         .ok_or_else(|| StepError::Wallet(format!("No source address: {}", source.name)))?;
-    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
+    let fee_payer = wallet
+        .find_public_key(&settings.gas_payer.name)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
     let from_validator =
-        Address::from_str(&from_validator).expect("ValidatorAddress should be converted");
+        Address::from_str(from_validator).expect("ValidatorAddress should be converted");
 
     let mut claim_rewards_tx_builder = sdk.namada.new_claim_rewards(from_validator);
-    claim_rewards_tx_builder.source = Some(source_address.as_ref().clone());
+    claim_rewards_tx_builder.source = Some(source_address.into_owned());
     claim_rewards_tx_builder =
         claim_rewards_tx_builder.gas_limit(GasLimit::from(settings.gas_limit));
     claim_rewards_tx_builder = claim_rewards_tx_builder.wrapper_fee_payer(fee_payer);

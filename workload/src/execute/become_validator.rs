@@ -11,23 +11,21 @@ use rand::rngs::OsRng;
 
 use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError, task::TaskSettings};
 
-use super::utils;
+use super::utils::execute_tx;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn build_tx_become_validator(
     sdk: &Sdk,
-    source: Alias,
-    consensus_alias: Alias,
-    eth_cold_alias: Alias,
-    eth_hot_alias: Alias,
-    protocol_alias: Alias,
+    source: &Alias,
+    consensus_alias: &Alias,
+    eth_cold_alias: &Alias,
+    eth_hot_alias: &Alias,
+    protocol_alias: &Alias,
     commission_rate: Dec,
     commission_max_change: Dec,
-    settings: TaskSettings,
+    settings: &TaskSettings,
 ) -> Result<(Tx, SigningTxData, args::Tx), StepError> {
     let mut wallet = sdk.namada.wallet.write().await;
-
-    let source_address = wallet.find_address(source.name).unwrap().into_owned();
 
     let consensus_pk = wallet
         .gen_store_secret_key(
@@ -77,13 +75,20 @@ pub async fn build_tx_become_validator(
         .1
         .ref_to();
 
-    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
-    wallet.save().expect("unable to save wallet");
+    let source_address = wallet
+        .find_address(&source.name)
+        .ok_or_else(|| StepError::Wallet(format!("No source address: {}", source.name)))?;
+    let fee_payer = wallet
+        .find_public_key(&settings.gas_payer.name)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
+    wallet
+        .save()
+        .map_err(|e| StepError::Wallet(format!("Failed to save the wallet: {e}")))?;
 
     let mut become_validator_tx_builder = sdk
         .namada
         .new_become_validator(
-            source_address.clone(),
+            source_address.into_owned(),
             commission_rate,
             commission_max_change,
             consensus_pk,
@@ -99,11 +104,13 @@ pub async fn build_tx_become_validator(
     become_validator_tx_builder = become_validator_tx_builder.wrapper_fee_payer(fee_payer);
 
     let mut signing_keys = vec![];
-    for signer in settings.signers {
-        let public_key = wallet.find_public_key(&signer.name).unwrap();
+    for signer in &settings.signers {
+        let public_key = wallet
+            .find_public_key(&signer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         signing_keys.push(public_key)
     }
-    become_validator_tx_builder = become_validator_tx_builder.signing_keys(signing_keys.clone());
+    become_validator_tx_builder = become_validator_tx_builder.signing_keys(signing_keys);
     drop(wallet);
 
     let (become_validator, signing_data) = become_validator_tx_builder
@@ -118,11 +125,30 @@ pub async fn build_tx_become_validator(
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn execute_tx_become_validator(
     sdk: &Sdk,
-    tx: &mut Tx,
-    signing_data: SigningTxData,
-    tx_args: &args::Tx,
+    source: &Alias,
+    consensus_alias: &Alias,
+    eth_cold_alias: &Alias,
+    eth_hot_alias: &Alias,
+    protocol_alias: &Alias,
+    commission_rate: Dec,
+    commission_max_change: Dec,
+    settings: &TaskSettings,
 ) -> Result<Option<u64>, StepError> {
-    utils::execute_tx(sdk, tx, vec![signing_data], tx_args).await
+    let (become_validator_tx, signing_data, tx_args) = build_tx_become_validator(
+        sdk,
+        source,
+        consensus_alias,
+        eth_cold_alias,
+        eth_hot_alias,
+        protocol_alias,
+        commission_rate,
+        commission_max_change,
+        settings,
+    )
+    .await?;
+
+    execute_tx(sdk, become_validator_tx, vec![signing_data], &tx_args).await
 }

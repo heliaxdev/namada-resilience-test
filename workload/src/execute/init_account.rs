@@ -28,7 +28,9 @@ pub async fn build_tx_init_account(
         public_keys.push(source_pk);
     }
 
-    let fee_payer = wallet.find_public_key(&settings.gas_payer.name).unwrap();
+    let fee_payer = wallet
+        .find_public_key(&settings.gas_payer.name)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
 
     let mut init_account_builder = sdk
         .namada

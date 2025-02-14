@@ -45,8 +45,8 @@ pub async fn build_tx_shielding(
     let token_amount = token::Amount::from_u64(amount);
 
     let tx_transfer_data = TxShieldingTransferData {
-        source: source_address.as_ref().clone(),
-        token: token_address.as_ref().clone(),
+        source: source_address.into_owned(),
+        token: token_address.into_owned(),
         amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
     };
 

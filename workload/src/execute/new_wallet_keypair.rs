@@ -27,7 +27,12 @@ pub async fn execute_new_wallet_key_pair(
             None,
             &mut OsRng,
         )
-        .ok_or_else(|| StepError::Wallet(format!("Failed to generate keypair")))?;
+        .ok_or_else(|| {
+            StepError::Wallet(format!(
+                "Failed to generate keypair for {}",
+                source_alias.name
+            ))
+        })?;
 
     let spending_key_alias = format!("{}-spending-key", source_alias.name);
     let (_alias, spending_key) = wallet
@@ -38,7 +43,12 @@ pub async fn execute_new_wallet_key_pair(
             true,
             &mut OsRng,
         )
-        .ok_or_else(|| StepError::Wallet(format!("Failed to generate spending key")))?;
+        .ok_or_else(|| {
+            StepError::Wallet(format!(
+                "Failed to generate spending key for {}",
+                spending_key_alias
+            ))
+        })?;
 
     let viewing_key = zip32::ExtendedFullViewingKey::from(&spending_key.into())
         .fvk

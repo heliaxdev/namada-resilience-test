@@ -27,6 +27,7 @@ use crate::{
     check::Check,
     constants::{MIN_TRANSFER_BALANCE, PROPOSAL_DEPOSIT},
     entities::Alias,
+    execute::reveal_pk::execute_reveal_pk,
     sdk::namada::Sdk,
     state::State,
     task::Task,
