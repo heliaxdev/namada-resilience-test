@@ -2,6 +2,7 @@ use namada_sdk::rpc;
 use rand::seq::IteratorRandom;
 
 use crate::{
+    constants::MIN_TRANSFER_BALANCE,
     entities::Alias,
     sdk::namada::Sdk,
     state::State,
@@ -14,7 +15,7 @@ use super::utils;
 pub async fn build_bond(sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
     let client = sdk.namada.clone_client();
     let source_account = state
-        .random_account_with_min_balance(vec![], None)
+        .random_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
         .ok_or(StepError::Build("No more accounts".to_string()))?;
     let amount_account = state.get_balance_for(&source_account.alias);
     let amount = utils::random_between(state, 1, amount_account);

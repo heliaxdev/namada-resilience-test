@@ -504,7 +504,7 @@ impl State {
     pub fn random_account_with_min_balance(
         &mut self,
         blacklist: Vec<Alias>,
-        min_balance: Option<u64>,
+        min_balance: u64,
     ) -> Option<Account> {
         self.balances
             .iter()
@@ -512,7 +512,7 @@ impl State {
                 if blacklist.contains(alias) {
                     return None;
                 }
-                if balance >= &min_balance.unwrap_or(DEFAULT_FEE_IN_NATIVE_TOKEN) {
+                if balance >= &min_balance {
                     Some(self.accounts.get(alias).unwrap().clone())
                 } else {
                     None
@@ -601,7 +601,6 @@ impl State {
         aliases: BTreeSet<Alias>,
         threshold: u64,
     ) {
-        assert!(self.accounts.contains_key(&alias));
         self.accounts.entry(alias).and_modify(|account| {
             account.public_keys = aliases;
             account.threshold = threshold;
@@ -712,6 +711,7 @@ impl State {
 
     pub fn set_enstablished_as_validator(&mut self, alias: Alias) {
         let account = self.accounts.remove(&alias).unwrap();
+        self.balances.remove(&alias).unwrap();
         self.validators.insert(alias, account);
     }
 
