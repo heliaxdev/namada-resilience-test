@@ -6,7 +6,8 @@ use namada_chain_workload::{
     config::AppConfig,
     sdk::namada::Sdk,
     state::{State, StateError},
-    steps::{StepError, StepType, WorkloadExecutor},
+    step::StepType,
+    executor::{StepError, WorkloadExecutor},
 };
 use namada_sdk::{
     io::{Client, NullIo},
@@ -314,21 +315,21 @@ async fn inner_main() -> Code {
         thread::sleep(Duration::from_secs(2));
     };
 
-    let workload_executor = WorkloadExecutor::new();
-    workload_executor.init(&sdk).await;
+    let workload_executor = WorkloadExecutor::new(sdk, state);
+    workload_executor.init().await;
 
     let current_epoch = fetch_current_epoch(&sdk).await;
 
     let next_step = config.step_type;
-    if !workload_executor.is_valid(&next_step, current_epoch, &state) {
-        tracing::warn!("Invalid step: {next_step} -> {state:>?}");
+    if !workload_executor.is_valid(&next_step).await {
+        tracing::warn!("Invalid step: {next_step} -> {:>?}", workload_executor.state());
         return Code::InvalidStep(next_step);
     }
 
-    let init_block_height = fetch_current_block_height(&sdk).await;
+    let init_block_height = workload_executor.fetch_current_block_height().await;
 
     tracing::info!("Step is: {next_step}...");
-    let tasks = match workload_executor.build(next_step, &sdk, &mut state).await {
+    let tasks = match workload_executor.build(next_step).await {
         Ok(tasks) if tasks.is_empty() => {
             return Code::NoTask(next_step);
         }
@@ -339,9 +340,13 @@ async fn inner_main() -> Code {
     };
     tracing::info!("Built {next_step} -> {tasks:?}");
 
-    let checks = workload_executor
-        .build_check(&sdk, tasks.clone(), config.no_check)
-        .await;
+    let checks = if config.no_check {
+        vec![]
+    } else {
+        workload_executor
+        .build_check(&sdk, tasks.clone())
+        .await
+    };
     tracing::info!("Built checks for {next_step}");
 
     let execution_height = match workload_executor.execute(&sdk, &tasks).await {
@@ -359,7 +364,7 @@ async fn inner_main() -> Code {
         }
         Err(e) if matches!(e, StepError::Broadcast(_)) => {
             loop {
-                let current_block_height = fetch_current_block_height(&sdk).await;
+                let current_block_height = workload_executor.fetch_current_block_height().await;
                 if current_block_height > init_block_height {
                     break;
                 }
@@ -425,26 +430,4 @@ async fn setup_sdk(client: &HttpClient, state: &State, config: &AppConfig) -> Re
         NullIo,
     )
     .await
-}
-
-async fn fetch_current_block_height(sdk: &Sdk) -> u64 {
-    let client = sdk.namada.clone_client();
-    loop {
-        let latest_block = client.latest_block().await;
-        if let Ok(block) = latest_block {
-            return block.block.header.height.into();
-        }
-        sleep(Duration::from_secs_f64(1.0f64)).await
-    }
-}
-
-async fn fetch_current_epoch(sdk: &Sdk) -> u64 {
-    let client = sdk.namada.clone_client();
-    loop {
-        let latest_epoch = rpc::query_epoch(&client).await;
-        if let Ok(epoch) = latest_epoch {
-            return epoch.into();
-        }
-        sleep(Duration::from_secs_f64(1.0f64)).await
-    }
 }

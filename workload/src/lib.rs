@@ -7,6 +7,7 @@ pub mod entities;
 pub mod execute;
 pub mod sdk;
 pub mod state;
-pub mod steps;
+pub mod executor;
+pub mod step;
 pub mod task;
 pub mod utils;

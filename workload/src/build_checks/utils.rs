@@ -23,17 +23,16 @@ use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError};
 
 pub async fn get_balance(
     sdk: &Sdk,
-    source: Alias,
+    source: &Alias,
     retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
 ) -> Option<token::Amount> {
-    let client = sdk.namada.clone_client();
     let wallet = sdk.namada.wallet.read().await;
     let native_token_address = wallet.find_address("nam").unwrap().into_owned();
     let target_address = wallet.find_address(&source.name).unwrap().into_owned();
     drop(wallet);
 
     tryhard::retry_fn(|| {
-        rpc::get_token_balance(&client, &native_token_address, &target_address, None)
+        rpc::get_token_balance(&sdk.namada.client, &native_token_address, &target_address, None)
     })
     .with_config(retry_config)
     .on_retry(|attempt, _, error| {
@@ -152,22 +151,21 @@ pub async fn get_shielded_balance(
 
 pub async fn get_bond(
     sdk: &Sdk,
-    source: Alias,
-    validator: String,
+    source: &Alias,
+    validator: &str,
     epoch: u64,
     retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
 ) -> Option<token::Amount> {
-    let client = sdk.namada.clone_client();
     let wallet = sdk.namada.wallet.read().await;
     let source_address = wallet.find_address(&source.name).unwrap().into_owned();
 
-    let validator_address = Address::from_str(&validator).unwrap();
+    let validator_address = Address::from_str(validator).unwrap();
     let epoch = namada_sdk::state::Epoch::from(epoch);
     drop(wallet);
 
     tryhard::retry_fn(|| {
         rpc::get_bond_amount_at(
-            &client,
+            &sdk.namada.client,
             &source_address,
             &validator_address,
             epoch.next().next(),

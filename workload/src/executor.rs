@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, str::FromStr, time::Instant};
+use std::{collections::HashMap, str::FromStr, time::Instant};
 
 use crate::{
     build::{
@@ -29,13 +29,12 @@ use crate::{
     entities::Alias,
     execute::reveal_pk::execute_reveal_pk,
     sdk::namada::Sdk,
+    step::StepType,
     state::State,
     task::Task,
 };
-use clap::ValueEnum;
 use namada_sdk::{
     address::Address,
-    io::Client,
     proof_of_stake::types::ValidatorState,
     rpc::{self},
     state::Epoch,
@@ -68,82 +67,52 @@ pub enum StepError {
     StateCheck(String),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
-pub enum StepType {
-    NewWalletKeyPair,
-    FaucetTransfer,
-    TransparentTransfer,
-    Bond,
-    InitAccount,
-    Redelegate,
-    Unbond,
-    ClaimRewards,
-    BatchBond,
-    BatchRandom,
-    Shielding,
-    Shielded,
-    Unshielding,
-    BecomeValidator,
-    ChangeMetadata,
-    ChangeConsensusKeys,
-    UpdateAccount,
-    DeactivateValidator,
-    ReactivateValidator,
-    DefaultProposal,
-    VoteProposal,
-}
-
-impl Display for StepType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            StepType::NewWalletKeyPair => write!(f, "wallet-key-pair"),
-            StepType::FaucetTransfer => write!(f, "faucet-transfer"),
-            StepType::TransparentTransfer => write!(f, "transparent-transfer"),
-            StepType::Bond => write!(f, "bond"),
-            StepType::InitAccount => write!(f, "init-account"),
-            StepType::Redelegate => write!(f, "redelegate"),
-            StepType::Unbond => write!(f, "unbond"),
-            StepType::ClaimRewards => write!(f, "claim-rewards"),
-            StepType::Shielding => write!(f, "shielding"),
-            StepType::BatchRandom => write!(f, "batch-random"),
-            StepType::BatchBond => write!(f, "batch-bond"),
-            StepType::Shielded => write!(f, "shielded"),
-            StepType::Unshielding => write!(f, "unshielding"),
-            StepType::BecomeValidator => write!(f, "become-validator"),
-            StepType::ChangeMetadata => write!(f, "change-metadata"),
-            StepType::ChangeConsensusKeys => write!(f, "change-consensus-keys"),
-            StepType::UpdateAccount => write!(f, "update-account"),
-            StepType::DeactivateValidator => write!(f, "deactivate-validator"),
-            StepType::ReactivateValidator => write!(f, "reactivate-validator"),
-            StepType::DefaultProposal => write!(f, "default-proposal"),
-            StepType::VoteProposal => write!(f, "vote-proposal"),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ExecutionResult {
     pub time_taken: u64,
     pub execution_height: Option<u64>,
 }
 
-#[derive(Clone, Debug)]
-pub struct WorkloadExecutor {}
-
-impl Default for WorkloadExecutor {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct WorkloadExecutor {
+    sdk: Sdk,
+    state: State,
 }
 
 impl WorkloadExecutor {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(sdk: Sdk, state: State) -> Self {
+        Self { sdk, state }
     }
 
-    pub async fn init(&self, sdk: &Sdk) {
-        let client = &sdk.namada.client;
-        let wallet = sdk.namada.wallet.read().await;
+    pub fn sdk(&self) -> &Sdk {
+        &self.sdk
+    }
+
+    pub fn state(&self) -> &State {
+        &self.state
+    }
+
+    pub async fn fetch_current_block_height(&self) -> u64 {
+        loop {
+            if let Ok(Some(latest_block)) = rpc::query_block(&self.sdk.namada.client).await {
+                return latest_block.height.into()
+            }
+            sleep(Duration::from_secs(1)).await
+        }
+    }
+
+    async fn fetch_current_epoch(&self) -> u64 {
+        loop {
+            let latest_epoch = rpc::query_epoch(&self.sdk.namada.client).await;
+            if let Ok(epoch) = latest_epoch {
+                return epoch.into();
+            }
+            sleep(Duration::from_secs(1)).await
+        }
+    }
+
+    pub async fn init(&self) {
+        let client = &self.sdk.namada.client;
+        let wallet = self.sdk.namada.wallet.read().await;
         let faucet_address = wallet.find_address("faucet").unwrap().into_owned();
         let nam_address = wallet.find_address("nam").unwrap().into_owned();
         let faucet_public_key = wallet.find_public_key("faucet").unwrap().to_owned();
@@ -171,7 +140,7 @@ impl WorkloadExecutor {
                     break;
                 }
             }
-            if let Ok(Some(_)) = execute_reveal_pk(sdk, faucet_public_key.clone()).await {
+            if let Ok(Some(_)) = execute_reveal_pk(&self.sdk, faucet_public_key.clone()).await {
                 break;
             }
             tracing::warn!("Retry revealing faucet pk...");
@@ -179,93 +148,89 @@ impl WorkloadExecutor {
         }
     }
 
-    pub fn is_valid(&self, step_type: &StepType, current_epoch: u64, state: &State) -> bool {
+    pub async fn is_valid(&self, step_type: &StepType) -> bool {
         match step_type {
             StepType::NewWalletKeyPair => true,
-            StepType::FaucetTransfer => state.any_account(),
+            StepType::FaucetTransfer => self.state.any_account(),
             StepType::TransparentTransfer => {
-                state.at_least_accounts(2) && state.any_account_can_make_transfer()
+                self.state.at_least_accounts(2) && self.state.any_account_can_make_transfer()
             }
-            StepType::Bond => state.any_account_with_min_balance(MIN_TRANSFER_BALANCE),
-            StepType::Unbond => state.any_bond(),
-            StepType::InitAccount => state.min_n_implicit_accounts(3),
-            StepType::Redelegate => state.any_bond(),
-            StepType::ClaimRewards => state.any_bond(),
-            StepType::Shielding => state.any_account_with_min_balance(MIN_TRANSFER_BALANCE),
-            StepType::BatchBond => state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE),
+            StepType::Bond => self.state.any_account_with_min_balance(MIN_TRANSFER_BALANCE),
+            StepType::Unbond => self.state.any_bond(),
+            StepType::InitAccount => self.state.min_n_implicit_accounts(3),
+            StepType::Redelegate => self.state.any_bond(),
+            StepType::ClaimRewards => self.state.any_bond(),
+            StepType::Shielding => self.state.any_account_with_min_balance(MIN_TRANSFER_BALANCE),
+            StepType::BatchBond => self.state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE),
             StepType::BatchRandom => {
-                state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE) && state.min_bonds(3)
+                self.state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE) && self.state.min_bonds(3)
             }
             StepType::Shielded => {
-                state.at_least_masp_accounts(2)
-                    && state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
+                self.state.at_least_masp_accounts(2)
+                    && self.state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
             }
             StepType::Unshielding => {
-                state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
-                    && state.min_n_implicit_accounts(1)
+                self.state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
+                    && self.state.min_n_implicit_accounts(1)
             }
-            StepType::BecomeValidator => state.min_n_enstablished_accounts(1),
-            StepType::ChangeMetadata => state.min_n_validators(1),
-            StepType::ChangeConsensusKeys => state.min_n_validators(1),
-            StepType::DeactivateValidator => state.min_n_validators(1),
+            StepType::BecomeValidator => self.state.min_n_enstablished_accounts(1),
+            StepType::ChangeMetadata => self.state.min_n_validators(1),
+            StepType::ChangeConsensusKeys => self.state.min_n_validators(1),
+            StepType::DeactivateValidator => self.state.min_n_validators(1),
             StepType::UpdateAccount => {
-                state.min_n_enstablished_accounts(1) && state.min_n_implicit_accounts(3)
+                self.state.min_n_enstablished_accounts(1) && self.state.min_n_implicit_accounts(3)
             }
-            StepType::ReactivateValidator => state.min_n_deactivated_validators(1),
-            StepType::DefaultProposal => state.any_account_with_min_balance(PROPOSAL_DEPOSIT),
-            StepType::VoteProposal => state.any_bond() && state.any_votable_proposal(current_epoch),
+            StepType::ReactivateValidator => self.state.min_n_deactivated_validators(1),
+            StepType::DefaultProposal => self.state.any_account_with_min_balance(PROPOSAL_DEPOSIT),
+            StepType::VoteProposal => {
+                let current_epoch = self.fetch_current_epoch().await?;
+                self.state.any_bond() && self.state.any_votable_proposal(current_epoch),
+            }
         }
     }
 
     pub async fn build(
         &self,
         step_type: StepType,
-        sdk: &Sdk,
-        state: &mut State,
     ) -> Result<Vec<Task>, StepError> {
         let steps = match step_type {
-            StepType::NewWalletKeyPair => build_new_wallet_keypair(state).await,
-            StepType::FaucetTransfer => build_faucet_transfer(state).await?,
-            StepType::TransparentTransfer => build_transparent_transfer(state).await?,
-            StepType::Bond => build_bond(sdk, state).await?,
-            StepType::InitAccount => build_init_account(state).await?,
-            StepType::Redelegate => build_redelegate(sdk, state).await?,
-            StepType::Unbond => build_unbond(sdk, state).await?,
-            StepType::ClaimRewards => build_claim_rewards(state),
-            StepType::Shielding => build_shielding(state).await?,
-            StepType::BatchBond => build_bond_batch(sdk, 3, state).await?,
-            StepType::BatchRandom => build_random_batch(sdk, 3, state).await?,
-            StepType::Shielded => build_shielded_transfer(state).await?,
-            StepType::Unshielding => build_unshielding(state).await?,
-            StepType::BecomeValidator => build_become_validator(state).await?,
-            StepType::ChangeMetadata => build_change_metadata(state).await?,
-            StepType::ChangeConsensusKeys => build_change_consensus_keys(state).await?,
-            StepType::DeactivateValidator => build_deactivate_validator(state).await?,
-            StepType::UpdateAccount => build_update_account(state).await?,
-            StepType::ReactivateValidator => build_reactivate_validator(state).await?,
-            StepType::DefaultProposal => build_default_proposal(sdk, state).await?,
-            StepType::VoteProposal => build_vote(sdk, state).await?,
+            StepType::NewWalletKeyPair => build_new_wallet_keypair(&mut self.state).await,
+            StepType::FaucetTransfer => build_faucet_transfer(&mut self.state).await?,
+            StepType::TransparentTransfer => build_transparent_transfer(&mut self.state).await?,
+            StepType::Bond => build_bond(&self.sdk, &mut self.state).await?,
+            StepType::InitAccount => build_init_account(&mut self.state).await?,
+            StepType::Redelegate => build_redelegate(&self.sdk, &mut self.state).await?,
+            StepType::Unbond => build_unbond(&self.sdk, &mut self.state).await?,
+            StepType::ClaimRewards => build_claim_rewards(&mut self.state),
+            StepType::Shielding => build_shielding(&mut self.state).await?,
+            StepType::BatchBond => build_bond_batch(&self.sdk, 3, &mut self.state).await?,
+            StepType::BatchRandom => build_random_batch(&self.sdk, 3, &mut self.state).await?,
+            StepType::Shielded => build_shielded_transfer(&mut self.state).await?,
+            StepType::Unshielding => build_unshielding(&mut self.state).await?,
+            StepType::BecomeValidator => build_become_validator(&mut self.state).await?,
+            StepType::ChangeMetadata => build_change_metadata(&mut self.state).await?,
+            StepType::ChangeConsensusKeys => build_change_consensus_keys(&mut self.state).await?,
+            StepType::DeactivateValidator => build_deactivate_validator(&mut self.state).await?,
+            StepType::UpdateAccount => build_update_account(&mut self.state).await?,
+            StepType::ReactivateValidator => build_reactivate_validator(&mut self.state).await?,
+            StepType::DefaultProposal => build_default_proposal(&self.sdk, &mut self.state).await?,
+            StepType::VoteProposal => build_vote(&self.sdk, &mut self.state).await?,
         };
         Ok(steps)
     }
 
-    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, no_check: bool) -> Vec<Check> {
-        if no_check {
-            return vec![];
-        }
-        let retry_config = Self::retry_config();
-
+    pub async fn build_check(&self, tasks: Vec<Task>, no_check: bool) -> Vec<Check> {
         let mut checks = vec![];
         for task in tasks {
             let check = match task {
                 Task::NewWalletKeyPair(source) => vec![Check::RevealPk(source)],
                 Task::FaucetTransfer(target, amount, _) => {
-                    build_checks::faucet::faucet_build_check(sdk, target, amount, retry_config)
+                    build_checks::faucet::faucet_build_check(&self.sdk, target, amount, retry_config)
                         .await
                 }
                 Task::TransparentTransfer(source, target, amount, _) => {
                     build_checks::transparent_transfer::transparent_transfer(
-                        sdk,
+                        &self.sdk,
                         source,
                         target,
                         amount,
@@ -274,12 +239,12 @@ impl WorkloadExecutor {
                     .await
                 }
                 Task::Bond(source, validator, amount, epoch, _) => {
-                    build_checks::bond::bond(sdk, source, validator, amount, epoch, retry_config)
+                    build_checks::bond::bond(&self.sdk, source, validator, amount, epoch, retry_config)
                         .await
                 }
                 Task::InitAccount(alias, sources, threshold, _) => {
                     build_checks::init_account::init_account_build_checks(
-                        sdk,
+                        &self.sdk,
                         alias,
                         sources,
                         threshold,
@@ -289,7 +254,7 @@ impl WorkloadExecutor {
                 }
                 Task::Redelegate(source, from, to, amount, epoch, _) => {
                     build_checks::redelegate::redelegate(
-                        sdk,
+                        &self.sdk,
                         source,
                         from,
                         to,
@@ -301,7 +266,7 @@ impl WorkloadExecutor {
                 }
                 Task::Unbond(source, validator, amount, epoch, _) => {
                     build_checks::unbond::unbond(
-                        sdk,
+                        &self.sdk,
                         source,
                         validator,
                         amount,
@@ -315,7 +280,7 @@ impl WorkloadExecutor {
                 }
                 Task::ShieldedTransfer(source, target, amount, _) => {
                     build_checks::shielded_transfer::shielded_transfer(
-                        sdk,
+                        &self.sdk,
                         source,
                         target,
                         amount,
@@ -326,7 +291,7 @@ impl WorkloadExecutor {
                 }
                 Task::Shielding(source, target, amount, _) => {
                     build_checks::shielding::shielding(
-                        sdk,
+                        &self.sdk,
                         source,
                         target,
                         amount,
@@ -337,7 +302,7 @@ impl WorkloadExecutor {
                 }
                 Task::Unshielding(source, target, amount, _) => {
                     build_checks::unshielding::unshielding(
-                        sdk,
+                        &self.sdk,
                         source,
                         target,
                         amount,
@@ -357,7 +322,7 @@ impl WorkloadExecutor {
                 }
                 Task::UpdateAccount(target, sources, threshold, _) => {
                     build_checks::update_account::update_account_build_checks(
-                        sdk,
+                        &self.sdk,
                         target,
                         sources,
                         threshold,
@@ -373,7 +338,7 @@ impl WorkloadExecutor {
                 }
                 Task::DeactivateValidator(target, _) => {
                     build_checks::deactivate_validator::deactivate_validator_build_checks(
-                        sdk,
+                        &self.sdk,
                         target,
                         retry_config,
                     )
@@ -381,7 +346,7 @@ impl WorkloadExecutor {
                 }
                 Task::ReactivateValidator(target, _) => {
                     build_checks::reactivate_validator::reactivate_validator_build_checks(
-                        sdk,
+                        &self.sdk,
                         target,
                         retry_config,
                     )
@@ -491,7 +456,7 @@ impl WorkloadExecutor {
 
                     for (alias, amount) in balances {
                         if let Some(pre_balance) =
-                            build_checks::utils::get_balance(sdk, alias.clone(), retry_config).await
+                            build_checks::utils::get_balance(&self.sdk, alias.clone(), retry_config).await
                         {
                             if amount >= 0 {
                                 checks.push(Check::BalanceTarget(
@@ -512,7 +477,7 @@ impl WorkloadExecutor {
                     for (key, (epoch, amount)) in bonds {
                         let (source, validator) = key.split_once('@').unwrap();
                         if let Some(pre_bond) = build_checks::utils::get_bond(
-                            sdk,
+                            &self.sdk,
                             Alias::from(source),
                             validator.to_owned(),
                             epoch,
@@ -540,7 +505,7 @@ impl WorkloadExecutor {
 
                     for (alias, amount) in shielded_balances {
                         if let Ok(Some(pre_balance)) = build_checks::utils::get_shielded_balance(
-                            sdk,
+                            &self.sdk,
                             alias.clone(),
                             None,
                             true,
@@ -591,22 +556,18 @@ impl WorkloadExecutor {
             return Ok(());
         };
 
-        let latest_block = loop {
-            let latest_block = client.latest_block().await;
-            if let Ok(block) = latest_block {
-                let current_height = block.block.last_commit.unwrap().height.value();
-                let block_height = current_height;
-                if block_height >= execution_height {
-                    break current_height;
-                } else {
-                    tracing::info!(
-                        "Waiting for block height: {}, currently at: {}",
-                        execution_height,
-                        block_height
-                    );
-                }
+        let height = loop {
+            let current_height = self.fetch_current_block_height().await;
+            if current_height >= execution_height {
+                break current_height;
+            } else {
+                tracing::info!(
+                    "Waiting for block height: {}, currently at: {}",
+                    execution_height,
+                    current_height
+                );
             }
-            sleep(Duration::from_secs_f64(2.0f64)).await
+            sleep(Duration::from_secs(2)).await
         };
 
         for check in checks {
@@ -630,7 +591,7 @@ impl WorkloadExecutor {
                                     "public_key": public_key,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
-                                    "check_height": latest_block,
+                                    "check_height": height,
                                 })
                             );
                             if !was_pk_revealed {
@@ -1333,11 +1294,5 @@ impl WorkloadExecutor {
 
     pub fn update_state(&self, tasks: Vec<Task>, state: &mut State) {
         state.update(tasks, true);
-    }
-
-    fn retry_config() -> RetryFutureConfig<ExponentialBackoff, NoOnRetry> {
-        RetryFutureConfig::new(4)
-            .exponential_backoff(Duration::from_secs(1))
-            .max_delay(Duration::from_secs(10))
     }
 }
