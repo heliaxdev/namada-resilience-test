@@ -183,8 +183,8 @@ impl WorkloadExecutor {
             StepType::ReactivateValidator => self.state.min_n_deactivated_validators(1),
             StepType::DefaultProposal => self.state.any_account_with_min_balance(PROPOSAL_DEPOSIT),
             StepType::VoteProposal => {
-                let current_epoch = self.fetch_current_epoch().await?;
-                self.state.any_bond() && self.state.any_votable_proposal(current_epoch),
+                let current_epoch = self.fetch_current_epoch().await;
+                self.state.any_bond() && self.state.any_votable_proposal(current_epoch)
             }
         }
     }
