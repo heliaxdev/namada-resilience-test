@@ -366,7 +366,7 @@ impl WorkloadExecutor {
                     .await
                 }
                 Task::DefaultProposal(source, _start_epoch, _end_epoch, _grace_epoch, _) => {
-                    build_checks::proposal::proposal(sdk, source, retry_config, state).await
+                    build_checks::proposal::proposal(sdk, source, retry_config).await
                 }
                 Task::Vote(_, _, _, _) => {
                     vec![]
