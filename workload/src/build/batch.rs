@@ -19,7 +19,7 @@ pub async fn build_bond_batch(
     max_size: usize,
     state: &mut State,
 ) -> Result<Vec<Task>, StepError> {
-    _build_batch(sdk, vec![BatchType::Bond], max_size, state).await
+    build_batch(sdk, vec![BatchType::Bond], max_size, state).await
 }
 
 pub async fn build_random_batch(
@@ -27,7 +27,7 @@ pub async fn build_random_batch(
     max_size: usize,
     state: &mut State,
 ) -> Result<Vec<Task>, StepError> {
-    _build_batch(
+    build_batch(
         sdk,
         vec![
             BatchType::TransparentTransfer,
@@ -44,7 +44,7 @@ pub async fn build_random_batch(
     .await
 }
 
-async fn _build_batch(
+async fn build_batch(
     sdk: &Sdk,
     possibilities: Vec<BatchType>,
     max_size: usize,

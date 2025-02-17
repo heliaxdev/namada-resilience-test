@@ -27,29 +27,7 @@ use crate::{
     check::Check,
     constants::{MIN_TRANSFER_BALANCE, PROPOSAL_DEPOSIT},
     entities::Alias,
-    execute::{
-        batch::execute_tx_batch,
-        become_validator::build_tx_become_validator,
-        bond::{build_tx_bond, execute_tx_bond},
-        change_consensus_keys::{build_tx_change_consensus_key, execute_tx_change_consensus_key},
-        change_metadata::build_tx_change_metadata,
-        claim_rewards::{build_tx_claim_rewards, execute_tx_claim_rewards},
-        deactivate_validator::{build_tx_deactivate_validator, execute_tx_deactivate_validator},
-        default_proposal::{build_tx_default_proposal, execute_tx_default_proposal},
-        faucet_transfer::execute_faucet_transfer,
-        init_account::{build_tx_init_account, execute_tx_init_account},
-        new_wallet_keypair::execute_new_wallet_key_pair,
-        reactivate_validator::{build_tx_reactivate_validator, execute_tx_reactivate_validator},
-        redelegate::{build_tx_redelegate, execute_tx_redelegate},
-        reveal_pk::execute_reveal_pk,
-        shielded::{build_tx_shielded_transfer, execute_tx_shielded_transfer},
-        shielding::{build_tx_shielding, execute_tx_shielding},
-        transparent_transfer::{build_tx_transparent_transfer, execute_tx_transparent_transfer},
-        unbond::{build_tx_unbond, execute_tx_unbond},
-        unshielding::{build_tx_unshielding, execute_tx_unshielding},
-        update_account::{build_tx_update_account, execute_tx_update_account},
-        vote::{build_tx_vote, execute_tx_vote},
-    },
+    execute::reveal_pk::execute_reveal_pk,
     sdk::namada::Sdk,
     state::State,
     task::Task,
@@ -58,7 +36,6 @@ use clap::ValueEnum;
 use namada_sdk::{
     address::Address,
     io::Client,
-    key::common,
     proof_of_stake::types::ValidatorState,
     rpc::{self},
     state::Epoch,
@@ -69,7 +46,7 @@ use thiserror::Error;
 use tokio::time::{sleep, Duration};
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum StepError {
     #[error("building an empty batch")]
     EmptyBatch,
@@ -87,6 +64,8 @@ pub enum StepError {
     Rpc(String),
     #[error("shield-sync `{0}`")]
     ShieldSync(String),
+    #[error("state check: `{0}`")]
+    StateCheck(String),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
@@ -163,8 +142,8 @@ impl WorkloadExecutor {
     }
 
     pub async fn init(&self, sdk: &Sdk) {
-        let client = sdk.namada.clone_client();
-        let wallet = sdk.namada.wallet.write().await;
+        let client = &sdk.namada.client;
+        let wallet = sdk.namada.wallet.read().await;
         let faucet_address = wallet.find_address("faucet").unwrap().into_owned();
         let nam_address = wallet.find_address("nam").unwrap().into_owned();
         let faucet_public_key = wallet.find_public_key("faucet").unwrap().to_owned();
@@ -172,7 +151,7 @@ impl WorkloadExecutor {
 
         loop {
             if let Ok(res) =
-                rpc::get_token_balance(&client, &nam_address, &faucet_address, None).await
+                rpc::get_token_balance(client, &nam_address, &faucet_address, None).await
             {
                 if res.is_zero() {
                     tracing::error!("Faucet has no money RIP.");
@@ -181,23 +160,22 @@ impl WorkloadExecutor {
                     tracing::info!("Faucet has $$$ ({})", res);
                     break;
                 }
-            } else {
-                tracing::warn!("Retry querying for  faucet balance...");
-                sleep(Duration::from_secs(2)).await;
             }
+            tracing::warn!("Retry querying for faucet balance...");
+            sleep(Duration::from_secs(2)).await;
         }
 
         loop {
-            if let Ok(res) = rpc::is_public_key_revealed(&client, &faucet_address).await {
-                if !res {
-                    let _ = Self::reveal_pk(sdk, faucet_public_key.clone()).await;
-                } else {
+            if let Ok(is_revealed) = rpc::is_public_key_revealed(client, &faucet_address).await {
+                if is_revealed {
                     break;
                 }
-            } else {
-                tracing::warn!("Retry revealing faucet pk...");
-                sleep(Duration::from_secs(2)).await;
             }
+            if let Ok(Some(_)) = execute_reveal_pk(sdk, faucet_public_key.clone()).await {
+                break;
+            }
+            tracing::warn!("Retry revealing faucet pk...");
+            sleep(Duration::from_secs(2)).await;
         }
     }
 
@@ -271,13 +249,7 @@ impl WorkloadExecutor {
         Ok(steps)
     }
 
-    pub async fn build_check(
-        &self,
-        sdk: &Sdk,
-        tasks: Vec<Task>,
-        state: &State,
-        no_check: bool,
-    ) -> Vec<Check> {
+    pub async fn build_check(&self, sdk: &Sdk, tasks: Vec<Task>, no_check: bool) -> Vec<Check> {
         if no_check {
             return vec![];
         }
@@ -288,14 +260,8 @@ impl WorkloadExecutor {
             let check = match task {
                 Task::NewWalletKeyPair(source) => vec![Check::RevealPk(source)],
                 Task::FaucetTransfer(target, amount, _) => {
-                    build_checks::faucet::faucet_build_check(
-                        sdk,
-                        target,
-                        amount,
-                        retry_config,
-                        state,
-                    )
-                    .await
+                    build_checks::faucet::faucet_build_check(sdk, target, amount, retry_config)
+                        .await
                 }
                 Task::TransparentTransfer(source, target, amount, _) => {
                     build_checks::transparent_transfer::transparent_transfer(
@@ -304,21 +270,12 @@ impl WorkloadExecutor {
                         target,
                         amount,
                         retry_config,
-                        state,
                     )
                     .await
                 }
                 Task::Bond(source, validator, amount, epoch, _) => {
-                    build_checks::bond::bond(
-                        sdk,
-                        source,
-                        validator,
-                        amount,
-                        epoch,
-                        retry_config,
-                        state,
-                    )
-                    .await
+                    build_checks::bond::bond(sdk, source, validator, amount, epoch, retry_config)
+                        .await
                 }
                 Task::InitAccount(alias, sources, threshold, _) => {
                     build_checks::init_account::init_account_build_checks(
@@ -327,7 +284,6 @@ impl WorkloadExecutor {
                         sources,
                         threshold,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -340,7 +296,6 @@ impl WorkloadExecutor {
                         amount,
                         epoch,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -352,7 +307,6 @@ impl WorkloadExecutor {
                         amount,
                         epoch,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -367,7 +321,6 @@ impl WorkloadExecutor {
                         amount,
                         false,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -379,7 +332,6 @@ impl WorkloadExecutor {
                         amount,
                         false,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -391,7 +343,6 @@ impl WorkloadExecutor {
                         amount,
                         false,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -411,12 +362,11 @@ impl WorkloadExecutor {
                         sources,
                         threshold,
                         retry_config,
-                        state,
                     )
                     .await
                 }
                 Task::DefaultProposal(source, _start_epoch, _end_epoch, _grace_epoch, _) => {
-                    build_checks::proposal::proposal(sdk, source, retry_config, state).await
+                    build_checks::proposal::proposal(sdk, source, retry_config).await
                 }
                 Task::Vote(_, _, _, _) => {
                     vec![]
@@ -426,7 +376,6 @@ impl WorkloadExecutor {
                         sdk,
                         target,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -435,7 +384,6 @@ impl WorkloadExecutor {
                         sdk,
                         target,
                         retry_config,
-                        state,
                     )
                     .await
                 }
@@ -550,14 +498,12 @@ impl WorkloadExecutor {
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             } else {
                                 checks.push(Check::BalanceSource(
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             }
                         }
@@ -580,7 +526,6 @@ impl WorkloadExecutor {
                                     validator.to_owned(),
                                     pre_bond,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             } else {
                                 checks.push(Check::BondDecrease(
@@ -588,7 +533,6 @@ impl WorkloadExecutor {
                                     validator.to_owned(),
                                     pre_bond,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             }
                         }
@@ -608,14 +552,12 @@ impl WorkloadExecutor {
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             } else {
                                 checks.push(Check::BalanceShieldedSource(
                                     alias,
                                     pre_balance,
                                     amount.unsigned_abs(),
-                                    state.clone(),
                                 ));
                             }
                         }
@@ -634,7 +576,7 @@ impl WorkloadExecutor {
         sdk: &Sdk,
         checks: Vec<Check>,
         execution_height: Option<u64>,
-    ) -> Result<(), String> {
+    ) -> Result<(), StepError> {
         let config = Self::retry_config();
         let random_timeout = 0.0f64;
         let client = sdk.namada.clone_client();
@@ -680,38 +622,40 @@ impl WorkloadExecutor {
                         .await
                     {
                         Ok(was_pk_revealed) => {
+                            let public_key = source.to_pretty_string();
                             antithesis_sdk::assert_always!(
                                 was_pk_revealed,
                                 "The public key was revealed correctly.",
                                 &json!({
-                                    "public-key": source.to_pretty_string(),
+                                    "public_key": public_key,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block,
                                 })
                             );
                             if !was_pk_revealed {
-                                return Err(format!(
-                                    "RevealPk check error: pk for {} was not revealed",
-                                    source.to_pretty_string()
-                                ));
+                                return Err(StepError::StateCheck(format!(
+                                    "RevealPk check error: pk for {public_key} was not revealed",
+                                )));
                             }
                         }
                         Err(e) => {
                             tracing::error!(
                                 "{}",
                                 json!({
-                                    "public-key": source.to_pretty_string(),
+                                    "public_key": source.to_pretty_string(),
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block,
                                 })
                             );
-                            return Err(format!("RevealPk check error: {}", e));
+                            return Err(StepError::StateCheck(format!(
+                                "RevealPk check error: {e}"
+                            )));
                         }
                     }
                 }
-                Check::BalanceTarget(target, pre_balance, amount, pre_state) => {
+                Check::BalanceTarget(target, pre_balance, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let native_token_address = wallet.find_address("nam").unwrap().into_owned();
                     let target_address = wallet.find_address(&target.name).unwrap().into_owned();
@@ -740,9 +684,9 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
-                                    "BalanceTarget check error: balance is overflowing".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "BalanceTarget check error: balance is overflowing".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_amount.eq(&check_balance),
@@ -753,7 +697,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -768,19 +711,22 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_amount,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceTarget check error: post target amount is not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
+                                return Err(StepError::StateCheck(format!("BalanceTarget check error: post target amount is not equal to pre balance: pre {pre_balance}, post: {post_amount}, {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("BalanceTarget check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceTarget check error: {e}"
+                            )))
+                        }
                     }
                 }
-                Check::BalanceShieldedSource(target, pre_balance, amount, pre_state) => {
+                Check::BalanceShieldedSource(target, pre_balance, amount) => {
                     match build_checks::utils::get_shielded_balance(
                         sdk,
                         target.clone(),
@@ -795,10 +741,10 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
+                                return Err(StepError::StateCheck(
                                     "BalanceShieldedSource check error: balance is underflowing"
                                         .to_string(),
-                                );
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_balance.eq(&check_balance),
@@ -808,7 +754,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_balance,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -822,13 +767,12 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_balance,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceShieldedSource check error: post source amount is not equal to pre balance - amount: {} - {} = {} != {}", pre_balance, amount, check_balance, post_balance));
+                                return Err(StepError::StateCheck(format!("BalanceShieldedSource check error: post source amount is not equal to pre balance - amount: {pre_balance} - {amount} = {check_balance} != {post_balance}")));
                             }
                         }
                         Ok(None) => {
@@ -838,21 +782,24 @@ impl WorkloadExecutor {
                                     "source_alias": target,
                                     "pre_balance": pre_balance,
                                     "amount": amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
                                 })
                             );
-                            return Err("BalanceShieldedSource check error: amount doesn't exist"
-                                .to_string());
+                            return Err(StepError::StateCheck(
+                                "BalanceShieldedSource check error: amount doesn't exist"
+                                    .to_string(),
+                            ));
                         }
                         Err(e) => {
-                            return Err(format!("BalanceShieldedSource check error: {e}",));
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceShieldedSource check error: {e}"
+                            )));
                         }
                     };
                 }
-                Check::BalanceShieldedTarget(target, pre_balance, amount, pre_state) => {
+                Check::BalanceShieldedTarget(target, pre_balance, amount) => {
                     match build_checks::utils::get_shielded_balance(
                         sdk,
                         target.clone(),
@@ -867,10 +814,10 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
+                                return Err(StepError::StateCheck(
                                     "BalanceShieldedTarget check error: balance is overflowing"
                                         .to_string(),
-                                );
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_balance.eq(&check_balance),
@@ -880,7 +827,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_balance,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -894,13 +840,12 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_balance,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceShieldedTarget check error: post target amount is not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_balance, amount));
+                                return Err(StepError::StateCheck(format!("BalanceShieldedTarget check error: post target amount is not equal to pre balance: pre {pre_balance}, post: {post_balance}, {amount}")));
                             }
                         }
                         Ok(None) => {
@@ -910,21 +855,24 @@ impl WorkloadExecutor {
                                     "target_alias": target,
                                     "pre_balance": pre_balance,
                                     "amount": amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
                                 })
                             );
-                            return Err("BalanceShieldedTarget check error: amount doesn't exist"
-                                .to_string());
+                            return Err(StepError::StateCheck(
+                                "BalanceShieldedTarget check error: amount doesn't exist"
+                                    .to_string(),
+                            ));
                         }
                         Err(e) => {
-                            return Err(format!("BalanceShieldedTarget check error: {e}",));
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceShieldedTarget check error: {e}"
+                            )));
                         }
                     };
                 }
-                Check::BalanceSource(target, pre_balance, amount, pre_state) => {
+                Check::BalanceSource(target, pre_balance, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let native_token_address = wallet.find_address("nam").unwrap().into_owned();
                     let target_address = wallet.find_address(&target.name).unwrap().into_owned();
@@ -942,7 +890,7 @@ impl WorkloadExecutor {
                     .on_retry(|attempt, _, error| {
                         let error = error.to_string();
                         async move {
-                            tracing::info!("Retry {} due to {}...", attempt, error);
+                            tracing::info!("Retry {attempt} due to {error}...");
                         }
                     })
                     .await
@@ -953,9 +901,9 @@ impl WorkloadExecutor {
                             {
                                 balance
                             } else {
-                                return Err(
-                                    "BalanceTarget check error: balance is negative".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "BalanceTarget check error: balance is negative".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_amount.eq(&check_balance),
@@ -966,7 +914,6 @@ impl WorkloadExecutor {
                                     "pre_balance": pre_balance,
                                     "amount": amount,
                                     "post_balance": post_amount,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -981,19 +928,22 @@ impl WorkloadExecutor {
                                         "pre_balance": pre_balance,
                                         "amount": amount,
                                         "post_balance": post_amount,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("BalanceSource check error: post target amount not equal to pre balance: pre {}, post: {}, {}", pre_balance, post_amount, amount));
+                                return Err(StepError::StateCheck(format!("BalanceSource check error: post target amount not equal to pre balance: pre {pre_balance}, post: {post_amount}, {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("BalanceSource check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "BalanceSource check error: {e}"
+                            )))
+                        }
                     }
                 }
-                Check::BondIncrease(target, validator, pre_bond, amount, pre_state) => {
+                Check::BondIncrease(target, validator, pre_bond, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
 
@@ -1037,9 +987,9 @@ impl WorkloadExecutor {
                             {
                                 bond
                             } else {
-                                return Err(
-                                    "Bond increase check error: bond is negative".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "Bond increase check error: bond is negative".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_bond.eq(&check_bond),
@@ -1051,7 +1001,6 @@ impl WorkloadExecutor {
                                     "pre_bond": pre_bond,
                                     "amount": amount,
                                     "post_bond": post_bond,
-                                    "pre_state": pre_state,
                                     "epoch": epoch,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
@@ -1068,20 +1017,21 @@ impl WorkloadExecutor {
                                         "pre_bond": pre_bond,
                                         "amount": amount,
                                         "post_bond": post_bond,
-                                        "pre_state": pre_state,
                                         "epoch": epoch,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("Bond increase check error: post target amount is not equal to pre balance: pre {}, post {}, amount: {}", pre_bond, post_bond, amount));
+                                return Err(StepError::StateCheck(format!("Bond increase check error: post target amount is not equal to pre balance: pre {pre_bond}, post {post_bond}, amount: {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("Bond check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!("Bond check error: {e}")))
+                        }
                     }
                 }
-                Check::BondDecrease(target, validator, pre_bond, amount, pre_state) => {
+                Check::BondDecrease(target, validator, pre_bond, amount) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
 
@@ -1092,7 +1042,7 @@ impl WorkloadExecutor {
                         .on_retry(|attempt, _, error| {
                             let error = error.to_string();
                             async move {
-                                tracing::info!("Retry {} due to {}...", attempt, error);
+                                tracing::info!("Retry {attempt} due to {error}...");
                             }
                         })
                         .await
@@ -1125,9 +1075,9 @@ impl WorkloadExecutor {
                             {
                                 bond
                             } else {
-                                return Err(
-                                    "Bond decrease check error: bond is negative".to_string()
-                                );
+                                return Err(StepError::StateCheck(
+                                    "Bond decrease check error: bond is negative".to_string(),
+                                ));
                             };
                             antithesis_sdk::assert_always!(
                                 post_bond.eq(&check_bond),
@@ -1139,7 +1089,6 @@ impl WorkloadExecutor {
                                     "pre_bond": pre_bond,
                                     "amount": amount,
                                     "post_bond": post_bond,
-                                    "pre_state": pre_state,
                                     "epoch": epoch,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
@@ -1156,20 +1105,21 @@ impl WorkloadExecutor {
                                         "pre_bond": pre_bond,
                                         "amount": amount,
                                         "post_bond": post_bond,
-                                        "pre_state": pre_state,
                                         "epoch": epoch,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!("Bond decrease check error: post target amount is not equal to pre balance: pre {}, post {}, amount: {}", pre_bond, post_bond, amount));
+                                return Err(StepError::StateCheck(format!("Bond decrease check error: post target amount is not equal to pre balance: pre {pre_bond}, post {post_bond}, amount: {amount}")));
                             }
                         }
-                        Err(e) => return Err(format!("Bond check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!("Bond check error: {e}")))
+                        }
                     }
                 }
-                Check::AccountExist(target, threshold, sources, pre_state) => {
+                Check::AccountExist(target, threshold, sources) => {
                     let wallet = sdk.namada.wallet.read().await;
                     let source_address = wallet.find_address(&target.name).unwrap().into_owned();
                     wallet.save().unwrap();
@@ -1198,7 +1148,6 @@ impl WorkloadExecutor {
                                     "account": account,
                                     "threshold": threshold,
                                     "sources": sources,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
@@ -1213,16 +1162,15 @@ impl WorkloadExecutor {
                                         "account": account,
                                         "threshold": threshold,
                                         "sources": sources,
-                                        "pre_state": pre_state,
                                         "timeout": random_timeout,
                                         "execution_height": execution_height,
                                         "check_height": latest_block
                                     })
                                 );
-                                return Err(format!(
+                                return Err(StepError::StateCheck(format!(
                                     "AccountExist check error: account {} is invalid",
                                     source_address
-                                ));
+                                )));
                             }
                         }
                         Ok(None) => {
@@ -1234,18 +1182,21 @@ impl WorkloadExecutor {
                                     "account": "",
                                     "threshold": threshold,
                                     "sources": sources,
-                                    "pre_state": pre_state,
                                     "timeout": random_timeout,
                                     "execution_height": execution_height,
                                     "check_height": latest_block
                                 })
                             );
-                            return Err(format!(
+                            return Err(StepError::StateCheck(format!(
                                 "AccountExist check error: account {} doesn't exist",
                                 target.name
-                            ));
+                            )));
                         }
-                        Err(e) => return Err(format!("AccountExist check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "AccountExist check error: {e}"
+                            )))
+                        }
                     };
                 }
                 Check::IsValidatorAccount(target) => {
@@ -1280,7 +1231,7 @@ impl WorkloadExecutor {
                         .on_retry(|attempt, _, error| {
                             let error = error.to_string();
                             async move {
-                                tracing::info!("Retry {} due to {}...", attempt, error);
+                                tracing::info!("Retry {attempt} due to {error}...");
                             }
                         })
                         .await
@@ -1301,7 +1252,7 @@ impl WorkloadExecutor {
                     .on_retry(|attempt, _, error| {
                         let error = error.to_string();
                         async move {
-                            tracing::info!("Retry {} due to {}...", attempt, error);
+                            tracing::info!("Retry {attempt} due to {error}...");
                         }
                     })
                     .await
@@ -1342,12 +1293,16 @@ impl WorkloadExecutor {
                                     "check_height": latest_block
                                 })
                             );
-                            return Err(format!(
+                            return Err(StepError::StateCheck(format!(
                                 "Validator status check error: validator {} doesn't exist",
                                 target.name
-                            ));
+                            )));
                         }
-                        Err(e) => return Err(format!("ValidatorStatus check error: {}", e)),
+                        Err(e) => {
+                            return Err(StepError::StateCheck(format!(
+                                "ValidatorStatus check error: {e}"
+                            )))
+                        }
                     };
                 }
             }
@@ -1359,176 +1314,13 @@ impl WorkloadExecutor {
     pub async fn execute(
         &self,
         sdk: &Sdk,
-        tasks: Vec<Task>,
+        tasks: &Vec<Task>,
     ) -> Result<Vec<ExecutionResult>, StepError> {
         let mut execution_results = vec![];
 
         for task in tasks {
             let now = Instant::now();
-            let execution_height = match task {
-                Task::NewWalletKeyPair(alias) => {
-                    let public_key = execute_new_wallet_key_pair(sdk, alias).await?;
-                    Self::reveal_pk(sdk, public_key).await?
-                }
-                Task::FaucetTransfer(target, amount, settings) => {
-                    execute_faucet_transfer(sdk, target, amount, settings).await?
-                }
-                Task::TransparentTransfer(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_transparent_transfer(sdk, source, target, amount, settings)
-                            .await?;
-                    execute_tx_transparent_transfer(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Bond(source, validator, amount, _epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_bond(sdk, source, validator, amount, settings).await?;
-                    execute_tx_bond(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::InitAccount(source, sources, threshold, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_init_account(sdk, source, sources, threshold, settings).await?;
-                    execute_tx_init_account(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Redelegate(source, from, to, amount, _epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_redelegate(sdk, source, from, to, amount, settings).await?;
-                    execute_tx_redelegate(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Unbond(source, validator, amount, _epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_unbond(sdk, source, validator, amount, settings).await?;
-                    execute_tx_unbond(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ClaimRewards(source, validator, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_claim_rewards(sdk, source, validator, settings).await?;
-                    execute_tx_claim_rewards(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ShieldedTransfer(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_shielded_transfer(sdk, source, target, amount, settings).await?;
-                    execute_tx_shielded_transfer(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Shielding(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_shielding(sdk, source, target, amount, settings).await?;
-                    execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Unshielding(source, target, amount, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_unshielding(sdk, source, target, amount, settings).await?;
-                    execute_tx_unshielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::DeactivateValidator(target, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_deactivate_validator(sdk, target, settings).await?;
-                    execute_tx_deactivate_validator(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ReactivateValidator(target, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_reactivate_validator(sdk, target, settings).await?;
-                    execute_tx_reactivate_validator(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Vote(source, proposal_id, vote, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_vote(sdk, source, proposal_id, vote, settings).await?;
-                    execute_tx_vote(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ChangeMetadata(
-                    source,
-                    website,
-                    email,
-                    discord,
-                    description,
-                    avatar,
-                    settings,
-                ) => {
-                    let (mut tx, signing_data, tx_args) = build_tx_change_metadata(
-                        sdk,
-                        source,
-                        website,
-                        email,
-                        discord,
-                        description,
-                        avatar,
-                        settings,
-                    )
-                    .await?;
-                    execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::ChangeConsensusKeys(source, alias, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_change_consensus_key(sdk, source, alias, settings).await?;
-                    execute_tx_change_consensus_key(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::UpdateAccount(target, sources, threshold, settings) => {
-                    let (mut tx, signing_data, tx_args) =
-                        build_tx_update_account(sdk, target, sources, threshold, settings).await?;
-                    execute_tx_update_account(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::BecomeValidator(alias, t, t1, t2, t3, comm, max_comm_change, settings) => {
-                    let (mut tx, signing_data, tx_args) = build_tx_become_validator(
-                        sdk,
-                        alias,
-                        t,
-                        t1,
-                        t2,
-                        t3,
-                        comm,
-                        max_comm_change,
-                        settings,
-                    )
-                    .await?;
-                    execute_tx_shielding(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::DefaultProposal(source, start_epoch, end_epoch, grace_epoch, settings) => {
-                    let (mut tx, signing_data, tx_args) = build_tx_default_proposal(
-                        sdk,
-                        source,
-                        start_epoch,
-                        end_epoch,
-                        grace_epoch,
-                        settings,
-                    )
-                    .await?;
-                    execute_tx_default_proposal(sdk, &mut tx, signing_data, &tx_args).await?
-                }
-                Task::Batch(tasks, task_settings) => {
-                    let mut txs = vec![];
-                    for task in tasks {
-                        let (tx, signing_data, _) = match task {
-                            Task::TransparentTransfer(source, target, amount, settings) => {
-                                build_tx_transparent_transfer(sdk, source, target, amount, settings)
-                                    .await?
-                            }
-                            Task::Bond(source, validator, amount, _epoch, settings) => {
-                                build_tx_bond(sdk, source, validator, amount, settings).await?
-                            }
-                            Task::Redelegate(source, from, to, amount, _epoch, task_settings) => {
-                                build_tx_redelegate(sdk, source, from, to, amount, task_settings)
-                                    .await?
-                            }
-                            Task::Unbond(source, validator, amount, _epoch, settings) => {
-                                build_tx_unbond(sdk, source, validator, amount, settings).await?
-                            }
-                            Task::ShieldedTransfer(source, target, amount, settings) => {
-                                build_tx_shielded_transfer(sdk, source, target, amount, settings)
-                                    .await?
-                            }
-                            Task::Shielding(source, target, amount, settings) => {
-                                build_tx_shielding(sdk, source, target, amount, settings).await?
-                            }
-                            Task::ClaimRewards(source, validator, settings) => {
-                                build_tx_claim_rewards(sdk, source, validator, settings).await?
-                            }
-                            _ => panic!(),
-                        };
-                        txs.push((tx, signing_data));
-                    }
-
-                    execute_tx_batch(sdk, txs, task_settings).await?
-                }
-            };
+            let execution_height = task.execute(sdk).await?;
             let execution_result = ExecutionResult {
                 time_taken: now.elapsed().as_secs(),
                 execution_height,
@@ -1541,10 +1333,6 @@ impl WorkloadExecutor {
 
     pub fn update_state(&self, tasks: Vec<Task>, state: &mut State) {
         state.update(tasks, true);
-    }
-
-    async fn reveal_pk(sdk: &Sdk, public_key: common::PublicKey) -> Result<Option<u64>, StepError> {
-        execute_reveal_pk(sdk, public_key).await
     }
 
     fn retry_config() -> RetryFutureConfig<ExponentialBackoff, NoOnRetry> {
