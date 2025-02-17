@@ -1,0 +1,207 @@
+networks:
+  namada-net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 30.0.0.0/24
+services:
+  check:
+    container_name: check
+    environment:
+    - RPC=30.0.0.14:27658
+    - MASP_INDEXER_URL=http://30.0.0.20:5000
+    hostname: check
+    build:
+      context: ../check
+      dockerfile: Dockerfile
+    image: local-check:latest
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.19
+    restart: on-failure
+    volumes:
+    - ./container_ready/:/container_ready
+  fullnode:
+    container_name: fullnode
+    entrypoint: /entrypoint.sh
+    environment:
+    - NAMADA_TOKIO_THREADS=4
+    - NAMADA_RAYON_THREADS=4
+    - NAMADA_LOG=info
+    - NAMADA_LOG_FMT=json
+    - NAMADA_TM_STDOUT="true"
+    - CMT_LOG_LEVEL=info
+    - NAMADA_CMT_STDOUT=true
+    - BASE_DIR=/fullnode
+    hostname: fullnode
+    image: ghcr.io/heliaxdev/ant-namada:main
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.15
+    volumes:
+    - ./fullnode/:/fullnode
+    - ./container_ready/:/container_ready
+    - ./namada.sh:/entrypoint.sh
+  genesis:
+    container_name: genesis
+    environment:
+    - VALIDATOR0_ADDR=30.0.0.12:27657
+    - VALIDATOR1_ADDR=30.0.0.13:27657
+    - VALIDATOR2_ADDR=30.0.0.14:27657
+    hostname: genesis
+    image: ghcr.io/heliaxdev/ant-namada-genesis:main
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.11
+    volumes:
+    - ./validator-0/:/validator-0
+    - ./validator-1/:/validator-1
+    - ./validator-2/:/validator-2
+    - ./fullnode/:/fullnode
+    - ./container_ready/:/container_ready
+  masp-block-filter:
+    container_name: masp-block-filter
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+    - COMETBFT_URL=http://30.0.0.12:27658
+    - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
+    hostname: masp-block-filter
+    image: ghcr.io/heliaxdev/ant-masp-indexer-block-filter:master
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.23
+    restart: on-failure
+  masp-chain:
+    container_name: masp-chain
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+    - COMETBFT_URL=http://30.0.0.12:27658
+    - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
+    hostname: masp-chain
+    image: ghcr.io/heliaxdev/ant-masp-indexer-chain:master
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.22
+    restart: on-failure
+  masp-webserver:
+    container_name: masp-webserver
+    environment:
+    - PORT=5000
+    - COMETBFT_URL=http://30.0.0.12:27658
+    - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
+    hostname: masp-webserver
+    image: ghcr.io/heliaxdev/ant-masp-indexer-webserver:master
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.20
+    restart: on-failure
+  postgres:
+    container_name: postgres
+    environment:
+      PGUSER: postgres
+      POSTGRES_DB: masp_indexer_local
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+    healthcheck:
+      interval: 5s
+      retries: 5
+      start_period: 80s
+      test:
+      - CMD
+      - pg_isready
+      - -d
+      - masp_indexer_local
+      timeout: 10s
+    image: postgres:16-alpine
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.21
+  validator0:
+    container_name: validator0
+    entrypoint: /entrypoint.sh
+    environment:
+    - NAMADA_TOKIO_THREADS=4
+    - NAMADA_RAYON_THREADS=4
+    - NAMADA_LOG=info
+    - NAMADA_LOG_FMT=json
+    - TM_LOG_LEVEL=p2p:none,pex:error
+    - CMT_LOG_LEVEL=p2p:none,pex:error
+    - NAMADA_CMT_STDOUT=true
+    - BASE_DIR=/validator-0
+    hostname: validator0
+    image: ghcr.io/heliaxdev/ant-namada:main
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.12
+    volumes:
+    - ./validator-0/:/validator-0
+    - ./container_ready/:/container_ready
+    - ./namada.sh:/entrypoint.sh
+  validator1:
+    container_name: validator1
+    entrypoint: /entrypoint.sh
+    environment:
+    - NAMADA_TOKIO_THREADS=4
+    - NAMADA_RAYON_THREADS=4
+    - NAMADA_LOG=info
+    - NAMADA_LOG_FMT=json
+    - TM_LOG_LEVEL=p2p:none,pex:error
+    - CMT_LOG_LEVEL=p2p:none,pex:error
+    - NAMADA_CMT_STDOUT=true
+    - BASE_DIR=/validator-1
+    hostname: validator1
+    image: ghcr.io/heliaxdev/ant-namada:main
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.13
+    volumes:
+    - ./validator-1/:/validator-1
+    - ./container_ready/:/container_ready
+    - ./namada.sh:/entrypoint.sh
+  validator2:
+    container_name: validator2
+    entrypoint: /entrypoint.sh
+    environment:
+    - NAMADA_TOKIO_THREADS=4
+    - NAMADA_RAYON_THREADS=4
+    - NAMADA_LOG=info
+    - NAMADA_LOG_FMT=json
+    - TM_LOG_LEVEL=p2p:none,pex:error
+    - CMT_LOG_LEVEL=p2p:none,pex:error
+    - NAMADA_CMT_STDOUT=true
+    - BASE_DIR=/validator-2
+    hostname: validator2
+    image: ghcr.io/heliaxdev/ant-namada:main
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.14
+    volumes:
+    - ./validator-2/:/validator-2
+    - ./container_ready/:/container_ready
+    - ./namada.sh:/entrypoint.sh
+  workload0:
+    container_name: workload0
+    environment:
+    - RPC=30.0.0.14:27658
+    - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
+    - MASP_INDEXER_URL=http://30.0.0.20:5000
+    - WORKLOAD_ID=0
+    - NO_CHECK=false
+    hostname: workload0
+    build:
+      context: ../workload
+      dockerfile: Dockerfile
+      args:
+          TEST_SCRIPT: test_run.sh
+    image: local-workload:latest
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.16
+    restart: no
+    volumes:
+    - ./container_ready/:/container_ready
+version: '3.8'
