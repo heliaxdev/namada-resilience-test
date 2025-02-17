@@ -36,5 +36,7 @@ jobs:
             key: ${{ runner.os }}-docker-compose-${{ github.sha }}
             restore-keys: |
               ${{ runner.os }}-docker-compose-
+        - name: Docker compose build
+          run:  docker compose -f config/docker-compose-ci.yml build
         - name: Run test
           run: ./ci.sh
