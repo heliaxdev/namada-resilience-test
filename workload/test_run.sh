@@ -13,7 +13,7 @@ mkdir -p base/masp-$WORKLOAD_ID
 mkdir -p /opt/antithesis/test/v1/namada/wallet-$WORKLOAD_ID
 mkdir -p /opt/antithesis/test/v1/namada/masp-$WORKLOAD_ID
 
-source /opt/antithesis/test/v1/namada/init_script.sh
+/opt/antithesis/test/v1/namada/init_script.sh
 if [ $? -eq 0 ]
 then
     echo "<OK> init" 
@@ -24,7 +24,7 @@ fi
 
 # create_wallet, faucet_transfer, bond, init_account have been already executed in the init script
 
-source /opt/antithesis/test/v1/namada/parallel_driver_transparent_transfer.sh
+/opt/antithesis/test/v1/namada/parallel_driver_transparent_transfer.sh
 if [ $? -eq 0 ]
 then
     echo "<OK> transparent transfer" 
@@ -33,7 +33,7 @@ else
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh
+/opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh
 if [ $? -eq 0 ]
 then
     echo "<OK> redelegate" 
@@ -42,7 +42,7 @@ else
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_unbond.sh
+/opt/antithesis/test/v1/namada/parallel_driver_unbond.sh
 if [ $? -eq 0 ] 
 then
     echo "<OK> unbond" 
@@ -51,7 +51,7 @@ else
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_update_account.sh
+/opt/antithesis/test/v1/namada/parallel_driver_update_account.sh
 if [ $? -eq 0 ]
 then
     echo "<OK> update account" 
@@ -62,7 +62,7 @@ fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-    source /opt/antithesis/test/v1/namada/parallel_driver_shielding.sh
+    /opt/antithesis/test/v1/namada/parallel_driver_shielding.sh
     if [ $? -eq 0 ]
     then
         echo "<OK> shielding" 
@@ -79,7 +79,7 @@ fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-    source /opt/antithesis/test/v1/namada/parallel_driver_shielded.sh
+    /opt/antithesis/test/v1/namada/parallel_driver_shielded.sh
     if [ $? -eq 0 ]
     then
         echo "<OK> shielded" 
@@ -96,7 +96,7 @@ fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-    source /opt/antithesis/test/v1/namada/parallel_driver_unshielding.sh
+    /opt/antithesis/test/v1/namada/parallel_driver_unshielding.sh
     if [ $? -eq 0 ]
     then
         echo "<OK> unshielding" 
@@ -111,7 +111,7 @@ if [ $retries -gt $MAX_RETRY_COUNT ]; then
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_claim_rewards.sh
+/opt/antithesis/test/v1/namada/parallel_driver_claim_rewards.sh
 if [ $? -eq 0 ] 
 then
     echo "<OK> claim rewards" 
@@ -120,7 +120,7 @@ else
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_become_validator.sh
+/opt/antithesis/test/v1/namada/parallel_driver_become_validator.sh
 if [ $? -eq 0 ] 
 then
     echo "<OK> become validator" 
@@ -129,7 +129,7 @@ else
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_change_metadata.sh
+/opt/antithesis/test/v1/namada/parallel_driver_change_metadata.sh
 if [ $? -eq 0 ] 
 then
     echo "<OK> change metadata" 
@@ -138,7 +138,7 @@ else
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_change_consensus_keys.sh
+/opt/antithesis/test/v1/namada/parallel_driver_change_consensus_keys.sh
 if [ $? -eq 0 ] 
 then
     echo "<OK> change consensus keys" 
@@ -147,7 +147,7 @@ else
     exit 1
 fi
 
-source /opt/antithesis/test/v1/namada/parallel_driver_bond_batch.sh
+/opt/antithesis/test/v1/namada/parallel_driver_bond_batch.sh
 if [ $? -eq 0 ] 
 then
     echo "<OK> bond batch" 
@@ -158,7 +158,7 @@ fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-    source /opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh
+    /opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh
     if [ $? -eq 0 ] 
     then
         echo "<OK> random batch" 
