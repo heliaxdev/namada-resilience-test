@@ -1,15 +1,11 @@
 use std::collections::BTreeSet;
 
-use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
-
-use crate::{check::Check, entities::Alias, sdk::namada::Sdk};
+use crate::{check::Check, entities::Alias};
 
 pub async fn update_account_build_checks(
-    _sdk: &Sdk,
-    alias: Alias,
-    sources: BTreeSet<Alias>,
+    alias: &Alias,
+    sources: &BTreeSet<Alias>,
     threshold: u64,
-    _retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
 ) -> Vec<Check> {
-    vec![Check::AccountExist(alias, threshold, sources)]
+    vec![Check::AccountExist(alias.clone(), threshold, sources.clone())]
 }

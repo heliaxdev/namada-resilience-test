@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use clap::ValueEnum;
+use std::fmt::Display;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum StepType {

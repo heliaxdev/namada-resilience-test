@@ -6,7 +6,7 @@ use namada_sdk::{
 };
 use rand::rngs::OsRng;
 
-use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError};
+use crate::{entities::Alias, executor::StepError, sdk::namada::Sdk};
 
 pub async fn execute_new_wallet_key_pair(
     sdk: &Sdk,
@@ -14,7 +14,7 @@ pub async fn execute_new_wallet_key_pair(
 ) -> Result<common::PublicKey, StepError> {
     let block = rpc::query_block(&sdk.namada.client)
         .await
-        .map_err(|e| StepError::Rpc(e.to_string()))?
+        .map_err(StepError::Rpc)?
         .ok_or_else(|| StepError::StateCheck("No block found".to_string()))?;
 
     let mut wallet = sdk.namada.wallet.write().await;

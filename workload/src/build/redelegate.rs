@@ -5,28 +5,27 @@ use rand::seq::IteratorRandom;
 
 use crate::{
     entities::Alias,
+    executor::StepError,
     sdk::namada::Sdk,
     state::State,
-    steps::StepError,
     task::{Task, TaskSettings},
 };
 
 use super::utils;
 
 pub async fn build_redelegate(sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
-    let client = sdk.namada.clone_client();
+    let client = &sdk.namada.client;
     let source_bond = state.random_bond();
     let source_account = state.get_account_by_alias(&source_bond.alias);
     let amount = utils::random_between(state, 1, source_bond.amount);
 
-    let current_epoch = rpc::query_epoch(&client)
+    let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
+    let validators = rpc::get_all_consensus_validators(client, current_epoch)
         .await
-        .map_err(|e| StepError::Rpc(format!("query epoch: {}", e)))?;
-    let validators = rpc::get_all_consensus_validators(&client, current_epoch)
-        .await
-        .map_err(|e| StepError::Rpc(format!("query consensus validators: {}", e)))?;
+        .map_err(StepError::Rpc)?;
 
-    let source_bond_validator_address = Address::from_str(&source_bond.validator).unwrap();
+    let source_bond_validator_address =
+        Address::from_str(&source_bond.validator).expect("ValidatorAddress should be converted");
 
     let source_redelegations = state.get_redelegations_targets_for(&source_account.alias);
     if source_redelegations.contains(&source_bond.validator) {
@@ -58,12 +57,8 @@ pub async fn build_redelegate(sdk: &Sdk, state: &mut State) -> Result<Vec<Task>,
         to_validator.to_string(),
         amount,
         current_epoch
-            .next()
-            .next()
-            .next()
-            .next()
-            .next()
-            .next()
+            .checked_add(6)
+            .expect("Epoch shouldn't overflow")
             .into(),
         task_settings,
     )])

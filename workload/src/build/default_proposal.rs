@@ -1,9 +1,9 @@
 use crate::{
     constants::PROPOSAL_DEPOSIT,
     entities::Alias,
+    executor::StepError,
     sdk::namada::Sdk,
     state::State,
-    steps::StepError,
     task::{Task, TaskSettings},
 };
 use namada_sdk::rpc;
@@ -16,9 +16,7 @@ pub async fn build_default_proposal(sdk: &Sdk, state: &mut State) -> Result<Vec<
         .random_account_with_min_balance(vec![], PROPOSAL_DEPOSIT)
         .ok_or(StepError::Build("No more accounts".to_string()))?;
 
-    let current_epoch = rpc::query_epoch(&client)
-        .await
-        .map_err(|e| StepError::Rpc(format!("query epoch: {}", e)))?;
+    let current_epoch = rpc::query_epoch(&client).await.map_err(StepError::Rpc)?;
 
     let gov_prams = rpc::query_governance_parameters(&client).await;
 

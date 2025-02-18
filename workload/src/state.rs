@@ -113,121 +113,121 @@ impl State {
         }
     }
 
-    pub fn update(&mut self, tasks: Vec<Task>, with_fee: bool) {
+    pub fn update(&mut self, tasks: &Vec<Task>, with_fee: bool) {
         for task in tasks {
-            match task.clone() {
+            match task {
                 Task::NewWalletKeyPair(alias) => {
-                    self.add_implicit_account(alias.clone());
+                    self.add_implicit_account(alias);
                     self.add_masp_account(alias);
                 }
                 Task::FaucetTransfer(target, amount, settings) => {
                     if with_fee {
-                        self.modify_balance_fee(settings.gas_payer, settings.gas_limit);
+                        self.modify_balance_fee(&settings.gas_payer, settings.gas_limit);
                     }
-                    self.modify_balance(target, amount as i64);
+                    self.increase_balance(target, *amount);
                 }
                 Task::TransparentTransfer(source, target, amount, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_balance(source, -(amount as i64));
-                    self.modify_balance(target, amount as i64);
+                    self.decrease_balance(source, *amount);
+                    self.increase_balance(target, *amount);
                 }
                 Task::Bond(source, validator, amount, _, setting) => {
-                    self.modify_bond(source, validator, amount);
+                    self.modify_bond(source, validator, *amount);
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                 }
                 Task::Redelegate(source, from, to, amount, _epoch, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_redelegate(source, from, to, amount)
+                    self.modify_redelegate(source, from, to, *amount)
                 }
                 Task::Batch(tasks, setting) => {
-                    self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
-                    self.update(tasks, false);
+                    self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
+                    self.update(&tasks, false);
                 }
                 Task::Unbond(source, validator, amount, _epoch, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_unbonds(source, validator, amount);
+                    self.modify_unbonds(source, validator, *amount);
                 }
                 Task::ClaimRewards(_source, _validator, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                 }
                 Task::InitAccount(alias, sources, threshold, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.add_enstablished_account(alias, sources, threshold);
+                    self.add_enstablished_account(alias, sources, *threshold);
                 }
                 Task::ShieldedTransfer(source, target, amount, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_shielded_transfer(source, target, amount);
+                    self.modify_shielded_transfer(source, target, *amount);
                 }
                 Task::Shielding(source, target, amount, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_shielding(source, target, amount)
+                    self.modify_shielding(source, target, *amount)
                 }
                 Task::Unshielding(source, target, amount, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_unshielding(source, target, amount)
+                    self.modify_unshielding(source, target, *amount)
                 }
                 Task::BecomeValidator(alias, _, _, _, _, _, _, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                     self.set_enstablished_as_validator(alias)
                 }
                 Task::ChangeMetadata(_, _, _, _, _, _, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                 }
                 Task::ChangeConsensusKeys(_, _, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                 }
                 Task::UpdateAccount(target, sources, threshold, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_enstablished_account(target, sources, threshold);
+                    self.modify_enstablished_account(target, sources, *threshold);
                 }
                 Task::DeactivateValidator(target, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                     self.set_validator_as_deactivated(target);
                 }
                 Task::ReactivateValidator(target, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                     self.remove_deactivate_validator(target);
                 }
                 Task::DefaultProposal(source, start_epoch, end_epoch, _, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
-                    self.modify_balance(source, -(PROPOSAL_DEPOSIT as i64));
-                    self.add_proposal(start_epoch, end_epoch);
+                    self.decrease_balance(source, PROPOSAL_DEPOSIT);
+                    self.add_proposal(*start_epoch, *end_epoch);
                 }
                 Task::Vote(_, _, _, setting) => {
                     if with_fee {
-                        self.modify_balance_fee(setting.gas_payer, setting.gas_limit);
+                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                 }
             }
@@ -240,39 +240,8 @@ impl State {
 
     pub fn update_failed_execution(&mut self, tasks: &[Task]) {
         for task in tasks {
-            let settings = match task {
-                Task::NewWalletKeyPair(_alias) => None,
-                Task::FaucetTransfer(_alias, _, task_settings) => Some(task_settings),
-                Task::TransparentTransfer(_alias, _alias1, _, task_settings) => Some(task_settings),
-                Task::Bond(_alias, _, _, _, task_settings) => Some(task_settings),
-                Task::Unbond(_alias, _, _, _, task_settings) => Some(task_settings),
-                Task::Redelegate(_alias, _, _, _, _, task_settings) => Some(task_settings),
-                Task::ClaimRewards(_alias, _, task_settings) => Some(task_settings),
-                Task::Batch(_tasks, task_settings) => Some(task_settings),
-                Task::Shielding(_alias, _alias1, _, task_settings) => Some(task_settings),
-                Task::InitAccount(_alias, _btree_set, _, task_settings) => Some(task_settings),
-                Task::BecomeValidator(
-                    _alias,
-                    _alias1,
-                    _alias2,
-                    _alias3,
-                    _alias4,
-                    _dec,
-                    _dec1,
-                    task_settings,
-                ) => Some(task_settings),
-                Task::ShieldedTransfer(_alias, _alias1, _, task_settings) => Some(task_settings),
-                Task::Unshielding(_alias, _alias1, _, task_settings) => Some(task_settings),
-                Task::ChangeMetadata(_alias, _, _, _, _, _, task_settings) => Some(task_settings),
-                Task::ChangeConsensusKeys(_alias, _, task_settings) => Some(task_settings),
-                Task::UpdateAccount(_alias, _, _, task_settings) => Some(task_settings),
-                Task::DeactivateValidator(_alias, task_settings) => Some(task_settings),
-                Task::ReactivateValidator(_alias, task_settings) => Some(task_settings),
-                Task::DefaultProposal(_, _, _, _, task_settings) => Some(task_settings),
-                Task::Vote(_, _, _, task_settings) => Some(task_settings),
-            };
-            if let Some(settings) = settings {
-                self.modify_balance_fee(settings.gas_payer.clone(), settings.gas_limit);
+            if let Some(settings) = task.task_settings() {
+                self.modify_balance_fee(&settings.gas_payer, settings.gas_limit);
             }
         }
     }
@@ -613,7 +582,7 @@ impl State {
 
     /// UPDATE
 
-    pub fn add_implicit_account(&mut self, alias: Alias) {
+    pub fn add_implicit_account(&mut self, alias: &Alias) {
         self.accounts.insert(
             alias.clone(),
             Account {
@@ -626,7 +595,7 @@ impl State {
         self.balances.insert(alias.clone(), 0);
     }
 
-    pub fn add_masp_account(&mut self, alias: Alias) {
+    pub fn add_masp_account(&mut self, alias: &Alias) {
         self.masp_accounts.insert(
             alias.clone(),
             MaspAccount {
@@ -640,15 +609,15 @@ impl State {
 
     pub fn add_enstablished_account(
         &mut self,
-        alias: Alias,
-        aliases: BTreeSet<Alias>,
+        alias: &Alias,
+        aliases: &BTreeSet<Alias>,
         threshold: u64,
     ) {
         self.accounts.insert(
             alias.clone(),
             Account {
                 alias: alias.clone(),
-                public_keys: aliases,
+                public_keys: aliases.clone(),
                 threshold,
                 address_type: AddressType::Enstablished,
             },
@@ -658,74 +627,76 @@ impl State {
 
     pub fn modify_enstablished_account(
         &mut self,
-        alias: Alias,
-        aliases: BTreeSet<Alias>,
+        alias: &Alias,
+        aliases: &BTreeSet<Alias>,
         threshold: u64,
     ) {
-        self.accounts.entry(alias).and_modify(|account| {
-            account.public_keys = aliases;
+        self.accounts.entry(alias.clone()).and_modify(|account| {
+            account.public_keys = aliases.clone();
             account.threshold = threshold;
         });
     }
 
-    pub fn modify_balance(&mut self, source: Alias, amount: i64) {
-        if source.is_faucet() {
+    pub fn increase_balance(&mut self, target: &Alias, amount: u64) {
+        if target.is_faucet() {
             return;
         }
-
-        if amount > 0 {
-            *self.balances.get_mut(&source).unwrap() += amount.unsigned_abs();
-        } else {
-            *self.balances.get_mut(&source).unwrap() -= amount.unsigned_abs();
-        }
+        *self.balances.get_mut(target).unwrap() += amount;
     }
 
-    pub fn modify_balance_fee(&mut self, source: Alias, _gas_limit: u64) {
+    pub fn decrease_balance(&mut self, target: &Alias, amount: u64) {
+        if target.is_faucet() {
+            return;
+        }
+        *self.balances.get_mut(target).unwrap() -= amount;
+    }
+
+    pub fn modify_balance_fee(&mut self, source: &Alias, _gas_limit: u64) {
         if !source.is_faucet() {
             *self.balances.get_mut(&source).unwrap() -= DEFAULT_FEE_IN_NATIVE_TOKEN;
         }
     }
 
-    pub fn modify_bond(&mut self, source: Alias, validator: String, amount: u64) {
+    pub fn modify_bond(&mut self, source: &Alias, validator: &str, amount: u64) {
         if !source.is_faucet() {
             *self.balances.get_mut(&source).unwrap() -= amount;
         }
-        let default = HashMap::from_iter([(validator.clone(), 0u64)]);
+        let default = HashMap::from_iter([(validator.to_string(), 0u64)]);
         *self
             .bonds
             .entry(source.clone())
             .or_insert(default)
-            .entry(validator)
+            .entry(validator.to_string())
             .or_insert(0) += amount;
     }
 
-    pub fn modify_redelegate(&mut self, source: Alias, from: String, to: String, amount: u64) {
-        let default = HashMap::from_iter([(to.clone(), 0u64)]);
+    pub fn modify_redelegate(&mut self, source: &Alias, from: &str, to: &str, amount: u64) {
+        let default = HashMap::from_iter([(to.to_string(), 0u64)]);
         *self
             .redelegations
             .entry(source.clone())
             .or_insert(default)
-            .entry(to)
+            .entry(to.to_string())
             .or_insert(0) += amount;
         self.bonds
             .entry(source.clone())
-            .and_modify(|bond| *bond.get_mut(&from).unwrap() -= amount);
+            .and_modify(|bond| *bond.get_mut(from).unwrap() -= amount);
     }
 
-    pub fn modify_unbonds(&mut self, source: Alias, validator: String, amount: u64) {
-        let default = HashMap::from_iter([(validator.clone(), 0u64)]);
+    pub fn modify_unbonds(&mut self, source: &Alias, validator: &str, amount: u64) {
+        let default = HashMap::from_iter([(validator.to_string(), 0u64)]);
         *self
             .unbonds
             .entry(source.clone())
             .or_insert(default)
-            .entry(validator.clone())
+            .entry(validator.to_string())
             .or_insert(0) += amount;
         self.bonds
             .entry(source.clone())
-            .and_modify(|bond| *bond.get_mut(&validator).unwrap() -= amount);
+            .and_modify(|bond| *bond.get_mut(validator).unwrap() -= amount);
     }
 
-    pub fn modify_shielding(&mut self, source: Alias, target: Alias, amount: u64) {
+    pub fn modify_shielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
         *self.balances.get_mut(&source).unwrap() -= amount;
         let target_alias = Alias {
             name: target
@@ -737,7 +708,7 @@ impl State {
         *self.masp_balances.get_mut(&target_alias).unwrap() += amount;
     }
 
-    pub fn modify_unshielding(&mut self, source: Alias, target: Alias, amount: u64) {
+    pub fn modify_unshielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
         let source_alias = Alias {
             name: source
                 .name
@@ -750,7 +721,7 @@ impl State {
         *self.balances.get_mut(&target).unwrap() += amount;
     }
 
-    pub fn modify_shielded_transfer(&mut self, source: Alias, target: Alias, amount: u64) {
+    pub fn modify_shielded_transfer(&mut self, source: &Alias, target: &Alias, amount: u64) {
         let target_alias = Alias {
             name: target
                 .name
@@ -770,19 +741,19 @@ impl State {
         *self.masp_balances.get_mut(&source_alias).unwrap() -= amount;
     }
 
-    pub fn set_enstablished_as_validator(&mut self, alias: Alias) {
-        let account = self.accounts.remove(&alias).unwrap();
-        self.balances.remove(&alias).unwrap();
-        self.validators.insert(alias, account);
+    pub fn set_enstablished_as_validator(&mut self, alias: &Alias) {
+        let account = self.accounts.remove(alias).unwrap();
+        self.balances.remove(alias).unwrap();
+        self.validators.insert(alias.clone(), account);
     }
 
-    pub fn set_validator_as_deactivated(&mut self, alias: Alias) {
-        let account = self.validators.remove(&alias).unwrap();
-        self.deactivated_validators.insert(alias, account);
+    pub fn set_validator_as_deactivated(&mut self, alias: &Alias) {
+        let account = self.validators.remove(alias).unwrap();
+        self.deactivated_validators.insert(alias.clone(), account);
     }
 
-    pub fn remove_deactivate_validator(&mut self, alias: Alias) {
-        self.deactivated_validators.remove(&alias).unwrap();
+    pub fn remove_deactivate_validator(&mut self, alias: &Alias) {
+        self.deactivated_validators.remove(alias).unwrap();
     }
 
     pub fn add_proposal(&mut self, start_epoch: u64, end_epoch: u64) {

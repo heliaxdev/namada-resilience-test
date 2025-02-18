@@ -9,7 +9,7 @@ use namada_sdk::{
 };
 use rand::rngs::OsRng;
 
-use crate::{entities::Alias, sdk::namada::Sdk, steps::StepError, task::TaskSettings};
+use crate::{entities::Alias, executor::StepError, sdk::namada::Sdk, task::TaskSettings};
 
 use super::utils::execute_tx;
 

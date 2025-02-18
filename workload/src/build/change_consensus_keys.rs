@@ -1,7 +1,7 @@
 use crate::{
     entities::Alias,
+    executor::StepError,
     state::State,
-    steps::StepError,
     task::{Task, TaskSettings},
 };
 

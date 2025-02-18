@@ -1,20 +1,16 @@
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-use crate::{check::Check, entities::Alias, sdk::namada::Sdk};
+use crate::{check::Check, entities::Alias, sdk::namada::Sdk, executor::StepError};
 
-pub async fn faucet_build_check(
+use super::utils::get_balance;
+
+pub async fn faucet(
     sdk: &Sdk,
     target: &Alias,
     amount: u64,
     retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
-) -> Vec<Check> {
-    let check = if let Some(pre_balance) =
-        super::utils::get_balance(sdk, target, retry_config).await
-    {
-        Check::BalanceTarget(target.clone(), pre_balance, amount)
-    } else {
-        return vec![];
-    };
+) -> Result<Vec<Check>, StepError> {
+    let pre_balance = get_balance(sdk, target, retry_config).await?;
 
-    vec![check]
+    Ok(vec![Check::BalanceTarget(target.clone(), pre_balance, amount)])
 }

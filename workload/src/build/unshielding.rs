@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use crate::{
     constants::MIN_TRANSFER_BALANCE,
     entities::Alias,
+    executor::StepError,
     state::State,
-    steps::StepError,
     task::{Task, TaskSettings},
 };
 

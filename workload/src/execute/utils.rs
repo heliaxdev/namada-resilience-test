@@ -14,7 +14,7 @@ use namada_sdk::{
 };
 
 use crate::{
-    constants::DEFAULT_GAS_LIMIT, entities::Alias, sdk::namada::Sdk, steps::StepError,
+    constants::DEFAULT_GAS_LIMIT, entities::Alias, executor::StepError, sdk::namada::Sdk,
     task::TaskSettings,
 };
 

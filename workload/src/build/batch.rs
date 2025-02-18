@@ -1,9 +1,9 @@
 use rand::{distributions::Standard, prelude::Distribution, seq::SliceRandom, Rng};
 
 use crate::{
+    executor::StepError,
     sdk::namada::Sdk,
     state::State,
-    steps::StepError,
     task::{Task, TaskSettings},
 };
 
@@ -56,50 +56,17 @@ async fn build_batch(
     for _ in 0..max_size {
         let step: BatchType = possibilities.choose(&mut state.rng).unwrap().to_owned();
         let tasks = match step {
-            BatchType::TransparentTransfer => {
-                let tasks = build_transparent_transfer(&mut tmp_state).await?;
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
-            BatchType::Bond => {
-                let tasks = build_bond(sdk, &mut tmp_state).await?;
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
-            BatchType::Redelegate => {
-                let tasks = build_redelegate(sdk, &mut tmp_state).await?;
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
-            BatchType::Unbond => {
-                let tasks = build_unbond(sdk, &mut tmp_state).await?;
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
-            BatchType::Shielding => {
-                let tasks = build_shielding(&mut tmp_state).await?;
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
-            BatchType::ShieldedTransfer => {
-                let tasks = build_shielded_transfer(&mut tmp_state).await?;
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
-            BatchType::Unshielding => {
-                let tasks = build_unshielding(&mut tmp_state).await?;
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
-            BatchType::ClaimRewards => {
-                let tasks = build_claim_rewards(&mut tmp_state);
-                tmp_state.update(tasks.clone(), false);
-                tasks
-            }
+            BatchType::TransparentTransfer => build_transparent_transfer(&mut tmp_state).await?,
+            BatchType::Bond => build_bond(sdk, &mut tmp_state).await?,
+            BatchType::Redelegate => build_redelegate(sdk, &mut tmp_state).await?,
+            BatchType::Unbond => build_unbond(sdk, &mut tmp_state).await?,
+            BatchType::Shielding => build_shielding(&mut tmp_state).await?,
+            BatchType::ShieldedTransfer => build_shielded_transfer(&mut tmp_state).await?,
+            BatchType::Unshielding => build_unshielding(&mut tmp_state).await?,
+            BatchType::ClaimRewards => build_claim_rewards(&mut tmp_state),
         };
-        if tasks.is_empty() {
-            continue;
-        } else {
+        tmp_state.update(&tasks, false);
+        if !tasks.is_empty() {
             tracing::info!("Added {:?} tx type to the batch...", step);
             batch_tasks.extend(tasks);
         }

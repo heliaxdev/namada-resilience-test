@@ -10,7 +10,7 @@ use namada_sdk::{
 };
 
 use crate::{
-    entities::Alias, sdk::namada::Sdk, steps::StepError, task::Address as ValidatorAddress,
+    entities::Alias, executor::StepError, sdk::namada::Sdk, task::Address as ValidatorAddress,
     task::TaskSettings,
 };
 

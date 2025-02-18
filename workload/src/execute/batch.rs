@@ -1,6 +1,6 @@
 use namada_sdk::{signing::SigningTxData, tx::Tx};
 
-use crate::{sdk::namada::Sdk, steps::StepError, task::TaskSettings};
+use crate::{executor::StepError, sdk::namada::Sdk, task::TaskSettings};
 
 use super::utils::{self, execute_tx};
 

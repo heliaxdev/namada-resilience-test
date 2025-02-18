@@ -1,6 +1,8 @@
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-use crate::{check::Check, entities::Alias, sdk::namada::Sdk};
+use crate::{check::Check, entities::Alias, sdk::namada::Sdk, executor::StepError};
+
+use super::utils::get_balance;
 
 pub async fn transparent_transfer(
     sdk: &Sdk,
@@ -8,22 +10,12 @@ pub async fn transparent_transfer(
     target: &Alias,
     amount: u64,
     retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
-) -> Vec<Check> {
-    let source_check = if let Some(pre_balance) =
-        super::utils::get_balance(sdk, source, retry_config).await
-    {
-        Check::BalanceSource(source.clone(), pre_balance, amount)
-    } else {
-        return vec![];
-    };
+) -> Result<Vec<Check>, StepError> {
+    let pre_balance = get_balance(sdk, source, retry_config).await?;
+    let source_check = Check::BalanceSource(source.clone(), pre_balance, amount);
 
-    let target_check = if let Some(pre_balance) =
-        super::utils::get_balance(sdk, target, retry_config).await
-    {
-        Check::BalanceTarget(target.clone(), pre_balance, amount)
-    } else {
-        return vec![source_check];
-    };
+    let pre_balance = get_balance(sdk, target, retry_config).await?;
+    let target_check = Check::BalanceTarget(target.clone(), pre_balance, amount);
 
-    vec![source_check, target_check]
+    Ok(vec![source_check, target_check])
 }

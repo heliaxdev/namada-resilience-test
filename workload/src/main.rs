@@ -4,10 +4,10 @@ use antithesis_sdk::antithesis_init;
 use clap::Parser;
 use namada_chain_workload::{
     config::AppConfig,
+    executor::{StepError, WorkloadExecutor},
     sdk::namada::Sdk,
     state::{State, StateError},
     step::StepType,
-    executor::{StepError, WorkloadExecutor},
 };
 use namada_sdk::{
     io::{Client, NullIo},
@@ -322,7 +322,10 @@ async fn inner_main() -> Code {
 
     let next_step = config.step_type;
     if !workload_executor.is_valid(&next_step).await {
-        tracing::warn!("Invalid step: {next_step} -> {:>?}", workload_executor.state());
+        tracing::warn!(
+            "Invalid step: {next_step} -> {:>?}",
+            workload_executor.state()
+        );
         return Code::InvalidStep(next_step);
     }
 
@@ -343,9 +346,7 @@ async fn inner_main() -> Code {
     let checks = if config.no_check {
         vec![]
     } else {
-        workload_executor
-        .build_check(&sdk, tasks.clone())
-        .await
+        workload_executor.build_check(&tasks).await
     };
     tracing::info!("Built checks for {next_step}");
 

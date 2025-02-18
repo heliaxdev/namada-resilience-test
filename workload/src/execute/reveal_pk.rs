@@ -1,6 +1,6 @@
 use namada_sdk::{args::TxBuilder, key::common, tx::data::GasLimit, Namada};
 
-use crate::{constants::DEFAULT_GAS_LIMIT, sdk::namada::Sdk, steps::StepError};
+use crate::{constants::DEFAULT_GAS_LIMIT, executor::StepError, sdk::namada::Sdk};
 
 use super::utils::execute_tx;
 

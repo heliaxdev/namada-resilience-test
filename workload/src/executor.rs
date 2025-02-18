@@ -29,23 +29,18 @@ use crate::{
     entities::Alias,
     execute::reveal_pk::execute_reveal_pk,
     sdk::namada::Sdk,
-    step::StepType,
     state::State,
+    step::StepType,
     task::Task,
 };
 use namada_sdk::{
-    address::Address,
-    proof_of_stake::types::ValidatorState,
-    rpc::{self},
-    state::Epoch,
-    token::{self},
+    address::Address, proof_of_stake::types::ValidatorState, rpc, state::Epoch, token,
 };
 use serde_json::json;
 use thiserror::Error;
 use tokio::time::{sleep, Duration};
-use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug)]
 pub enum StepError {
     #[error("building an empty batch")]
     EmptyBatch,
@@ -60,9 +55,9 @@ pub enum StepError {
     #[error("error executing tx `{0}`")]
     Execution(String),
     #[error("error calling rpc `{0}`")]
-    Rpc(String),
-    #[error("shield-sync `{0}`")]
-    ShieldSync(String),
+    Rpc(namada_sdk::error::Error),
+    #[error("build check: `{0}`")]
+    BuildCheck(String),
     #[error("state check: `{0}`")]
     StateCheck(String),
 }
@@ -94,7 +89,7 @@ impl WorkloadExecutor {
     pub async fn fetch_current_block_height(&self) -> u64 {
         loop {
             if let Ok(Some(latest_block)) = rpc::query_block(&self.sdk.namada.client).await {
-                return latest_block.height.into()
+                return latest_block.height.into();
             }
             sleep(Duration::from_secs(1)).await
         }
@@ -155,22 +150,33 @@ impl WorkloadExecutor {
             StepType::TransparentTransfer => {
                 self.state.at_least_accounts(2) && self.state.any_account_can_make_transfer()
             }
-            StepType::Bond => self.state.any_account_with_min_balance(MIN_TRANSFER_BALANCE),
+            StepType::Bond => self
+                .state
+                .any_account_with_min_balance(MIN_TRANSFER_BALANCE),
             StepType::Unbond => self.state.any_bond(),
             StepType::InitAccount => self.state.min_n_implicit_accounts(3),
             StepType::Redelegate => self.state.any_bond(),
             StepType::ClaimRewards => self.state.any_bond(),
-            StepType::Shielding => self.state.any_account_with_min_balance(MIN_TRANSFER_BALANCE),
-            StepType::BatchBond => self.state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE),
+            StepType::Shielding => self
+                .state
+                .any_account_with_min_balance(MIN_TRANSFER_BALANCE),
+            StepType::BatchBond => self
+                .state
+                .min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE),
             StepType::BatchRandom => {
-                self.state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE) && self.state.min_bonds(3)
+                self.state
+                    .min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE)
+                    && self.state.min_bonds(3)
             }
             StepType::Shielded => {
                 self.state.at_least_masp_accounts(2)
-                    && self.state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
+                    && self
+                        .state
+                        .at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
             }
             StepType::Unshielding => {
-                self.state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
+                self.state
+                    .at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
                     && self.state.min_n_implicit_accounts(1)
             }
             StepType::BecomeValidator => self.state.min_n_enstablished_accounts(1),
@@ -189,10 +195,7 @@ impl WorkloadExecutor {
         }
     }
 
-    pub async fn build(
-        &self,
-        step_type: StepType,
-    ) -> Result<Vec<Task>, StepError> {
+    pub async fn build(&mut self, step_type: StepType) -> Result<Vec<Task>, StepError> {
         let steps = match step_type {
             StepType::NewWalletKeyPair => build_new_wallet_keypair(&mut self.state).await,
             StepType::FaucetTransfer => build_faucet_transfer(&mut self.state).await?,
@@ -219,321 +222,12 @@ impl WorkloadExecutor {
         Ok(steps)
     }
 
-    pub async fn build_check(&self, tasks: Vec<Task>, no_check: bool) -> Vec<Check> {
-        let mut checks = vec![];
-        for task in tasks {
-            let check = match task {
-                Task::NewWalletKeyPair(source) => vec![Check::RevealPk(source)],
-                Task::FaucetTransfer(target, amount, _) => {
-                    build_checks::faucet::faucet_build_check(&self.sdk, target, amount, retry_config)
-                        .await
-                }
-                Task::TransparentTransfer(source, target, amount, _) => {
-                    build_checks::transparent_transfer::transparent_transfer(
-                        &self.sdk,
-                        source,
-                        target,
-                        amount,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::Bond(source, validator, amount, epoch, _) => {
-                    build_checks::bond::bond(&self.sdk, source, validator, amount, epoch, retry_config)
-                        .await
-                }
-                Task::InitAccount(alias, sources, threshold, _) => {
-                    build_checks::init_account::init_account_build_checks(
-                        &self.sdk,
-                        alias,
-                        sources,
-                        threshold,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::Redelegate(source, from, to, amount, epoch, _) => {
-                    build_checks::redelegate::redelegate(
-                        &self.sdk,
-                        source,
-                        from,
-                        to,
-                        amount,
-                        epoch,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::Unbond(source, validator, amount, epoch, _) => {
-                    build_checks::unbond::unbond(
-                        &self.sdk,
-                        source,
-                        validator,
-                        amount,
-                        epoch,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::ClaimRewards(_source, _validator, _) => {
-                    vec![]
-                }
-                Task::ShieldedTransfer(source, target, amount, _) => {
-                    build_checks::shielded_transfer::shielded_transfer(
-                        &self.sdk,
-                        source,
-                        target,
-                        amount,
-                        false,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::Shielding(source, target, amount, _) => {
-                    build_checks::shielding::shielding(
-                        &self.sdk,
-                        source,
-                        target,
-                        amount,
-                        false,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::Unshielding(source, target, amount, _) => {
-                    build_checks::unshielding::unshielding(
-                        &self.sdk,
-                        source,
-                        target,
-                        amount,
-                        false,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::BecomeValidator(source, _, _, _, _, _, _, _) => {
-                    build_checks::become_validator::become_validator(source).await
-                }
-                Task::ChangeMetadata(_, _, _, _, _, _, _) => {
-                    vec![]
-                }
-                Task::ChangeConsensusKeys(_, _, _) => {
-                    vec![]
-                }
-                Task::UpdateAccount(target, sources, threshold, _) => {
-                    build_checks::update_account::update_account_build_checks(
-                        &self.sdk,
-                        target,
-                        sources,
-                        threshold,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::DefaultProposal(source, _start_epoch, _end_epoch, _grace_epoch, _) => {
-                    build_checks::proposal::proposal(sdk, source, retry_config).await
-                }
-                Task::Vote(_, _, _, _) => {
-                    vec![]
-                }
-                Task::DeactivateValidator(target, _) => {
-                    build_checks::deactivate_validator::deactivate_validator_build_checks(
-                        &self.sdk,
-                        target,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::ReactivateValidator(target, _) => {
-                    build_checks::reactivate_validator::reactivate_validator_build_checks(
-                        &self.sdk,
-                        target,
-                        retry_config,
-                    )
-                    .await
-                }
-                Task::Batch(tasks, _) => {
-                    let mut checks = vec![];
-
-                    let mut reveal_pks: HashMap<Alias, Alias> = HashMap::default();
-                    let mut balances: HashMap<Alias, i64> = HashMap::default();
-                    let mut shielded_balances: HashMap<Alias, i64> = HashMap::default();
-                    let mut bonds: HashMap<String, (u64, i64)> = HashMap::default();
-
-                    for task in tasks {
-                        match &task {
-                            Task::NewWalletKeyPair(source) => {
-                                reveal_pks.insert(source.clone(), source.to_owned());
-                            }
-                            Task::FaucetTransfer(target, amount, _task_settings) => {
-                                balances
-                                    .entry(target.clone())
-                                    .and_modify(|balance| *balance += *amount as i64)
-                                    .or_insert(*amount as i64);
-                            }
-                            Task::TransparentTransfer(source, target, amount, _task_settings) => {
-                                balances
-                                    .entry(target.clone())
-                                    .and_modify(|balance| *balance += *amount as i64)
-                                    .or_insert(*amount as i64);
-                                balances
-                                    .entry(source.clone())
-                                    .and_modify(|balance| *balance -= *amount as i64)
-                                    .or_insert(-(*amount as i64));
-                            }
-                            Task::Bond(source, validator, amount, epoch, _task_settings) => {
-                                bonds
-                                    .entry(format!("{}@{}", source.name, validator))
-                                    .and_modify(|(_epoch, bond_amount)| {
-                                        *bond_amount += *amount as i64
-                                    })
-                                    .or_insert((*epoch, *amount as i64));
-                                balances
-                                    .entry(source.clone())
-                                    .and_modify(|balance| *balance -= *amount as i64)
-                                    .or_insert(-(*amount as i64));
-                            }
-                            Task::Unbond(source, validator, amount, epoch, _task_settings) => {
-                                bonds
-                                    .entry(format!("{}@{}", source.name, validator))
-                                    .and_modify(|(_epoch, bond_amount)| {
-                                        *bond_amount -= *amount as i64
-                                    })
-                                    .or_insert((*epoch, -(*amount as i64)));
-                            }
-                            Task::Redelegate(source, from, to, amount, epoch, _task_settings) => {
-                                bonds
-                                    .entry(format!("{}@{}", source.name, to))
-                                    .and_modify(|(_epoch, bond_amount)| {
-                                        *bond_amount += *amount as i64
-                                    })
-                                    .or_insert((*epoch, *amount as i64));
-                                bonds
-                                    .entry(format!("{}@{}", source.name, from))
-                                    .and_modify(|(_epoch, bond_amount)| {
-                                        *bond_amount -= *amount as i64
-                                    })
-                                    .or_insert((*epoch, -(*amount as i64)));
-                            }
-                            Task::ShieldedTransfer(source, target, amount, _task_settings) => {
-                                shielded_balances
-                                    .entry(source.clone())
-                                    .and_modify(|balance| *balance -= *amount as i64)
-                                    .or_insert(-(*amount as i64));
-                                shielded_balances
-                                    .entry(target.clone())
-                                    .and_modify(|balance| *balance += *amount as i64)
-                                    .or_insert(*amount as i64);
-                            }
-                            Task::Shielding(source, target, amount, _task_settings) => {
-                                balances
-                                    .entry(source.clone())
-                                    .and_modify(|balance| *balance -= *amount as i64)
-                                    .or_insert(-(*amount as i64));
-                                shielded_balances
-                                    .entry(target.clone())
-                                    .and_modify(|balance| *balance += *amount as i64)
-                                    .or_insert(*amount as i64);
-                            }
-                            Task::Unshielding(source, target, amount, _task_settings) => {
-                                balances
-                                    .entry(source.clone())
-                                    .and_modify(|balance| *balance += *amount as i64)
-                                    .or_insert(-(*amount as i64));
-                                shielded_balances
-                                    .entry(target.clone())
-                                    .and_modify(|balance| *balance -= *amount as i64)
-                                    .or_insert(*amount as i64);
-                            }
-                            Task::ClaimRewards(_source, _validator, _task_settings) => {}
-                            _ => panic!(),
-                        };
-                    }
-
-                    for (_, source) in reveal_pks {
-                        checks.push(Check::RevealPk(source));
-                    }
-
-                    for (alias, amount) in balances {
-                        if let Some(pre_balance) =
-                            build_checks::utils::get_balance(&self.sdk, alias.clone(), retry_config).await
-                        {
-                            if amount >= 0 {
-                                checks.push(Check::BalanceTarget(
-                                    alias,
-                                    pre_balance,
-                                    amount.unsigned_abs(),
-                                ));
-                            } else {
-                                checks.push(Check::BalanceSource(
-                                    alias,
-                                    pre_balance,
-                                    amount.unsigned_abs(),
-                                ));
-                            }
-                        }
-                    }
-
-                    for (key, (epoch, amount)) in bonds {
-                        let (source, validator) = key.split_once('@').unwrap();
-                        if let Some(pre_bond) = build_checks::utils::get_bond(
-                            &self.sdk,
-                            Alias::from(source),
-                            validator.to_owned(),
-                            epoch,
-                            retry_config,
-                        )
-                        .await
-                        {
-                            if amount > 0 {
-                                checks.push(Check::BondIncrease(
-                                    Alias::from(source),
-                                    validator.to_owned(),
-                                    pre_bond,
-                                    amount.unsigned_abs(),
-                                ));
-                            } else {
-                                checks.push(Check::BondDecrease(
-                                    Alias::from(source),
-                                    validator.to_owned(),
-                                    pre_bond,
-                                    amount.unsigned_abs(),
-                                ));
-                            }
-                        }
-                    }
-
-                    for (alias, amount) in shielded_balances {
-                        if let Ok(Some(pre_balance)) = build_checks::utils::get_shielded_balance(
-                            &self.sdk,
-                            alias.clone(),
-                            None,
-                            true,
-                        )
-                        .await
-                        {
-                            if amount >= 0 {
-                                checks.push(Check::BalanceShieldedTarget(
-                                    alias,
-                                    pre_balance,
-                                    amount.unsigned_abs(),
-                                ));
-                            } else {
-                                checks.push(Check::BalanceShieldedSource(
-                                    alias,
-                                    pre_balance,
-                                    amount.unsigned_abs(),
-                                ));
-                            }
-                        }
-                    }
-
-                    checks
-                }
-            };
-            checks.extend(check)
-        }
-        checks
+    pub async fn build_check(&self, tasks: &Vec<Task>) -> Result<Vec<Check>, StepError> {
+        Ok(futures::future::try_join_all(tasks.iter().map(|task| async move { task.build_check(&self.sdk).await}))
+            .await?
+            .into_iter()
+            .flatten()
+            .collect())
     }
 
     pub async fn checks(
