@@ -101,123 +101,127 @@ impl Code {
             match step_type {
                 StepType::NewWalletKeyPair => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing NewWalletKeyPair",
                         &details
                     );
                 }
                 StepType::FaucetTransfer => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing FaucetTransfer",
                         &details
                     );
                 }
                 StepType::TransparentTransfer => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing TransparentTransfer",
                         &details
                     );
                 }
                 StepType::Bond => {
-                    antithesis_sdk::assert_always!(is_fatal, "Done executing Bond", &details);
+                    antithesis_sdk::assert_always!(!is_fatal, "Done executing Bond", &details);
                 }
                 StepType::InitAccount => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing InitAccount",
                         &details
                     );
                 }
                 StepType::Redelegate => {
-                    antithesis_sdk::assert_always!(is_fatal, "Done executing Redelegate", &details);
+                    antithesis_sdk::assert_always!(
+                        !is_fatal,
+                        "Done executing Redelegate",
+                        &details
+                    );
                 }
                 StepType::Unbond => {
-                    antithesis_sdk::assert_always!(is_fatal, "Done executing Unbond", &details);
+                    antithesis_sdk::assert_always!(!is_fatal, "Done executing Unbond", &details);
                 }
                 StepType::ClaimRewards => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing ClaimRewards",
                         &details
                     );
                 }
                 StepType::BatchBond => {
-                    antithesis_sdk::assert_always!(is_fatal, "Done executing BatchBond", &details);
+                    antithesis_sdk::assert_always!(!is_fatal, "Done executing BatchBond", &details);
                 }
                 StepType::BatchRandom => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing BatchRandom",
                         &details
                     );
                 }
                 StepType::Shielding => {
-                    antithesis_sdk::assert_always!(is_fatal, "Done executing Shielding", &details);
+                    antithesis_sdk::assert_always!(!is_fatal, "Done executing Shielding", &details);
                 }
                 StepType::Shielded => {
-                    antithesis_sdk::assert_always!(is_fatal, "Done executing Shielded", &details);
+                    antithesis_sdk::assert_always!(!is_fatal, "Done executing Shielded", &details);
                 }
                 StepType::Unshielding => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing Unshielding",
                         &details
                     );
                 }
                 StepType::BecomeValidator => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing BecomeValidator",
                         &details
                     );
                 }
                 StepType::ChangeMetadata => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing ChangeMetadata",
                         &details
                     );
                 }
                 StepType::ChangeConsensusKeys => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing ChangeConsensusKeys",
                         &details
                     );
                 }
                 StepType::UpdateAccount => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing UpdateAccount",
                         &details
                     );
                 }
                 StepType::DeactivateValidator => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing DeactivateValidator",
                         &details
                     );
                 }
                 StepType::ReactivateValidator => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing ReactivateValidator",
                         &details
                     );
                 }
                 StepType::DefaultProposal => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing DefaultProposal",
                         &details
                     );
                 }
                 StepType::VoteProposal => {
                     antithesis_sdk::assert_always!(
-                        is_fatal,
+                        !is_fatal,
                         "Done executing VoteProposal",
                         &details
                     );
