@@ -25,6 +25,7 @@ COPY --from=cacher /app/target target
 RUN cargo build --release --locked
 
 FROM docker.io/debian:bookworm-slim
+ARG TEST_SCRIPT="docker_run.sh"
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --assume-yes \
     ca-certificates \
     curl \
@@ -33,7 +34,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
 WORKDIR /app
 
 COPY --from=builder /app/target/release/namada-chain-workload /app/namada-chain-workload 
-COPY --from=builder /app/docker_run.sh /app/run.sh
+COPY --from=builder /app/${TEST_SCRIPT} /app/run.sh
 COPY --from=builder /app/scripts/ /opt/antithesis/test/v1/namada/
 
 RUN chmod +x /app/run.sh && chmod -R +x /opt/antithesis/test/v1/namada/

@@ -95,13 +95,13 @@ jobs:
           context: ${{ matrix.images.context }}
           push: false
           tags: |
-            ghcr.io/heliaxdev/ant-${{ matrix.images.image }}:${{ github.ref_name || github.head_ref }}${{ matrix.images.tag }}
-            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.image }}:${{ github.ref_name || github.head_ref }}${{ matrix.images.tag }}
+            ghcr.io/heliaxdev/ant-${{ matrix.images.image }}:${{ github.event.pull_request.head.sha }}${{ matrix.images.tag }}
+            us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.image }}:${{ github.event.pull_request.head.sha }}${{ matrix.images.tag }}
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
             GENESIS_TEMPLATE_VERSION=0.46.0-ant
-            GIT_SHA=${{ github.ref_name || github.head_ref }}
+            GIT_SHA=main
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit ${{ github.event.inputs.commit }}/${{ github.event.inputs.genesis_template_version }} (workflow dispatch)
         if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: docker/build-push-action@v6
