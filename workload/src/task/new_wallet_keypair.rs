@@ -3,18 +3,34 @@ use namada_sdk::{
     signing::SigningTxData, tx::Tx, PaymentAddress,
 };
 use rand::rngs::OsRng;
+use typed_builder::TypedBuilder;
 
-use crate::{check::Check, entities::Alias, executor::StepError, sdk::namada::Sdk};
+use crate::state::State;
+use crate::{
+    check::Check, entities::Alias, executor::StepError, sdk::namada::Sdk, task::TaskSettings,
+};
 
-use super::tx_utils::build_reveal_pk;
+use super::utils::build_reveal_pk;
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct NewWalletKeyPair {
+#[derive(Clone, TypedBuilder)]
+pub struct NewWalletKeyPair {
     source: Alias,
 }
 
 impl TaskContext for NewWalletKeyPair {
+    fn name(&self) -> String {
+        "new-wallet-key-pair".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("new-wallet-key-pair/{}", self.source.name)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        None
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let block = rpc::query_block(&sdk.namada.client)
             .await
@@ -79,5 +95,10 @@ impl TaskContext for NewWalletKeyPair {
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         Ok(vec![Check::RevealPk(self.source.clone())])
+    }
+
+    fn update_state(&self, state: &mut State, _with_fee: bool) {
+        state.add_implicit_account(&self.source);
+        state.add_masp_account(&self.source);
     }
 }

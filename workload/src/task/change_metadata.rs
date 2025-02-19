@@ -4,15 +4,17 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check, entities::Alias, executor::StepError, sdk::namada::Sdk, task::TaskSettings,
 };
 
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct ChangeMetadata {
+#[derive(Clone, TypedBuilder)]
+pub struct ChangeMetadata {
     source: Alias,
     website: String,
     email: String,
@@ -23,6 +25,18 @@ pub(super) struct ChangeMetadata {
 }
 
 impl TaskContext for ChangeMetadata {
+    fn name(&self) -> String {
+        "change-metadata".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("change-metadata/{}", self.source.name)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
         let source_address = wallet
@@ -73,5 +87,11 @@ impl TaskContext for ChangeMetadata {
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         Ok(vec![])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
     }
 }

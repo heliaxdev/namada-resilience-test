@@ -3,7 +3,8 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-use crate::entities::Alias;
+use crate::executor::StepError;
+use crate::{entities::Alias, sdk::namada::Sdk, state::State};
 
 pub type Target = Alias;
 pub type PreBalance = namada_sdk::token::Amount;
@@ -75,4 +76,11 @@ impl Display for Check {
             }
         }
     }
+}
+
+#[enum_dispatch(Check)]
+trait CheckContext {
+    fn summary(&self) -> String;
+
+    async fn do_check(&self, sdk: &Sdk) -> Result<(), StepError>;
 }

@@ -1,35 +1,7 @@
 use std::{collections::HashMap, str::FromStr, time::Instant};
 
 use crate::{
-    build::{
-        batch::{build_bond_batch, build_random_batch},
-        become_validator::build_become_validator,
-        bond::build_bond,
-        change_consensus_key::build_change_consensus_key,
-        change_metadata::build_change_metadata,
-        claim_rewards::build_claim_rewards,
-        deactivate_validator::build_deactivate_validator,
-        default_proposal::build_default_proposal,
-        faucet_transfer::build_faucet_transfer,
-        init_account::build_init_account,
-        new_wallet_keypair::build_new_wallet_keypair,
-        reactivate_validator::build_reactivate_validator,
-        redelegate::build_redelegate,
-        shielded_transfer::build_shielded_transfer,
-        shielding::build_shielding,
-        transparent_transfer::build_transparent_transfer,
-        unbond::build_unbond,
-        unshielding::build_unshielding,
-        update_account::build_update_account,
-        vote::build_vote,
-    },
-    check::Check,
-    constants::{MIN_TRANSFER_BALANCE, PROPOSAL_DEPOSIT},
-    entities::Alias,
-    execute::reveal_pk::execute_reveal_pk,
-    sdk::namada::Sdk,
-    state::State,
-    step::StepType,
+    check::Check, sdk::namada::Sdk, state::State, step::StepType, task::utils::execute_reveal_pk,
     task::Task,
 };
 use namada_sdk::{
@@ -142,83 +114,12 @@ impl WorkloadExecutor {
         }
     }
 
-    pub async fn is_valid(&self, step_type: &StepType) -> bool {
-        match step_type {
-            StepType::NewWalletKeyPair => true,
-            StepType::FaucetTransfer => self.state.any_account(),
-            StepType::TransparentTransfer => {
-                self.state.at_least_accounts(2) && self.state.any_account_can_make_transfer()
-            }
-            StepType::Bond => self
-                .state
-                .any_account_with_min_balance(MIN_TRANSFER_BALANCE),
-            StepType::Unbond => self.state.any_bond(),
-            StepType::InitAccount => self.state.min_n_implicit_accounts(3),
-            StepType::Redelegate => self.state.any_bond(),
-            StepType::ClaimRewards => self.state.any_bond(),
-            StepType::Shielding => self
-                .state
-                .any_account_with_min_balance(MIN_TRANSFER_BALANCE),
-            StepType::BatchBond => self
-                .state
-                .min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE),
-            StepType::BatchRandom => {
-                self.state
-                    .min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE)
-                    && self.state.min_bonds(3)
-            }
-            StepType::Shielded => {
-                self.state.at_least_masp_accounts(2)
-                    && self
-                        .state
-                        .at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
-            }
-            StepType::Unshielding => {
-                self.state
-                    .at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
-                    && self.state.min_n_implicit_accounts(1)
-            }
-            StepType::BecomeValidator => self.state.min_n_enstablished_accounts(1),
-            StepType::ChangeMetadata => self.state.min_n_validators(1),
-            StepType::ChangeConsensusKey => self.state.min_n_validators(1),
-            StepType::DeactivateValidator => self.state.min_n_validators(1),
-            StepType::UpdateAccount => {
-                self.state.min_n_enstablished_accounts(1) && self.state.min_n_implicit_accounts(3)
-            }
-            StepType::ReactivateValidator => self.state.min_n_deactivated_validators(1),
-            StepType::DefaultProposal => self.state.any_account_with_min_balance(PROPOSAL_DEPOSIT),
-            StepType::VoteProposal => {
-                let current_epoch = self.fetch_current_epoch().await;
-                self.state.any_bond() && self.state.any_votable_proposal(current_epoch)
-            }
-        }
+    pub async fn is_valid(&self, step_type: &StepType) -> Result<bool, StepError> {
+        step_type.is_valid(&self.sdk, &self.state).await
     }
 
     pub async fn build(&mut self, step_type: StepType) -> Result<Vec<Task>, StepError> {
-        let steps = match step_type {
-            StepType::NewWalletKeyPair => build_new_wallet_keypair(&mut self.state).await,
-            StepType::FaucetTransfer => build_faucet_transfer(&mut self.state).await?,
-            StepType::TransparentTransfer => build_transparent_transfer(&mut self.state).await?,
-            StepType::Bond => build_bond(&self.sdk, &mut self.state).await?,
-            StepType::InitAccount => build_init_account(&mut self.state).await?,
-            StepType::Redelegate => build_redelegate(&self.sdk, &mut self.state).await?,
-            StepType::Unbond => build_unbond(&self.sdk, &mut self.state).await?,
-            StepType::ClaimRewards => build_claim_rewards(&mut self.state),
-            StepType::Shielding => build_shielding(&mut self.state).await?,
-            StepType::BatchBond => build_bond_batch(&self.sdk, 3, &mut self.state).await?,
-            StepType::BatchRandom => build_random_batch(&self.sdk, 3, &mut self.state).await?,
-            StepType::Shielded => build_shielded_transfer(&mut self.state).await?,
-            StepType::Unshielding => build_unshielding(&mut self.state).await?,
-            StepType::BecomeValidator => build_become_validator(&mut self.state).await?,
-            StepType::ChangeMetadata => build_change_metadata(&mut self.state).await?,
-            StepType::ChangeConsensusKey => build_change_consensus_key(&mut self.state).await?,
-            StepType::DeactivateValidator => build_deactivate_validator(&mut self.state).await?,
-            StepType::UpdateAccount => build_update_account(&mut self.state).await?,
-            StepType::ReactivateValidator => build_reactivate_validator(&mut self.state).await?,
-            StepType::DefaultProposal => build_default_proposal(&self.sdk, &mut self.state).await?,
-            StepType::VoteProposal => build_vote(&self.sdk, &mut self.state).await?,
-        };
-        Ok(steps)
+        step_type.build_task(&self.sdk, &mut self.state).await
     }
 
     pub async fn build_check(&self, tasks: &Vec<Task>) -> Result<Vec<Check>, StepError> {

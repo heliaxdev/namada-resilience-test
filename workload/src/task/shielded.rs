@@ -9,7 +9,9 @@ use namada_sdk::{
     Namada,
 };
 use rand::rngs::OsRng;
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -18,11 +20,11 @@ use crate::{
     task::{Amount, TaskSettings},
 };
 
-use super::query_utils::get_shielded_balance;
+use super::utils::get_shielded_balance;
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct ShieldedTransfer {
+#[derive(Clone, TypedBuilder)]
+pub struct ShieldedTransfer {
     source: Alias,
     target: Alias,
     amount: Amount,
@@ -30,6 +32,21 @@ pub(super) struct ShieldedTransfer {
 }
 
 impl TaskContext for ShieldedTransfer {
+    fn name(&self) -> String {
+        "shielded-transfer".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!(
+            "shielded-transfer/{}/{}/{}",
+            self.source.name, self.target.name, self.amount
+        )
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let mut bparams = RngBuildParams::new(OsRng);
         let mut wallet = sdk.namada.wallet.write().await;
@@ -93,7 +110,7 @@ impl TaskContext for ShieldedTransfer {
     async fn build_checks(
         &self,
         sdk: &Sdk,
-        retry_config: RetryConfig,
+        _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         let pre_balance = get_shielded_balance(sdk, &self.source, None, false)
             .await?
@@ -108,5 +125,12 @@ impl TaskContext for ShieldedTransfer {
             Check::BalanceShieldedTarget(self.target.clone(), pre_balance, self.amount);
 
         Ok(vec![source_check, target_check])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.modify_shielded_transfer(&self.source, &self.target, self.amount);
     }
 }

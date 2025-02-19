@@ -1,25 +1,44 @@
 use std::collections::HashMap;
 
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check, entities::Alias, executor::StepError, sdk::namada::Sdk, task::TaskSettings,
 };
 
-use super::tx_utils::merge_tx;
+use super::utils::merge_tx;
 use super::{RetryConfig, Task, TaskContext};
 
-#[derive(Clone)]
-pub(super) struct Batch {
+#[derive(Clone, TypedBuilder)]
+pub struct Batch {
     tasks: Vec<Task>,
     settings: TaskSettings,
 }
 
 impl TaskContext for Batch {
+    fn name(&self) -> String {
+        "batch".to_string()
+    }
+
+    fn summary(&self) -> String {
+        let tasks = self
+            .tasks
+            .iter()
+            .map(|task| task.to_string())
+            .collect::<Vec<String>>();
+        format!("batch-{} -> {}", tasks.len(), tasks.join(" -> "))
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let mut txs = vec![];
         for task in &self.tasks {
-            let (tx, mut signing_data, _) = task.build_tx(sdk).await?;
+            let (tx, mut signing_data, _) = Box::pin(task.build_tx(sdk)).await?;
             if signing_data.len() != 1 {
                 return Err(StepError::Build("Unexpected sigining data".to_string()));
             }
@@ -38,6 +57,9 @@ impl TaskContext for Batch {
         for task in &self.tasks {
             let task_checks = task.build_checks(sdk, retry_config).await?;
             checks.extend(task_checks);
+        }
+
+        {
             match task {
                 Task::NewWalletKeyPair(info) => {
                     reveal_pks.insert(info.source.clone(), source.to_owned());
@@ -194,5 +216,12 @@ impl TaskContext for Batch {
         }
 
         Ok(checks)
+    }
+
+    fn update_state(&self, state: &mut State, _with_fee: bool) {
+        state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        self.tasks
+            .iter()
+            .map(|task| task.update_state(state, false));
     }
 }

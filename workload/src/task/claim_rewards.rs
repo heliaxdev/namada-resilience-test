@@ -7,7 +7,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -18,14 +20,26 @@ use crate::{
 
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct ClaimRewards {
+#[derive(Clone, TypedBuilder)]
+pub struct ClaimRewards {
     source: Alias,
     from_validator: ValidatorAddress,
     settings: TaskSettings,
 }
 
 impl TaskContext for ClaimRewards {
+    fn name(&self) -> String {
+        "claim-rewards".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("claim-rewards/{}", self.source.name)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
 
@@ -67,5 +81,11 @@ impl TaskContext for ClaimRewards {
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         Ok(vec![])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
     }
 }

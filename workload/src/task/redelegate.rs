@@ -8,7 +8,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -17,11 +19,11 @@ use crate::{
     task::{Amount, Epoch, TaskSettings, ValidatorAddress},
 };
 
-use super::query_utils::get_bond;
+use super::utils::get_bond;
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct Redelegate {
+#[derive(Clone, TypedBuilder)]
+pub struct Redelegate {
     source: Alias,
     from_validator: ValidatorAddress,
     to_validator: ValidatorAddress,
@@ -31,6 +33,21 @@ pub(super) struct Redelegate {
 }
 
 impl TaskContext for Redelegate {
+    fn name(&self) -> String {
+        "redelegate".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!(
+            "redelegate/{}/{}/{}/{}",
+            self.source.name, self.from_validator, self.to_validator, self.amount
+        )
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
 
@@ -110,5 +127,17 @@ impl TaskContext for Redelegate {
         );
 
         Ok(vec![from_validator_bond_check, to_validator_bond_check])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.modify_redelegate(
+            &self.source,
+            &self.from_validator,
+            &self.to_validator,
+            self.amount,
+        )
     }
 }

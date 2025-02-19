@@ -8,7 +8,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -17,11 +19,11 @@ use crate::{
     task::{Amount, Epoch, TaskSettings, ValidatorAddress},
 };
 
-use super::query_utils::get_bond;
+use super::utils::get_bond;
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct Unbond {
+#[derive(Clone, TypedBuilder)]
+pub struct Unbond {
     source: Alias,
     validator: ValidatorAddress,
     amount: Amount,
@@ -30,6 +32,21 @@ pub(super) struct Unbond {
 }
 
 impl TaskContext for Unbond {
+    fn name(&self) -> String {
+        "unbond".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!(
+            "unbond/{}/{}/{}",
+            self.source.name, self.validator, self.amount
+        )
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
 
@@ -81,5 +98,12 @@ impl TaskContext for Unbond {
             pre_bond,
             self.amount,
         )])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.modify_unbonds(&self.source, &self.validator, self.amount);
     }
 }

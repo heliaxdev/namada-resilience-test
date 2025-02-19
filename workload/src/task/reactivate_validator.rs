@@ -4,7 +4,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::{Check, ValidatorStatus},
     entities::Alias,
@@ -15,13 +17,25 @@ use crate::{
 
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct ReactivateValidator {
+#[derive(Clone, TypedBuilder)]
+pub struct ReactivateValidator {
     target: Alias,
     settings: TaskSettings,
 }
 
 impl TaskContext for ReactivateValidator {
+    fn name(&self) -> String {
+        "reactivate-validator".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("reactivate-validator/{}", self.target.name)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
         let target_address = wallet
@@ -71,5 +85,12 @@ impl TaskContext for ReactivateValidator {
             self.target.clone(),
             ValidatorStatus::Reactivating,
         )])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.remove_deactivate_validator(&self.target);
     }
 }

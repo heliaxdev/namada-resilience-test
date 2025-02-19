@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
-    constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE, PROPOSAL_DEPOSIT},
+    constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE},
     entities::Alias,
     task::Task,
 };
@@ -115,134 +115,14 @@ impl State {
 
     pub fn update(&mut self, tasks: &Vec<Task>, with_fee: bool) {
         for task in tasks {
-            match task {
-                Task::NewWalletKeyPair(alias) => {
-                    self.add_implicit_account(alias);
-                    self.add_masp_account(alias);
-                }
-                Task::FaucetTransfer(target, amount, settings) => {
-                    if with_fee {
-                        self.modify_balance_fee(&settings.gas_payer, settings.gas_limit);
-                    }
-                    self.increase_balance(target, *amount);
-                }
-                Task::TransparentTransfer(source, target, amount, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.decrease_balance(source, *amount);
-                    self.increase_balance(target, *amount);
-                }
-                Task::Bond(source, validator, amount, _, setting) => {
-                    self.modify_bond(source, validator, *amount);
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                }
-                Task::Redelegate(source, from, to, amount, _epoch, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.modify_redelegate(source, from, to, *amount)
-                }
-                Task::Batch(tasks, setting) => {
-                    self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    self.update(&tasks, false);
-                }
-                Task::Unbond(source, validator, amount, _epoch, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.modify_unbonds(source, validator, *amount);
-                }
-                Task::ClaimRewards(_source, _validator, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                }
-                Task::InitAccount(alias, sources, threshold, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.add_enstablished_account(alias, sources, *threshold);
-                }
-                Task::ShieldedTransfer(source, target, amount, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.modify_shielded_transfer(source, target, *amount);
-                }
-                Task::Shielding(source, target, amount, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.modify_shielding(source, target, *amount)
-                }
-                Task::Unshielding(source, target, amount, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.modify_unshielding(source, target, *amount)
-                }
-                Task::BecomeValidator(alias, _, _, _, _, _, _, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.set_enstablished_as_validator(alias)
-                }
-                Task::ChangeMetadata(_, _, _, _, _, _, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                }
-                Task::ChangeConsensusKey(_, _, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                }
-                Task::UpdateAccount(target, sources, threshold, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.modify_enstablished_account(target, sources, *threshold);
-                }
-                Task::DeactivateValidator(target, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.set_validator_as_deactivated(target);
-                }
-                Task::ReactivateValidator(target, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.remove_deactivate_validator(target);
-                }
-                Task::DefaultProposal(source, start_epoch, end_epoch, _, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                    self.decrease_balance(source, PROPOSAL_DEPOSIT);
-                    self.add_proposal(*start_epoch, *end_epoch);
-                }
-                Task::Vote(_, _, _, setting) => {
-                    if with_fee {
-                        self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
-                    }
-                }
-            }
-            self.stats
-                .entry(task.raw_type())
-                .and_modify(|counter| *counter += 1)
-                .or_insert(1);
+            task.update_state(&mut self, with_fee);
+            task.update_stats(&mut self);
         }
     }
 
     pub fn update_failed_execution(&mut self, tasks: &[Task]) {
         for task in tasks {
-            if let Some(settings) = task.task_settings() {
-                self.modify_balance_fee(&settings.gas_payer, settings.gas_limit);
-            }
+            task.update_failed_execution(&mut self);
         }
     }
 

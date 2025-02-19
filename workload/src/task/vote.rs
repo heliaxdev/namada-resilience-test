@@ -4,7 +4,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -15,8 +17,8 @@ use crate::{
 
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct Vote {
+#[derive(Clone, TypedBuilder)]
+pub struct Vote {
     source: Alias,
     proposal_id: ProposalId,
     vote: VoteOption,
@@ -24,6 +26,21 @@ pub(super) struct Vote {
 }
 
 impl TaskContext for Vote {
+    fn name(&self) -> String {
+        "vote".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!(
+            "vote/{}/{}/{}",
+            self.source.name, self.proposal_id, self.vote
+        )
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
         let source_address = wallet
@@ -64,5 +81,11 @@ impl TaskContext for Vote {
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         Ok(vec![])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
     }
 }

@@ -5,22 +5,40 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
-    check::Check, entities::Alias, executor::StepError, sdk::namada::Sdk, task::TaskSettings,
+    check::Check,
+    entities::Alias,
+    executor::StepError,
+    sdk::namada::Sdk,
+    task::{Amount, TaskSettings},
 };
 
-use super::query_utils::get_balance;
+use super::utils::get_balance;
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct FaucetTransfer {
+#[derive(Clone, TypedBuilder)]
+pub struct FaucetTransfer {
     target: Alias,
-    amount: u64,
+    amount: Amount,
     settings: TaskSettings,
 }
 
 impl TaskContext for FaucetTransfer {
+    fn name(&self) -> String {
+        "faucet-transfer".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("faucet-transfer/{}/{}", self.target.name, self.amount)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
 
@@ -89,5 +107,12 @@ impl TaskContext for FaucetTransfer {
             pre_balance,
             self.amount,
         )])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.increase_balance(&self.target, self.amount);
     }
 }

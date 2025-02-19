@@ -6,7 +6,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -17,8 +19,8 @@ use crate::{
 
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct UpdateAccount {
+#[derive(Clone, TypedBuilder)]
+pub struct UpdateAccount {
     target: Alias,
     sources: BTreeSet<Alias>,
     threshold: Threshold,
@@ -26,6 +28,18 @@ pub(super) struct UpdateAccount {
 }
 
 impl TaskContext for UpdateAccount {
+    fn name(&self) -> String {
+        "update-account".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("update-account/{}", self.target.name)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
         let target = wallet
@@ -84,5 +98,12 @@ impl TaskContext for UpdateAccount {
             self.threshold,
             self.sources.clone(),
         )])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.modify_enstablished_account(&self.target, &self.sources, self.threshold);
     }
 }

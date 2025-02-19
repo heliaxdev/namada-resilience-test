@@ -7,7 +7,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     constants::PROPOSAL_DEPOSIT,
@@ -17,11 +19,11 @@ use crate::{
     task::{Epoch, TaskSettings},
 };
 
-use super::query_utils::get_balance;
+use super::utils::get_balance;
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct DefaultProposal {
+#[derive(Clone, TypedBuilder)]
+pub struct DefaultProposal {
     source: Alias,
     start_epoch: Epoch,
     end_epoch: Epoch,
@@ -30,6 +32,18 @@ pub(super) struct DefaultProposal {
 }
 
 impl TaskContext for DefaultProposal {
+    fn name(&self) -> String {
+        "default-proposal".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("default-proposal/{}", self.source.name)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
         let source_address = wallet
@@ -94,5 +108,13 @@ impl TaskContext for DefaultProposal {
         let source_check = Check::BalanceSource(self.source.clone(), pre_balance, PROPOSAL_DEPOSIT);
 
         Ok(vec![source_check])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.decrease_balance(&self.source, PROPOSAL_DEPOSIT);
+        state.add_proposal(self.start_epoch, self.end_epoch);
     }
 }

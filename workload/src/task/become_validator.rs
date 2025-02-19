@@ -7,7 +7,9 @@ use namada_sdk::{
     Namada,
 };
 use rand::rngs::OsRng;
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -18,8 +20,8 @@ use crate::{
 
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct BecomeValidator {
+#[derive(Clone, TypedBuilder)]
+pub struct BecomeValidator {
     source: Alias,
     consensus_alias: Alias,
     eth_cold_alias: Alias,
@@ -31,6 +33,18 @@ pub(super) struct BecomeValidator {
 }
 
 impl TaskContext for BecomeValidator {
+    fn name(&self) -> String {
+        "become-validator".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!("become-validator/{}", self.source.name)
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let mut wallet = sdk.namada.wallet.write().await;
 
@@ -138,5 +152,12 @@ impl TaskContext for BecomeValidator {
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         Ok(vec![Check::IsValidatorAccount(self.source.clone())])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.set_enstablished_as_validator(&self.source)
     }
 }

@@ -5,7 +5,9 @@ use namada_sdk::{
     tx::{data::GasLimit, Tx},
     Namada,
 };
+use typed_builder::TypedBuilder;
 
+use crate::state::State;
 use crate::{
     check::Check,
     entities::Alias,
@@ -14,11 +16,11 @@ use crate::{
     task::{Amount, TaskSettings},
 };
 
-use super::query_utils::get_balance;
+use super::utils::get_balance;
 use super::{RetryConfig, TaskContext};
 
-#[derive(Clone, Debug)]
-pub(super) struct TransparentTransfer {
+#[derive(Clone, TypedBuilder)]
+pub struct TransparentTransfer {
     source: Alias,
     target: Alias,
     amount: Amount,
@@ -26,6 +28,21 @@ pub(super) struct TransparentTransfer {
 }
 
 impl TaskContext for TransparentTransfer {
+    fn name(&self) -> String {
+        "transparent-transfer".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!(
+            "transparent-transfer/{}/{}/{}",
+            self.source.name, self.target.name, self.amount
+        )
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
         let wallet = sdk.namada.wallet.read().await;
 
@@ -91,5 +108,13 @@ impl TaskContext for TransparentTransfer {
         let target_check = Check::BalanceTarget(self.target.clone(), pre_balance, self.amount);
 
         Ok(vec![source_check, target_check])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.decrease_balance(&self.source, self.amount);
+        state.increase_balance(&self.target, self.amount);
     }
 }
