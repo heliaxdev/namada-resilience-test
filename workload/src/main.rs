@@ -185,10 +185,10 @@ impl Code {
                         &details
                     );
                 }
-                StepType::ChangeConsensusKeys => {
+                StepType::ChangeConsensusKey => {
                     antithesis_sdk::assert_always!(
                         !is_fatal,
-                        "Done executing ChangeConsensusKeys",
+                        "Done executing ChangeConsensusKey",
                         &details
                     );
                 }
@@ -318,7 +318,7 @@ async fn inner_main() -> Code {
     let workload_executor = WorkloadExecutor::new(sdk, state);
     workload_executor.init().await;
 
-    let current_epoch = fetch_current_epoch(&sdk).await;
+    let current_epoch = workload_executor.fetch_current_epoch().await;
 
     let next_step = config.step_type;
     if !workload_executor.is_valid(&next_step).await {

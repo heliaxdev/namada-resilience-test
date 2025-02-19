@@ -5,7 +5,7 @@ use crate::{
         batch::{build_bond_batch, build_random_batch},
         become_validator::build_become_validator,
         bond::build_bond,
-        change_consensus_keys::build_change_consensus_keys,
+        change_consensus_key::build_change_consensus_key,
         change_metadata::build_change_metadata,
         claim_rewards::build_claim_rewards,
         deactivate_validator::build_deactivate_validator,
@@ -23,7 +23,6 @@ use crate::{
         update_account::build_update_account,
         vote::build_vote,
     },
-    build_checks,
     check::Check,
     constants::{MIN_TRANSFER_BALANCE, PROPOSAL_DEPOSIT},
     entities::Alias,
@@ -95,7 +94,7 @@ impl WorkloadExecutor {
         }
     }
 
-    async fn fetch_current_epoch(&self) -> u64 {
+    pub async fn fetch_current_epoch(&self) -> u64 {
         loop {
             let latest_epoch = rpc::query_epoch(&self.sdk.namada.client).await;
             if let Ok(epoch) = latest_epoch {
@@ -181,7 +180,7 @@ impl WorkloadExecutor {
             }
             StepType::BecomeValidator => self.state.min_n_enstablished_accounts(1),
             StepType::ChangeMetadata => self.state.min_n_validators(1),
-            StepType::ChangeConsensusKeys => self.state.min_n_validators(1),
+            StepType::ChangeConsensusKey => self.state.min_n_validators(1),
             StepType::DeactivateValidator => self.state.min_n_validators(1),
             StepType::UpdateAccount => {
                 self.state.min_n_enstablished_accounts(1) && self.state.min_n_implicit_accounts(3)
@@ -212,7 +211,7 @@ impl WorkloadExecutor {
             StepType::Unshielding => build_unshielding(&mut self.state).await?,
             StepType::BecomeValidator => build_become_validator(&mut self.state).await?,
             StepType::ChangeMetadata => build_change_metadata(&mut self.state).await?,
-            StepType::ChangeConsensusKeys => build_change_consensus_keys(&mut self.state).await?,
+            StepType::ChangeConsensusKey => build_change_consensus_key(&mut self.state).await?,
             StepType::DeactivateValidator => build_deactivate_validator(&mut self.state).await?,
             StepType::UpdateAccount => build_update_account(&mut self.state).await?,
             StepType::ReactivateValidator => build_reactivate_validator(&mut self.state).await?,
@@ -223,11 +222,15 @@ impl WorkloadExecutor {
     }
 
     pub async fn build_check(&self, tasks: &Vec<Task>) -> Result<Vec<Check>, StepError> {
-        Ok(futures::future::try_join_all(tasks.iter().map(|task| async move { task.build_check(&self.sdk).await}))
-            .await?
-            .into_iter()
-            .flatten()
-            .collect())
+        Ok(futures::future::try_join_all(
+            tasks
+                .iter()
+                .map(|task| async move { task.build_check(&self.sdk).await }),
+        )
+        .await?
+        .into_iter()
+        .flatten()
+        .collect())
     }
 
     pub async fn checks(

@@ -1,0 +1,83 @@
+use namada_sdk::{
+    args, key::SchemeType, masp::find_valid_diversifier, masp_primitives::zip32, rpc,
+    signing::SigningTxData, tx::Tx, PaymentAddress,
+};
+use rand::rngs::OsRng;
+
+use crate::{check::Check, entities::Alias, executor::StepError, sdk::namada::Sdk};
+
+use super::tx_utils::build_reveal_pk;
+use super::{RetryConfig, TaskContext};
+
+#[derive(Clone, Debug)]
+pub(super) struct NewWalletKeyPair {
+    source: Alias,
+}
+
+impl TaskContext for NewWalletKeyPair {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+        let block = rpc::query_block(&sdk.namada.client)
+            .await
+            .map_err(StepError::Rpc)?
+            .ok_or_else(|| StepError::StateCheck("No block found".to_string()))?;
+
+        let mut wallet = sdk.namada.wallet.write().await;
+
+        let (_alias, sk) = wallet
+            .gen_store_secret_key(
+                SchemeType::Ed25519,
+                Some(self.source.name.clone()),
+                true,
+                None,
+                &mut OsRng,
+            )
+            .ok_or_else(|| {
+                StepError::Wallet(format!(
+                    "Failed to generate keypair for {}",
+                    self.source.name
+                ))
+            })?;
+
+        let spending_key_alias = format!("{}-spending-key", self.source.name);
+        let (_alias, spending_key) = wallet
+            .gen_store_spending_key(
+                spending_key_alias.clone(),
+                Some(block.height),
+                None,
+                true,
+                &mut OsRng,
+            )
+            .ok_or_else(|| {
+                StepError::Wallet(format!(
+                    "Failed to generate spending key for {}",
+                    spending_key_alias
+                ))
+            })?;
+
+        let viewing_key = zip32::ExtendedFullViewingKey::from(&spending_key.into())
+            .fvk
+            .vk;
+        let (div, _g_d) = find_valid_diversifier(&mut OsRng);
+        let masp_payment_addr: namada_sdk::masp_primitives::sapling::PaymentAddress = viewing_key
+            .to_payment_address(div)
+            .expect("a PaymentAddress");
+        let payment_addr = PaymentAddress::from(masp_payment_addr);
+
+        let payment_address_alias = format!("{}-payment-address", self.source.name);
+        wallet.insert_payment_addr(payment_address_alias, payment_addr, true);
+
+        wallet
+            .save()
+            .map_err(|e| StepError::Wallet(format!("Failed to save the wallet: {e}")))?;
+
+        build_reveal_pk(sdk, sk.to_public()).await
+    }
+
+    async fn build_checks(
+        &self,
+        _sdk: &Sdk,
+        _retry_config: RetryConfig,
+    ) -> Result<Vec<Check>, StepError> {
+        Ok(vec![Check::RevealPk(self.source.clone())])
+    }
+}

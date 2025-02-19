@@ -195,7 +195,7 @@ impl State {
                         self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
                 }
-                Task::ChangeConsensusKeys(_, _, setting) => {
+                Task::ChangeConsensusKey(_, _, setting) => {
                     if with_fee {
                         self.modify_balance_fee(&setting.gas_payer, setting.gas_limit);
                     }
