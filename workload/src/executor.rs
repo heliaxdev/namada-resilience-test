@@ -5,6 +5,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
+use crate::types::Alias;
 use crate::utils::{execute_reveal_pk, retry_config};
 use namada_sdk::rpc;
 use thiserror::Error;
@@ -75,12 +76,28 @@ impl WorkloadExecutor {
         }
     }
 
-    pub async fn init(&self) {
+    pub async fn init(&self) -> Result<(), StepError> {
         let client = &self.sdk.namada.client;
         let wallet = self.sdk.namada.wallet.read().await;
-        let faucet_address = wallet.find_address("faucet").unwrap().into_owned();
-        let nam_address = wallet.find_address("nam").unwrap().into_owned();
-        let faucet_public_key = wallet.find_public_key("faucet").unwrap().to_owned();
+        let faucet_alias = Alias::faucet();
+        let faucet_address = wallet
+            .find_address(&faucet_alias.name)
+            .ok_or_else(|| StepError::Wallet(format!("No source address: {}", faucet_alias.name)))?
+            .into_owned();
+        let native_token_alias = Alias::nam();
+        let nam_address = wallet
+            .find_address(&native_token_alias.name)
+            .ok_or_else(|| {
+                StepError::Wallet(format!(
+                    "No native token address: {}",
+                    native_token_alias.name
+                ))
+            })?
+            .into_owned();
+        let faucet_public_key = wallet
+            .find_public_key(&faucet_alias.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?
+            .to_owned();
         drop(wallet);
 
         loop {
@@ -111,6 +128,8 @@ impl WorkloadExecutor {
             tracing::warn!("Retry revealing faucet pk...");
             sleep(Duration::from_secs(2)).await;
         }
+
+        Ok(())
     }
 
     pub async fn is_valid(&self, step_type: &StepType) -> Result<bool, StepError> {
@@ -121,7 +140,7 @@ impl WorkloadExecutor {
         step_type.build_task(&self.sdk, &mut self.state).await
     }
 
-    pub async fn build_check(&self, tasks: &Vec<Task>) -> Result<Vec<Check>, StepError> {
+    pub async fn build_check(&self, tasks: &[Task]) -> Result<Vec<Check>, StepError> {
         let retry_config = retry_config();
         Ok(futures::future::try_join_all(
             tasks
@@ -136,7 +155,6 @@ impl WorkloadExecutor {
 
     pub async fn checks(
         &self,
-        sdk: &Sdk,
         checks: Vec<Check>,
         execution_height: Option<u64>,
     ) -> Result<(), StepError> {
@@ -146,9 +164,7 @@ impl WorkloadExecutor {
             return Ok(());
         }
 
-        let execution_height = if let Some(height) = execution_height {
-            height
-        } else {
+        let Some(execution_height) = execution_height else {
             return Ok(());
         };
 
@@ -170,7 +186,7 @@ impl WorkloadExecutor {
             tracing::info!("Running {} check...", check.to_string());
             check
                 .do_check(
-                    sdk,
+                    &self.sdk,
                     CheckInfo {
                         execution_height,
                         check_height,
@@ -183,16 +199,12 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub async fn execute(
-        &self,
-        sdk: &Sdk,
-        tasks: &Vec<Task>,
-    ) -> Result<Vec<ExecutionResult>, StepError> {
+    pub async fn execute(&self, tasks: &[Task]) -> Result<Vec<ExecutionResult>, StepError> {
         let mut execution_results = vec![];
 
         for task in tasks {
             let now = Instant::now();
-            let execution_height = task.execute(sdk).await?;
+            let execution_height = task.execute(&self.sdk).await?;
             let execution_result = ExecutionResult {
                 time_taken: now.elapsed().as_secs(),
                 execution_height,
@@ -205,8 +217,14 @@ impl WorkloadExecutor {
 
     pub fn update_state(&self, tasks: Vec<Task>, state: &mut State) {
         for task in tasks {
-            task.update_state(&mut state, true);
-            task.update_stats(&mut state);
+            task.update_state(state, true);
+            task.update_stats(state);
+        }
+    }
+
+    pub fn update_failed_execution(&mut self, tasks: &[Task]) {
+        for task in tasks {
+            task.update_failed_execution(&mut self.state);
         }
     }
 }

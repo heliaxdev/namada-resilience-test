@@ -1,15 +1,16 @@
-use crate::sdk::namada::Sdk;
-use crate::{
-    entities::Alias,
-    executor::StepError,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use async_trait::async_trait;
 
-#[derive(Debug, Default)]
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
+
+#[derive(Clone, Debug, Default)]
 pub struct ClaimRewards;
 
+#[async_trait]
 impl StepContext for ClaimRewards {
     fn name(&self) -> String {
         "claim-rewards".to_string()

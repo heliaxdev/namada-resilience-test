@@ -1,22 +1,22 @@
 use std::str::FromStr;
 
+use async_trait::async_trait;
 use namada_sdk::{address::Address, rpc};
 use rand::seq::IteratorRandom;
 
-use crate::{
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Redelegate;
 
+#[async_trait]
 impl StepContext for Redelegate {
     fn name(&self) -> String {
         "redelegate".to_string()

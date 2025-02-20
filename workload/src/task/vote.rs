@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
@@ -21,6 +22,7 @@ pub struct Vote {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for Vote {
     fn name(&self) -> String {
         "vote".to_string()

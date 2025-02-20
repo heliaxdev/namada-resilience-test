@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::rpc;
 use rand::seq::IteratorRandom;
 
@@ -11,9 +12,10 @@ use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Bond;
 
+#[async_trait]
 impl StepContext for Bond {
     fn name(&self) -> String {
         "bond".to_string()

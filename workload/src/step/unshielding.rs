@@ -1,20 +1,21 @@
 use std::collections::BTreeSet;
 
+use async_trait::async_trait;
+
+use crate::constants::MIN_TRANSFER_BALANCE;
+use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::{
-    constants::MIN_TRANSFER_BALANCE,
-    entities::Alias,
-    executor::StepError,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Unshielding;
 
+#[async_trait]
 impl StepContext for Unshielding {
     fn name(&self) -> String {
         "unshielding".to_string()
@@ -27,7 +28,7 @@ impl StepContext for Unshielding {
         )
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
         let source_account = state
             .random_masp_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
             .ok_or(StepError::Build("No more accounts".to_string()))?;

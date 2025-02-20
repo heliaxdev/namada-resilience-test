@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::key::{RefTo, SchemeType};
 use namada_sdk::signing::SigningTxData;
@@ -27,6 +28,7 @@ pub struct BecomeValidator {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for BecomeValidator {
     fn name(&self) -> String {
         "become-validator".to_string()

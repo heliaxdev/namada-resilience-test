@@ -1,15 +1,16 @@
-use crate::sdk::namada::Sdk;
-use crate::{
-    entities::Alias,
-    executor::StepError,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use async_trait::async_trait;
 
-#[derive(Debug, Default)]
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
+
+#[derive(Clone, Debug, Default)]
 pub struct ReactivateValidator;
 
+#[async_trait]
 impl StepContext for ReactivateValidator {
     fn name(&self) -> String {
         "reactivate-validator".to_string()

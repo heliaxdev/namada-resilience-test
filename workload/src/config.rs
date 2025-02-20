@@ -1,4 +1,4 @@
-use crate::steps::StepType;
+use crate::step::StepType;
 
 #[derive(clap::Parser, Clone, Debug)]
 pub struct AppConfig {
@@ -19,7 +19,6 @@ pub struct AppConfig {
     #[arg(required = true)]
     pub masp_indexer_url: String,
     #[arg(required = true)]
-    #[arg(value_enum)]
     pub step_type: StepType,
     #[clap(long, env)]
     #[clap(default_value_t = false)]

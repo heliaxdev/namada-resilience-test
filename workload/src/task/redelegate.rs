@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use async_trait::async_trait;
 use namada_sdk::address::Address;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
@@ -27,6 +28,7 @@ pub struct Redelegate {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for Redelegate {
     fn name(&self) -> String {
         "redelegate".to_string()

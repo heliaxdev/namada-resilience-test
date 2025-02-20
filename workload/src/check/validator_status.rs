@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::proof_of_stake::types::ValidatorState;
 use serde_json::json;
 use typed_builder::TypedBuilder;
@@ -14,6 +15,7 @@ pub struct ValidatorStatus {
     status: Status,
 }
 
+#[async_trait]
 impl CheckContext for ValidatorStatus {
     fn summary(&self) -> String {
         format!("validator-status/{}/{}", self.target.name, self.status)

@@ -1,19 +1,19 @@
+use async_trait::async_trait;
 use namada_sdk::rpc;
 
-use crate::{
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Unbond;
 
+#[async_trait]
 impl StepContext for Unbond {
     fn name(&self) -> String {
         "unbond".to_string()

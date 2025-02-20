@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
@@ -23,6 +24,7 @@ pub struct UpdateAccount {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for UpdateAccount {
     fn name(&self) -> String {
         "update-account".to_string()

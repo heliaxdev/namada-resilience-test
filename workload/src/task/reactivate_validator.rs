@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
@@ -19,6 +20,7 @@ pub struct ReactivateValidator {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for ReactivateValidator {
     fn name(&self) -> String {
         "reactivate-validator".to_string()

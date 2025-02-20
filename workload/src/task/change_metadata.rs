@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
@@ -24,6 +25,7 @@ pub struct ChangeMetadata {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for ChangeMetadata {
     fn name(&self) -> String {
         "change-metadata".to_string()

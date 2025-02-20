@@ -1,5 +1,7 @@
 use std::fmt::Display;
+use std::str::FromStr;
 
+use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 
@@ -31,29 +33,62 @@ mod utils;
 mod vote;
 
 #[enum_dispatch]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum StepType {
     NewWalletKeyPair(new_wallet_keypair::NewWalletKeyPair),
     FaucetTransfer(faucet_transfer::FaucetTransfer),
     TransparentTransfer(transparent_transfer::TransparentTransfer),
-    Bond(bond::Bond),
-    InitAccount(init_account::InitAccount),
-    Redelegate(redelegate::Redelegate),
-    Unbond(unbond::Unbond),
-    ClaimRewards(claim_rewards::ClaimRewards),
-    BatchBond(batch::BatchBond),
-    BatchRandom(batch::BatchRandom),
     Shielding(shielding::Shielding),
     Shielded(shielded_transfer::ShieldedTransfer),
     Unshielding(unshielding::Unshielding),
-    BecomeValidator(become_validator::BecomeValidator),
-    ChangeMetadata(change_metadata::ChangeMetadata),
-    ChangeConsensusKey(change_consensus_key::ChangeConsensusKey),
+    Bond(bond::Bond),
+    Unbond(unbond::Unbond),
+    Redelegate(redelegate::Redelegate),
+    ClaimRewards(claim_rewards::ClaimRewards),
+    InitAccount(init_account::InitAccount),
     UpdateAccount(update_account::UpdateAccount),
+    BecomeValidator(become_validator::BecomeValidator),
     DeactivateValidator(deactivate_validator::DeactivateValidator),
     ReactivateValidator(reactivate_validator::ReactivateValidator),
+    ChangeMetadata(change_metadata::ChangeMetadata),
+    ChangeConsensusKey(change_consensus_key::ChangeConsensusKey),
     DefaultProposal(default_proposal::DefaultProposal),
     Vote(vote::Vote),
+    BatchBond(batch::BatchBond),
+    BatchRandom(batch::BatchRandom),
+}
+
+impl FromStr for StepType {
+    type Err = String;
+
+    fn from_str(step: &str) -> Result<Self, Self::Err> {
+        let step_type = match step {
+            "new-wallet-key-pair" => Self::NewWalletKeyPair(Default::default()),
+            "faucet-transfer" => Self::FaucetTransfer(Default::default()),
+            "transparent-transfer" => Self::TransparentTransfer(Default::default()),
+            "shielding" => Self::Shielded(Default::default()),
+            "shielded" => Self::Shielding(Default::default()),
+            "unshielding" => Self::Unshielding(Default::default()),
+            "bond" => Self::Bond(Default::default()),
+            "unbond" => Self::Unbond(Default::default()),
+            "redelegate" => Self::Redelegate(Default::default()),
+            "claim-rewards" => Self::ClaimRewards(Default::default()),
+            "init-account" => Self::InitAccount(Default::default()),
+            "update-account" => Self::UpdateAccount(Default::default()),
+            "become-validator" => Self::BecomeValidator(Default::default()),
+            "deactivate-validator" => Self::DeactivateValidator(Default::default()),
+            "reactivate-validator" => Self::ReactivateValidator(Default::default()),
+            "change-metadata" => Self::ChangeMetadata(Default::default()),
+            "change-consensus-key" => Self::ChangeConsensusKey(Default::default()),
+            "default-proposal" => Self::DefaultProposal(Default::default()),
+            "vote" => Self::Vote(Default::default()),
+            "batch-bond" => Self::BatchBond(Default::default()),
+            "batch-random" => Self::BatchRandom(Default::default()),
+            _ => return Err(format!("Invalid step type was given: {step}")),
+        };
+
+        Ok(step_type)
+    }
 }
 
 impl Display for StepType {
@@ -77,6 +112,7 @@ impl Distribution<StepType> for Standard {
     }
 }
 
+#[async_trait]
 #[enum_dispatch(StepType)]
 pub trait StepContext {
     fn name(&self) -> String;

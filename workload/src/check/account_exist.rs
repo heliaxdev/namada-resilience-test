@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use async_trait::async_trait;
 use serde_json::json;
 use typed_builder::TypedBuilder;
 
@@ -16,6 +17,7 @@ pub struct AccountExist {
     sources: BTreeSet<Alias>,
 }
 
+#[async_trait]
 impl CheckContext for AccountExist {
     fn summary(&self) -> String {
         format!("account-exist/{}", self.target.name)

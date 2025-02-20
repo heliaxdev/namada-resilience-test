@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::key::{RefTo, SchemeType};
 use namada_sdk::signing::SigningTxData;
@@ -22,6 +23,7 @@ pub struct ChangeConsensusKey {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for ChangeConsensusKey {
     fn name(&self) -> String {
         "change-consensus-key".to_string()

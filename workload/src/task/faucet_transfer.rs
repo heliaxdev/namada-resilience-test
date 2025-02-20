@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxTransparentTransferData};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::token::{self, DenominatedAmount};
@@ -21,6 +22,7 @@ pub struct FaucetTransfer {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for FaucetTransfer {
     fn name(&self) -> String {
         "faucet-transfer".to_string()

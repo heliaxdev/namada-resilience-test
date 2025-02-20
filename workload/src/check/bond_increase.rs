@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::token;
 use serde_json::json;
 use typed_builder::TypedBuilder;
@@ -35,6 +36,7 @@ impl BondIncrease {
     }
 }
 
+#[async_trait]
 impl CheckContext for BondIncrease {
     fn summary(&self) -> String {
         format!("bond/{}/{}/increase", &self.target.name, self.validator)

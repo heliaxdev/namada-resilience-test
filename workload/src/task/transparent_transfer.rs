@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxTransparentTransferData};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::token::{self, DenominatedAmount};
@@ -22,6 +23,7 @@ pub struct TransparentTransfer {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for TransparentTransfer {
     fn name(&self) -> String {
         "transparent-transfer".to_string()

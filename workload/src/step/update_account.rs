@@ -1,19 +1,20 @@
 use std::collections::BTreeSet;
 
+use async_trait::async_trait;
+
+use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::{
-    entities::Alias,
-    executor::StepError,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct UpdateAccount;
 
+#[async_trait]
 impl StepContext for UpdateAccount {
     fn name(&self) -> String {
         "update-account".to_string()
@@ -23,7 +24,7 @@ impl StepContext for UpdateAccount {
         Ok(state.min_n_enstablished_accounts(1) && state.min_n_implicit_accounts(3))
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
         let account = state.random_enstablished_account(vec![], 1).pop().unwrap();
 
         let total_signers = utils::random_between(state, 1, 4);

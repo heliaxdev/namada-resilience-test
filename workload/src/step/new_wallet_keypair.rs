@@ -1,22 +1,23 @@
+use async_trait::async_trait;
+
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
+use crate::state::State;
 use crate::step::StepContext;
-use crate::{
-    state::State,
-    task::{self, Task},
-};
+use crate::task::{self, Task};
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct NewWalletKeyPair;
 
+#[async_trait]
 impl StepContext for NewWalletKeyPair {
     fn name(&self) -> String {
         "new-walleet-keypair".to_string()
     }
 
-    async fn is_valid(&self, _sdk: &Sdk, state: &State) -> Result<bool, StepError> {
+    async fn is_valid(&self, _sdk: &Sdk, _state: &State) -> Result<bool, StepError> {
         Ok(true)
     }
 

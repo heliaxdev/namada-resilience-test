@@ -1,17 +1,18 @@
+use async_trait::async_trait;
+
+use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::{
-    entities::Alias,
-    executor::StepError,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct ChangeConsensusKey;
 
+#[async_trait]
 impl StepContext for ChangeConsensusKey {
     fn name(&self) -> String {
         "change-consensus-key".to_string()

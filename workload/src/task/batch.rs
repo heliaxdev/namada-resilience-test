@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use async_trait::async_trait;
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 use typed_builder::TypedBuilder;
 
@@ -17,6 +18,7 @@ pub struct Batch {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for Batch {
     fn name(&self) -> String {
         "batch".to_string()
@@ -55,7 +57,7 @@ impl TaskContext for Batch {
     ) -> Result<Vec<Check>, StepError> {
         let mut checks = vec![];
         for task in &self.tasks {
-            let task_checks = task.build_checks(sdk, retry_config).await?;
+            let task_checks = Box::pin(task.build_checks(sdk, retry_config)).await?;
             checks.extend(task_checks);
         }
 
@@ -205,8 +207,8 @@ impl TaskContext for Batch {
 
     fn update_state(&self, state: &mut State, _with_fee: bool) {
         state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        self.tasks
-            .iter()
-            .map(|task| task.update_state(state, false));
+        for task in &self.tasks {
+            task.update_state(state, false);
+        }
     }
 }

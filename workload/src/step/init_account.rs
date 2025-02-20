@@ -1,19 +1,20 @@
 use std::collections::BTreeSet;
 
+use async_trait::async_trait;
+
+use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::{
-    entities::Alias,
-    executor::StepError,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct InitAccount;
 
+#[async_trait]
 impl StepContext for InitAccount {
     fn name(&self) -> String {
         "init-account".to_string()
@@ -23,7 +24,7 @@ impl StepContext for InitAccount {
         Ok(state.min_n_implicit_accounts(3))
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
         let random_alias = utils::random_alias(state);
         let account_alias = Alias {
             name: format!("{}-enstablished", random_alias.name),

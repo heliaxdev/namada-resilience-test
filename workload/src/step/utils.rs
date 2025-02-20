@@ -1,9 +1,9 @@
-use rand::{
-    distributions::{uniform::SampleUniform, Alphanumeric, DistString},
-    Rng,
-};
+use rand::distributions::uniform::SampleUniform;
+use rand::distributions::{Alphanumeric, DistString};
+use rand::Rng;
 
-use crate::{entities::Alias, state::State};
+use crate::state::State;
+use crate::types::Alias;
 
 pub(crate) fn coin_flip(state: &mut State, p: f64) -> bool {
     state.rng.gen_bool(p)

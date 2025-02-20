@@ -9,11 +9,8 @@ use rand::{seq::IteratorRandom, Rng, RngCore};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{
-    constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE},
-    entities::Alias,
-    task::Task,
-};
+use crate::constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE};
+use crate::types::Alias;
 
 #[derive(Error, Debug)]
 pub enum StateError {
@@ -110,19 +107,6 @@ impl State {
             rng: AntithesisRng::default(),
             base_dir: env::current_dir().unwrap().join("base"),
             stats: HashMap::default(),
-        }
-    }
-
-    pub fn update(&mut self, tasks: &Vec<Task>, with_fee: bool) {
-        for task in tasks {
-            task.update_state(&mut self, with_fee);
-            task.update_stats(&mut self);
-        }
-    }
-
-    pub fn update_failed_execution(&mut self, tasks: &[Task]) {
-        for task in tasks {
-            task.update_failed_execution(&mut self);
         }
     }
 
@@ -533,13 +517,13 @@ impl State {
 
     pub fn modify_balance_fee(&mut self, source: &Alias, _gas_limit: u64) {
         if !source.is_faucet() {
-            *self.balances.get_mut(&source).unwrap() -= DEFAULT_FEE_IN_NATIVE_TOKEN;
+            *self.balances.get_mut(source).unwrap() -= DEFAULT_FEE_IN_NATIVE_TOKEN;
         }
     }
 
     pub fn modify_bond(&mut self, source: &Alias, validator: &str, amount: u64) {
         if !source.is_faucet() {
-            *self.balances.get_mut(&source).unwrap() -= amount;
+            *self.balances.get_mut(source).unwrap() -= amount;
         }
         let default = HashMap::from_iter([(validator.to_string(), 0u64)]);
         *self
@@ -577,7 +561,7 @@ impl State {
     }
 
     pub fn modify_shielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        *self.balances.get_mut(&source).unwrap() -= amount;
+        *self.balances.get_mut(source).unwrap() -= amount;
         let target_alias = Alias {
             name: target
                 .name
@@ -598,7 +582,7 @@ impl State {
         };
 
         *self.masp_balances.get_mut(&source_alias).unwrap() -= amount;
-        *self.balances.get_mut(&target).unwrap() += amount;
+        *self.balances.get_mut(target).unwrap() += amount;
     }
 
     pub fn modify_shielded_transfer(&mut self, source: &Alias, target: &Alias, amount: u64) {

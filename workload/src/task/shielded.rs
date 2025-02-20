@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldedTransferData};
 use namada_sdk::masp_primitives;
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
@@ -26,6 +27,7 @@ pub struct ShieldedTransfer {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for ShieldedTransfer {
     fn name(&self) -> String {
         "shielded-transfer".to_string()

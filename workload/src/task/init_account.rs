@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
@@ -23,6 +24,7 @@ pub struct InitAccount {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for InitAccount {
     fn name(&self) -> String {
         "init-account".to_string()
@@ -40,7 +42,7 @@ impl TaskContext for InitAccount {
         let wallet = sdk.namada.wallet.read().await;
 
         let mut public_keys = vec![];
-        for source in self.sources {
+        for source in &self.sources {
             let source_pk = wallet
                 .find_public_key(&source.name)
                 .map_err(|e| StepError::Wallet(e.to_string()))?;

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldingTransferData};
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
 use namada_sdk::signing::SigningTxData;
@@ -24,6 +25,7 @@ pub struct Shielding {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for Shielding {
     fn name(&self) -> String {
         "shielding".to_string()

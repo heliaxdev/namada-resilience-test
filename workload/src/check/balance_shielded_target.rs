@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::token;
 use serde_json::json;
 use typed_builder::TypedBuilder;
@@ -25,6 +26,7 @@ impl BalanceShieldedTarget {
     }
 }
 
+#[async_trait]
 impl CheckContext for BalanceShieldedTarget {
     fn summary(&self) -> String {
         format!("balance-shielded/target/{}", self.target.name)

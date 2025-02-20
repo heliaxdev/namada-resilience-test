@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::governance::cli::onchain::{DefaultProposal as Proposal, OnChainProposal};
 use namada_sdk::signing::SigningTxData;
@@ -26,6 +27,7 @@ pub struct DefaultProposal {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for DefaultProposal {
     fn name(&self) -> String {
         "default-proposal".to_string()

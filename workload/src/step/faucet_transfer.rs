@@ -1,16 +1,16 @@
+use async_trait::async_trait;
+
+use crate::constants::NATIVE_SCALE;
+use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::{
-    constants::NATIVE_SCALE,
-    executor::StepError,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct FaucetTransfer;
 
+#[async_trait]
 impl StepContext for FaucetTransfer {
     fn name(&self) -> String {
         "faucet-transfer".to_string()
@@ -20,7 +20,7 @@ impl StepContext for FaucetTransfer {
         Ok(state.any_account())
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
         let target_account = state
             .random_account(vec![])
             .ok_or(StepError::Build("No more accounts".to_string()))?;

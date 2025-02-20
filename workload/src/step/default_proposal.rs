@@ -1,19 +1,20 @@
-use crate::{
-    constants::PROPOSAL_DEPOSIT,
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use async_trait::async_trait;
 use namada_sdk::rpc;
+
+use crate::constants::PROPOSAL_DEPOSIT;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct DefaultProposal;
 
+#[async_trait]
 impl StepContext for DefaultProposal {
     fn name(&self) -> String {
         "default-proposal".to_string()

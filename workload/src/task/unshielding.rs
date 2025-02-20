@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxUnshieldingTransferData};
 use namada_sdk::masp_primitives;
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
@@ -7,7 +8,6 @@ use namada_sdk::token;
 use namada_sdk::tx::data::GasLimit;
 use namada_sdk::tx::Tx;
 use namada_sdk::Namada;
-
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
@@ -27,6 +27,7 @@ pub struct Unshielding {
     settings: TaskSettings,
 }
 
+#[async_trait]
 impl TaskContext for Unshielding {
     fn name(&self) -> String {
         "unshielding".to_string()

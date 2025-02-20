@@ -1,5 +1,6 @@
 use std::{collections::BTreeSet, fmt::Display};
 
+use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 
@@ -97,6 +98,7 @@ impl Display for Task {
     }
 }
 
+#[async_trait]
 #[enum_dispatch(Task)]
 pub trait TaskContext {
     fn name(&self) -> String;

@@ -1,10 +1,11 @@
+use async_trait::async_trait;
 use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::types::{Alias, Threshold};
+use crate::types::Alias;
 use crate::utils::{is_validator, RetryConfig};
 
 #[derive(TypedBuilder)]
@@ -12,6 +13,7 @@ pub struct ValidatorAccount {
     target: Alias,
 }
 
+#[async_trait]
 impl CheckContext for ValidatorAccount {
     fn summary(&self) -> String {
         format!("is-validator/{}", self.target.name)

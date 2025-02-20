@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 
 use crate::executor::StepError;
@@ -15,7 +16,6 @@ pub mod balance_target;
 pub mod bond_decrease;
 pub mod bond_increase;
 pub mod reveal_pk;
-mod utils;
 pub mod validator_account;
 pub mod validator_status;
 
@@ -44,6 +44,7 @@ pub struct CheckInfo {
     pub check_height: Height,
 }
 
+#[async_trait]
 #[enum_dispatch(Check)]
 pub trait CheckContext {
     fn summary(&self) -> String;

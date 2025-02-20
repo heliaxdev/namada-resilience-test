@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use namada_sdk::key::SchemeType;
 use namada_sdk::masp::find_valid_diversifier;
 use namada_sdk::masp_primitives::zip32;
@@ -20,6 +21,7 @@ pub struct NewWalletKeyPair {
     source: Alias,
 }
 
+#[async_trait]
 impl TaskContext for NewWalletKeyPair {
     fn name(&self) -> String {
         "new-wallet-key-pair".to_string()
