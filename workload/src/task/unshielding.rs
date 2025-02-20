@@ -1,17 +1,17 @@
-use namada_sdk::{
-    args::{self, InputAmount, TxBuilder, TxUnshieldingTransferData},
-    masp_primitives::{
-        self, transaction::components::sapling::builder::RngBuildParams, zip32::PseudoExtendedKey,
-    },
-    signing::SigningTxData,
-    token,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::args::{self, InputAmount, TxBuilder, TxUnshieldingTransferData};
+use namada_sdk::masp_primitives;
+use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
+use namada_sdk::masp_primitives::zip32::PseudoExtendedKey;
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::token;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
+
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -114,11 +114,22 @@ impl TaskContext for Unshielding {
         let pre_balance = get_shielded_balance(sdk, &self.source, None, false)
             .await?
             .unwrap_or_default();
-        let source_check =
-            Check::BalanceShieldedSource(self.source.clone(), pre_balance, self.amount);
+        let source_check = Check::BalanceShieldedSource(
+            check::balance_shielded_source::BalanceShieldedSource::builder()
+                .target(self.source.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        );
 
         let (_, pre_balance) = get_balance(sdk, &self.target, retry_config).await?;
-        let target_check = Check::BalanceTarget(self.target.clone(), pre_balance, self.amount);
+        let target_check = Check::BalanceTarget(
+            check::balance_target::BalanceTarget::builder()
+                .target(self.target.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        );
 
         Ok(vec![source_check, target_check])
     }

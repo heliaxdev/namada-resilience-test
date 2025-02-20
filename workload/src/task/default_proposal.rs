@@ -1,15 +1,14 @@
 use std::collections::BTreeMap;
 
+use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::governance::cli::onchain::{DefaultProposal as Proposal, OnChainProposal};
-use namada_sdk::{
-    args::{self, TxBuilder},
-    signing::SigningTxData,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::constants::PROPOSAL_DEPOSIT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
@@ -101,9 +100,14 @@ impl TaskContext for DefaultProposal {
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
-        let source_check = Check::BalanceSource(self.source.clone(), pre_balance, PROPOSAL_DEPOSIT);
 
-        Ok(vec![source_check])
+        Ok(vec![Check::BalanceSource(
+            check::balance_source::BalanceSource::builder()
+                .target(self.source.clone())
+                .pre_balance(pre_balance)
+                .amount(PROPOSAL_DEPOSIT)
+                .build(),
+        )])
     }
 
     fn update_state(&self, state: &mut State, with_fee: bool) {

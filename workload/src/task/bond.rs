@@ -1,16 +1,15 @@
 use std::str::FromStr;
 
-use namada_sdk::{
-    address::Address,
-    args::{self, TxBuilder},
-    signing::SigningTxData,
-    token,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::address::Address;
+use namada_sdk::args::{self, TxBuilder};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::token;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -89,10 +88,13 @@ impl TaskContext for Bond {
             get_bond(sdk, &self.source, &self.validator, self.epoch, retry_config).await?;
 
         Ok(vec![Check::BondIncrease(
-            self.source.clone(),
-            self.validator.clone(),
-            pre_bond,
-            self.amount,
+            check::bond_increase::BondIncrease::builder()
+                .target(self.source.clone())
+                .validator(self.validator.clone())
+                .pre_bond(pre_bond)
+                .epoch(self.epoch)
+                .amount(self.amount)
+                .build(),
         )])
     }
 

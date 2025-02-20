@@ -15,6 +15,16 @@ pub struct BalanceSource {
     amount: Amount,
 }
 
+impl BalanceSource {
+    pub fn target(&self) -> &Alias {
+        &self.target
+    }
+
+    pub fn amount(&self) -> Amount {
+        self.amount
+    }
+}
+
 impl CheckContext for BalanceSource {
     fn summary(&self) -> String {
         format!("balance/source/{}", self.target.name)

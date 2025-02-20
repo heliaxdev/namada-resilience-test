@@ -1,16 +1,15 @@
 use std::str::FromStr;
 
-use namada_sdk::{
-    address::Address,
-    args::{self, TxBuilder},
-    signing::SigningTxData,
-    token,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::address::Address;
+use namada_sdk::args::{self, TxBuilder};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::token;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -100,10 +99,13 @@ impl TaskContext for Redelegate {
         )
         .await?;
         let from_validator_bond_check = Check::BondDecrease(
-            self.source.clone(),
-            self.from_validator.clone(),
-            pre_bond,
-            self.amount,
+            check::bond_decrease::BondDecrease::builder()
+                .target(self.source.clone())
+                .validator(self.from_validator.clone())
+                .pre_bond(pre_bond)
+                .epoch(self.epoch)
+                .amount(self.amount)
+                .build(),
         );
 
         let pre_bond = get_bond(
@@ -116,10 +118,13 @@ impl TaskContext for Redelegate {
         .await?;
 
         let to_validator_bond_check = Check::BondIncrease(
-            self.source.clone(),
-            self.to_validator.clone(),
-            pre_bond,
-            self.amount,
+            check::bond_increase::BondIncrease::builder()
+                .target(self.source.clone())
+                .validator(self.to_validator.clone())
+                .pre_bond(pre_bond)
+                .epoch(self.epoch)
+                .amount(self.amount)
+                .build(),
         );
 
         Ok(vec![from_validator_bond_check, to_validator_bond_check])

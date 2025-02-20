@@ -1,10 +1,9 @@
-use namada_sdk::{
-    args::{self, TxBuilder},
-    key::{RefTo, SchemeType},
-    signing::SigningTxData,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::args::{self, TxBuilder};
+use namada_sdk::key::{RefTo, SchemeType};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 

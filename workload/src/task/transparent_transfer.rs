@@ -1,13 +1,12 @@
-use namada_sdk::{
-    args::{self, InputAmount, TxBuilder, TxTransparentTransferData},
-    signing::SigningTxData,
-    token::{self, DenominatedAmount},
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::args::{self, InputAmount, TxBuilder, TxTransparentTransferData};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::token::{self, DenominatedAmount};
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -98,10 +97,22 @@ impl TaskContext for TransparentTransfer {
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
-        let source_check = Check::BalanceSource(self.source.clone(), pre_balance, self.amount);
+        let source_check = Check::BalanceSource(
+            check::balance_source::BalanceSource::builder()
+                .target(self.source.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        );
 
         let (_, pre_balance) = get_balance(sdk, &self.target, retry_config).await?;
-        let target_check = Check::BalanceTarget(self.target.clone(), pre_balance, self.amount);
+        let target_check = Check::BalanceTarget(
+            check::balance_target::BalanceTarget::builder()
+                .target(self.target.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        );
 
         Ok(vec![source_check, target_check])
     }

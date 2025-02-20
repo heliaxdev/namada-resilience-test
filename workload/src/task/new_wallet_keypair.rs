@@ -7,7 +7,7 @@ use namada_sdk::{args, rpc, PaymentAddress};
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -96,7 +96,11 @@ impl TaskContext for NewWalletKeyPair {
         _sdk: &Sdk,
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        Ok(vec![Check::RevealPk(self.source.clone())])
+        Ok(vec![Check::RevealPk(
+            check::reveal_pk::RevealPk::builder()
+                .target(self.source.clone())
+                .build(),
+        )])
     }
 
     fn update_state(&self, state: &mut State, _with_fee: bool) {

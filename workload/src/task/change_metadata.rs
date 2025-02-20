@@ -1,9 +1,8 @@
-use namada_sdk::{
-    args::{self, TxBuilder},
-    signing::SigningTxData,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::args::{self, TxBuilder};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
 use crate::check::Check;

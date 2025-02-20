@@ -5,7 +5,7 @@ use typed_builder::TypedBuilder;
 use crate::check::{CheckContext, CheckInfo};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::types::{Alias, Amount, Balance, ValidatorAddress};
+use crate::types::{Alias, Amount, Balance, Epoch, ValidatorAddress};
 use crate::utils::{get_bond, get_epoch, RetryConfig};
 
 #[derive(TypedBuilder)]
@@ -13,7 +13,26 @@ pub struct BondIncrease {
     target: Alias,
     validator: ValidatorAddress,
     pre_bond: Balance,
+    epoch: Epoch,
     amount: Amount,
+}
+
+impl BondIncrease {
+    pub fn target(&self) -> &Alias {
+        &self.target
+    }
+
+    pub fn validator(&self) -> &ValidatorAddress {
+        &self.validator
+    }
+
+    pub fn amount(&self) -> Amount {
+        self.amount
+    }
+
+    pub fn epoch(&self) -> Epoch {
+        self.epoch
+    }
 }
 
 impl CheckContext for BondIncrease {

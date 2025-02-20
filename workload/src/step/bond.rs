@@ -1,15 +1,13 @@
 use namada_sdk::rpc;
 use rand::seq::IteratorRandom;
 
-use crate::{
-    constants::MIN_TRANSFER_BALANCE,
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    state::State,
-    step::StepContext,
-    task::{self, Task, TaskSettings},
-};
+use crate::constants::MIN_TRANSFER_BALANCE;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::step::StepContext;
+use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 
 use super::utils;
 

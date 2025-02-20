@@ -1,17 +1,16 @@
-use namada_sdk::{
-    args::{self, TxBuilder},
-    signing::SigningTxData,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::args::{self, TxBuilder};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
-use crate::check::{Check, ValidatorStatus};
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
-use crate::types::Alias;
+use crate::types::{Alias, ValidatorStatus};
 use crate::utils::RetryConfig;
 
 #[derive(Clone, TypedBuilder)]
@@ -79,8 +78,10 @@ impl TaskContext for ReactivateValidator {
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
         Ok(vec![Check::ValidatorStatus(
-            self.target.clone(),
-            ValidatorStatus::Reactivating,
+            check::validator_status::ValidatorStatus::builder()
+                .target(self.target.clone())
+                .status(ValidatorStatus::Reactivating)
+                .build(),
         )])
     }
 

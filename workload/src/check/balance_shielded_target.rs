@@ -15,6 +15,16 @@ pub struct BalanceShieldedTarget {
     amount: Amount,
 }
 
+impl BalanceShieldedTarget {
+    pub fn target(&self) -> &Alias {
+        &self.target
+    }
+
+    pub fn amount(&self) -> Amount {
+        self.amount
+    }
+}
+
 impl CheckContext for BalanceShieldedTarget {
     fn summary(&self) -> String {
         format!("balance-shielded/target/{}", self.target.name)

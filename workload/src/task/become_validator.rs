@@ -1,15 +1,13 @@
-use namada_sdk::key::RefTo;
-use namada_sdk::{
-    args::{self, TxBuilder},
-    key::SchemeType,
-    signing::SigningTxData,
-    tx::{data::GasLimit, Tx},
-    Namada,
-};
+use namada_sdk::args::{self, TxBuilder};
+use namada_sdk::key::{RefTo, SchemeType};
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -148,7 +146,11 @@ impl TaskContext for BecomeValidator {
         _sdk: &Sdk,
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        Ok(vec![Check::IsValidatorAccount(self.source.clone())])
+        Ok(vec![Check::IsValidatorAccount(
+            check::validator_account::ValidatorAccount::builder()
+                .target(self.source.clone())
+                .build(),
+        )])
     }
 
     fn update_state(&self, state: &mut State, with_fee: bool) {

@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{Task, TaskContext, TaskSettings};
 use crate::types::Alias;
-use crate::utils::{merge_tx, RetryConfig};
+use crate::utils::{get_balance, get_bond, get_shielded_balance, merge_tx, RetryConfig};
 
 #[derive(Clone, TypedBuilder)]
 pub struct Batch {
@@ -59,163 +59,148 @@ impl TaskContext for Batch {
             checks.extend(task_checks);
         }
 
-        {
-            match task {
-                Task::NewWalletKeyPair(info) => {
-                    reveal_pks.insert(info.source.clone(), source.to_owned());
-                }
-                Task::FaucetTransfer(target, amount, _task_settings) => {
-                    balances
-                        .entry(target.clone())
-                        .and_modify(|balance| *balance += *amount as i64)
-                        .or_insert(*amount as i64);
-                }
-                Task::TransparentTransfer(source, target, amount, _task_settings) => {
-                    balances
-                        .entry(target.clone())
-                        .and_modify(|balance| *balance += *amount as i64)
-                        .or_insert(*amount as i64);
-                    balances
-                        .entry(source.clone())
-                        .and_modify(|balance| *balance -= *amount as i64)
-                        .or_insert(-(*amount as i64));
-                }
-                Task::Bond(source, validator, amount, epoch, _task_settings) => {
-                    bonds
-                        .entry(format!("{}@{}", source.name, validator))
-                        .and_modify(|(_epoch, bond_amount)| *bond_amount += *amount as i64)
-                        .or_insert((*epoch, *amount as i64));
-                    balances
-                        .entry(source.clone())
-                        .and_modify(|balance| *balance -= *amount as i64)
-                        .or_insert(-(*amount as i64));
-                }
-                Task::Unbond(source, validator, amount, epoch, _task_settings) => {
-                    bonds
-                        .entry(format!("{}@{}", source.name, validator))
-                        .and_modify(|(_epoch, bond_amount)| *bond_amount -= *amount as i64)
-                        .or_insert((*epoch, -(*amount as i64)));
-                }
-                Task::Redelegate(source, from, to, amount, epoch, _task_settings) => {
-                    bonds
-                        .entry(format!("{}@{}", source.name, to))
-                        .and_modify(|(_epoch, bond_amount)| *bond_amount += *amount as i64)
-                        .or_insert((*epoch, *amount as i64));
-                    bonds
-                        .entry(format!("{}@{}", source.name, from))
-                        .and_modify(|(_epoch, bond_amount)| *bond_amount -= *amount as i64)
-                        .or_insert((*epoch, -(*amount as i64)));
-                }
-                Task::ShieldedTransfer(source, target, amount, _task_settings) => {
-                    shielded_balances
-                        .entry(source.clone())
-                        .and_modify(|balance| *balance -= *amount as i64)
-                        .or_insert(-(*amount as i64));
-                    shielded_balances
-                        .entry(target.clone())
-                        .and_modify(|balance| *balance += *amount as i64)
-                        .or_insert(*amount as i64);
-                }
-                Task::Shielding(source, target, amount, _task_settings) => {
-                    balances
-                        .entry(source.clone())
-                        .and_modify(|balance| *balance -= *amount as i64)
-                        .or_insert(-(*amount as i64));
-                    shielded_balances
-                        .entry(target.clone())
-                        .and_modify(|balance| *balance += *amount as i64)
-                        .or_insert(*amount as i64);
-                }
-                Task::Unshielding(source, target, amount, _task_settings) => {
-                    balances
-                        .entry(source.clone())
-                        .and_modify(|balance| *balance += *amount as i64)
-                        .or_insert(-(*amount as i64));
-                    shielded_balances
-                        .entry(target.clone())
-                        .and_modify(|balance| *balance -= *amount as i64)
-                        .or_insert(*amount as i64);
-                }
-                Task::ClaimRewards(_source, _validator, _task_settings) => {}
-                _ => panic!(),
-            };
-        }
-
-        let mut checks = vec![];
-        let mut reveal_pks: HashMap<Alias, Alias> = HashMap::default();
+        let mut prepared_checks = vec![];
         let mut balances: HashMap<Alias, i64> = HashMap::default();
         let mut shielded_balances: HashMap<Alias, i64> = HashMap::default();
         let mut bonds: HashMap<String, (u64, i64)> = HashMap::default();
-
-        for (_, source) in reveal_pks {
-            checks.push(Check::RevealPk(source));
+        for check in checks {
+            match check {
+                Check::RevealPk(_) => prepared_checks.push(check),
+                Check::BalanceSource(balance_source) => {
+                    balances
+                        .entry(balance_source.target().clone())
+                        .and_modify(|balance| *balance -= balance_source.amount() as i64)
+                        .or_insert(-(balance_source.amount() as i64));
+                }
+                Check::BalanceTarget(balance_target) => {
+                    balances
+                        .entry(balance_target.target().clone())
+                        .and_modify(|balance| *balance += balance_target.amount() as i64)
+                        .or_insert(balance_target.amount() as i64);
+                }
+                Check::BalanceShieldedSource(balance_source) => {
+                    shielded_balances
+                        .entry(balance_source.target().clone())
+                        .and_modify(|balance| *balance -= balance_source.amount() as i64)
+                        .or_insert(-(balance_source.amount() as i64));
+                }
+                Check::BalanceShieldedTarget(balance_target) => {
+                    shielded_balances
+                        .entry(balance_target.target().clone())
+                        .and_modify(|balance| *balance += balance_target.amount() as i64)
+                        .or_insert(balance_target.amount() as i64);
+                }
+                Check::BondIncrease(bond_increase) => {
+                    bonds
+                        .entry(format!(
+                            "{}@{}",
+                            bond_increase.target().name,
+                            bond_increase.validator()
+                        ))
+                        .and_modify(|(_epoch, bond_amount)| {
+                            *bond_amount += bond_increase.amount() as i64
+                        })
+                        .or_insert((bond_increase.epoch(), bond_increase.amount() as i64));
+                    balances
+                        .entry(bond_increase.target().clone())
+                        .and_modify(|balance| *balance -= bond_increase.amount() as i64)
+                        .or_insert(-(bond_increase.amount() as i64));
+                }
+                Check::BondDecrease(bond_decrease) => {
+                    bonds
+                        .entry(format!(
+                            "{}@{}",
+                            bond_decrease.target().name,
+                            bond_decrease.validator()
+                        ))
+                        .and_modify(|(_epoch, bond_amount)| {
+                            *bond_amount -= bond_decrease.amount() as i64
+                        })
+                        .or_insert((bond_decrease.epoch(), bond_decrease.amount() as i64));
+                    balances
+                        .entry(bond_decrease.target().clone())
+                        .and_modify(|balance| *balance += bond_decrease.amount() as i64)
+                        .or_insert(-(bond_decrease.amount() as i64));
+                }
+                _ => {
+                    return Err(StepError::BuildCheck(format!(
+                        "Unexpected check happened: {check}"
+                    )))
+                }
+            }
         }
 
         for (alias, amount) in balances {
-            let pre_balance = build_checks::utils::get_balance(sdk, &alias, retry_config).await?;
+            let (_, pre_balance) = get_balance(sdk, &alias, retry_config).await?;
             if amount >= 0 {
-                checks.push(Check::BalanceTarget(
-                    alias,
-                    pre_balance,
-                    amount.unsigned_abs(),
+                prepared_checks.push(Check::BalanceTarget(
+                    check::balance_target::BalanceTarget::builder()
+                        .target(alias)
+                        .pre_balance(pre_balance)
+                        .amount(amount.unsigned_abs())
+                        .build(),
                 ));
             } else {
-                checks.push(Check::BalanceSource(
-                    alias,
-                    pre_balance,
-                    amount.unsigned_abs(),
+                prepared_checks.push(Check::BalanceSource(
+                    check::balance_source::BalanceSource::builder()
+                        .target(alias)
+                        .pre_balance(pre_balance)
+                        .amount(amount.unsigned_abs())
+                        .build(),
                 ));
             }
         }
 
         for (key, (epoch, amount)) in bonds {
             let (source, validator) = key.split_once('@').unwrap();
-            let pre_bond = build_checks::utils::get_bond(
-                sdk,
-                &Alias::from(source),
-                validator,
-                epoch,
-                retry_config,
-            )
-            .await?;
+            let pre_bond =
+                get_bond(sdk, &Alias::from(source), validator, epoch, retry_config).await?;
             if amount > 0 {
-                checks.push(Check::BondIncrease(
-                    Alias::from(source),
-                    validator.to_owned(),
-                    pre_bond,
-                    amount.unsigned_abs(),
+                prepared_checks.push(Check::BondIncrease(
+                    check::bond_increase::BondIncrease::builder()
+                        .target(Alias::from(source))
+                        .validator(validator.to_owned())
+                        .pre_bond(pre_bond)
+                        .epoch(epoch)
+                        .amount(amount.unsigned_abs())
+                        .build(),
                 ));
             } else {
-                checks.push(Check::BondDecrease(
-                    Alias::from(source),
-                    validator.to_owned(),
-                    pre_bond,
-                    amount.unsigned_abs(),
+                prepared_checks.push(Check::BondDecrease(
+                    check::bond_decrease::BondDecrease::builder()
+                        .target(Alias::from(source))
+                        .validator(validator.to_owned())
+                        .pre_bond(pre_bond)
+                        .epoch(epoch)
+                        .amount(amount.unsigned_abs())
+                        .build(),
                 ));
             }
         }
 
         for (alias, amount) in shielded_balances {
-            if let Some(pre_balance) =
-                build_checks::utils::get_shielded_balance(sdk, &alias, None, true).await?
-            {
+            if let Some(pre_balance) = get_shielded_balance(sdk, &alias, None, true).await? {
                 if amount >= 0 {
-                    checks.push(Check::BalanceShieldedTarget(
-                        alias,
-                        pre_balance,
-                        amount.unsigned_abs(),
+                    prepared_checks.push(Check::BalanceShieldedTarget(
+                        check::balance_shielded_target::BalanceShieldedTarget::builder()
+                            .target(alias)
+                            .pre_balance(pre_balance)
+                            .amount(amount.unsigned_abs())
+                            .build(),
                     ));
                 } else {
-                    checks.push(Check::BalanceShieldedSource(
-                        alias,
-                        pre_balance,
-                        amount.unsigned_abs(),
+                    prepared_checks.push(Check::BalanceShieldedSource(
+                        check::balance_shielded_source::BalanceShieldedSource::builder()
+                            .target(alias)
+                            .pre_balance(pre_balance)
+                            .amount(amount.unsigned_abs())
+                            .build(),
                     ));
                 }
             }
         }
 
-        Ok(checks)
+        Ok(prepared_checks)
     }
 
     fn update_state(&self, state: &mut State, _with_fee: bool) {

@@ -1,13 +1,16 @@
 use std::{collections::BTreeSet, fmt::Display};
 
 use enum_dispatch::enum_dispatch;
-use namada_sdk::{args, dec::Dec, signing::SigningTxData, tx::Tx};
+use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 
+use crate::check::Check;
+use crate::constants::DEFAULT_GAS_LIMIT;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::types::Alias;
+use crate::utils;
 use crate::utils::RetryConfig;
-use crate::{
-    check::Check, constants::DEFAULT_GAS_LIMIT, entities::Alias, executor::StepError,
-    sdk::namada::Sdk, state::State,
-};
 
 pub mod batch;
 pub mod become_validator;
@@ -28,7 +31,6 @@ pub mod transparent_transfer;
 pub mod unbond;
 pub mod unshielding;
 pub mod update_account;
-pub mod utils;
 pub mod vote;
 
 #[derive(Clone, Debug)]
