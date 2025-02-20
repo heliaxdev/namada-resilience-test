@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -10,7 +8,6 @@ use crate::types::Alias;
 #[derive(Clone, Debug, Default)]
 pub struct DeactivateValidator;
 
-#[async_trait]
 impl StepContext for DeactivateValidator {
     fn name(&self) -> String {
         "deactivate-validator".to_string()

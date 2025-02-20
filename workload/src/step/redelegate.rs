@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use async_trait::async_trait;
 use namada_sdk::{address::Address, rpc};
 use rand::seq::IteratorRandom;
 
@@ -16,7 +15,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct Redelegate;
 
-#[async_trait]
 impl StepContext for Redelegate {
     fn name(&self) -> String {
         "redelegate".to_string()

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use serde_json::json;
 use typed_builder::TypedBuilder;
 
@@ -13,7 +12,6 @@ pub struct ValidatorAccount {
     target: Alias,
 }
 
-#[async_trait]
 impl CheckContext for ValidatorAccount {
     fn summary(&self) -> String {
         format!("is-validator/{}", self.target.name)

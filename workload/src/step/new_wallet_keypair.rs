@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -11,7 +9,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct NewWalletKeyPair;
 
-#[async_trait]
 impl StepContext for NewWalletKeyPair {
     fn name(&self) -> String {
         "new-walleet-keypair".to_string()

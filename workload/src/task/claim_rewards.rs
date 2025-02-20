@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use async_trait::async_trait;
 use namada_sdk::address::Address;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
@@ -17,14 +16,13 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, ValidatorAddress};
 use crate::utils::RetryConfig;
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct ClaimRewards {
     source: Alias,
     from_validator: ValidatorAddress,
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for ClaimRewards {
     fn name(&self) -> String {
         "claim-rewards".to_string()

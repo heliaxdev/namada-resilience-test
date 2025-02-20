@@ -1,6 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 
 use crate::executor::StepError;
@@ -44,11 +43,11 @@ pub struct CheckInfo {
     pub check_height: Height,
 }
 
-#[async_trait]
 #[enum_dispatch(Check)]
 pub trait CheckContext {
     fn summary(&self) -> String;
 
+    #[allow(async_fn_in_trait)]
     async fn do_check(
         &self,
         sdk: &Sdk,

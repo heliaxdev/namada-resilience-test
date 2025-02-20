@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::rpc;
 
 use crate::executor::StepError;
@@ -13,7 +12,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct Unbond;
 
-#[async_trait]
 impl StepContext for Unbond {
     fn name(&self) -> String {
         "unbond".to_string()

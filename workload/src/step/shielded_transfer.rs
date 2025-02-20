@@ -1,7 +1,5 @@
 use std::collections::BTreeSet;
 
-use async_trait::async_trait;
-
 use crate::constants::MIN_TRANSFER_BALANCE;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
@@ -15,7 +13,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct ShieldedTransfer;
 
-#[async_trait]
 impl StepContext for ShieldedTransfer {
     fn name(&self) -> String {
         "shielded-transfer".to_string()

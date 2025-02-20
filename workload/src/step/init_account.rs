@@ -1,7 +1,5 @@
 use std::collections::BTreeSet;
 
-use async_trait::async_trait;
-
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -14,7 +12,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct InitAccount;
 
-#[async_trait]
 impl StepContext for InitAccount {
     fn name(&self) -> String {
         "init-account".to_string()

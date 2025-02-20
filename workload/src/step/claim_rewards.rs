@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -10,7 +8,6 @@ use crate::types::Alias;
 #[derive(Clone, Debug, Default)]
 pub struct ClaimRewards;
 
-#[async_trait]
 impl StepContext for ClaimRewards {
     fn name(&self) -> String {
         "claim-rewards".to_string()

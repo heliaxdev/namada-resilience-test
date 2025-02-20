@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxTransparentTransferData};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::token::{self, DenominatedAmount};
@@ -15,7 +14,7 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
 use crate::utils::{get_balance, RetryConfig};
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct TransparentTransfer {
     source: Alias,
     target: Alias,
@@ -23,7 +22,6 @@ pub struct TransparentTransfer {
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for TransparentTransfer {
     fn name(&self) -> String {
         "transparent-transfer".to_string()

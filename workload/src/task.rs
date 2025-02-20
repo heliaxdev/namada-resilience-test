@@ -1,6 +1,5 @@
 use std::{collections::BTreeSet, fmt::Display};
 
-use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 
@@ -68,7 +67,7 @@ impl TaskSettings {
 }
 
 #[enum_dispatch]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Task {
     NewWalletKeyPair(new_wallet_keypair::NewWalletKeyPair),
     FaucetTransfer(faucet_transfer::FaucetTransfer),
@@ -98,7 +97,6 @@ impl Display for Task {
     }
 }
 
-#[async_trait]
 #[enum_dispatch(Task)]
 pub trait TaskContext {
     fn name(&self) -> String;
@@ -107,13 +105,16 @@ pub trait TaskContext {
 
     fn task_settings(&self) -> Option<&TaskSettings>;
 
+    #[allow(async_fn_in_trait)]
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError>;
 
+    #[allow(async_fn_in_trait)]
     async fn execute(&self, sdk: &Sdk) -> Result<Option<u64>, StepError> {
         let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
         utils::execute_tx(sdk, tx, signing_data, &tx_args).await
     }
 
+    #[allow(async_fn_in_trait)]
     async fn build_checks(
         &self,
         sdk: &Sdk,

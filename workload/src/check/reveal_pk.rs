@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::rpc;
 use serde_json::json;
 use typed_builder::TypedBuilder;
@@ -14,7 +13,6 @@ pub struct RevealPk {
     target: Alias,
 }
 
-#[async_trait]
 impl CheckContext for RevealPk {
     fn summary(&self) -> String {
         format!("reveal/{}", self.target.name)

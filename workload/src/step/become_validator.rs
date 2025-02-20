@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::dec::Dec;
 
 use crate::executor::StepError;
@@ -13,7 +12,6 @@ use super::StepContext;
 #[derive(Clone, Debug, Default)]
 pub struct BecomeValidator;
 
-#[async_trait]
 impl StepContext for BecomeValidator {
     fn name(&self) -> String {
         "become-validator".to_string()

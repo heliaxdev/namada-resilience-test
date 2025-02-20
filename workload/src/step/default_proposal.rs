@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::rpc;
 
 use crate::constants::PROPOSAL_DEPOSIT;
@@ -14,7 +13,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct DefaultProposal;
 
-#[async_trait]
 impl StepContext for DefaultProposal {
     fn name(&self) -> String {
         "default-proposal".to_string()

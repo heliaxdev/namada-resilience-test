@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use rand::seq::SliceRandom;
 
 use crate::constants::MAX_BATCH_TX_NUM;
@@ -12,7 +11,6 @@ use crate::task::{self, Task, TaskContext, TaskSettings};
 #[derive(Clone, Debug, Default)]
 pub struct BatchBond;
 
-#[async_trait]
 impl StepContext for BatchBond {
     fn name(&self) -> String {
         "batch-bond".to_string()
@@ -36,7 +34,6 @@ impl StepContext for BatchBond {
 #[derive(Clone, Debug, Default)]
 pub struct BatchRandom;
 
-#[async_trait]
 impl StepContext for BatchRandom {
     fn name(&self) -> String {
         "batch-random".to_string()

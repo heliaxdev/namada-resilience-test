@@ -1,7 +1,6 @@
 use std::fmt::Display;
 use std::str::FromStr;
 
-use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 
@@ -112,12 +111,13 @@ impl Distribution<StepType> for Standard {
     }
 }
 
-#[async_trait]
 #[enum_dispatch(StepType)]
 pub trait StepContext {
     fn name(&self) -> String;
 
+    #[allow(async_fn_in_trait)]
     async fn is_valid(&self, sdk: &Sdk, state: &State) -> Result<bool, StepError>;
 
+    #[allow(async_fn_in_trait)]
     async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError>;
 }

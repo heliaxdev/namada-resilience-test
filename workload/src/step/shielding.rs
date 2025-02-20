@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::constants::MIN_TRANSFER_BALANCE;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
@@ -13,7 +11,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct Shielding;
 
-#[async_trait]
 impl StepContext for Shielding {
     fn name(&self) -> String {
         "shielding".to_string()

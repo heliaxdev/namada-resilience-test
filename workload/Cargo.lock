@@ -3793,7 +3793,6 @@ name = "namada-chain-workload"
 version = "0.1.0"
 dependencies = [
  "antithesis_sdk",
- "async-trait",
  "chrono",
  "clap",
  "enum_dispatch",

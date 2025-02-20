@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
@@ -14,13 +13,12 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, ValidatorStatus};
 use crate::utils::RetryConfig;
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct ReactivateValidator {
     target: Alias,
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for ReactivateValidator {
     fn name(&self) -> String {
         "reactivate-validator".to_string()

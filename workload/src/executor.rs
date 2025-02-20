@@ -136,7 +136,7 @@ impl WorkloadExecutor {
         step_type.is_valid(&self.sdk, &self.state).await
     }
 
-    pub async fn build(&mut self, step_type: StepType) -> Result<Vec<Task>, StepError> {
+    pub async fn build(&mut self, step_type: &StepType) -> Result<Vec<Task>, StepError> {
         step_type.build_task(&self.sdk, &mut self.state).await
     }
 
@@ -215,10 +215,10 @@ impl WorkloadExecutor {
         Ok(execution_results)
     }
 
-    pub fn update_state(&self, tasks: Vec<Task>, state: &mut State) {
+    pub fn update_state(&mut self, tasks: Vec<Task>) {
         for task in tasks {
-            task.update_state(state, true);
-            task.update_stats(state);
+            task.update_state(&mut self.state, true);
+            task.update_stats(&mut self.state);
         }
     }
 

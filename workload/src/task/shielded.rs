@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldedTransferData};
 use namada_sdk::masp_primitives;
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
@@ -19,7 +18,7 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
 use crate::utils::{get_shielded_balance, RetryConfig};
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct ShieldedTransfer {
     source: Alias,
     target: Alias,
@@ -27,7 +26,6 @@ pub struct ShieldedTransfer {
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for ShieldedTransfer {
     fn name(&self) -> String {
         "shielded-transfer".to_string()

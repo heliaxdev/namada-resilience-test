@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -12,7 +10,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct ChangeConsensusKey;
 
-#[async_trait]
 impl StepContext for ChangeConsensusKey {
     fn name(&self) -> String {
         "change-consensus-key".to_string()

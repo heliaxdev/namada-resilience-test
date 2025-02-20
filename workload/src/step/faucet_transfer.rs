@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::constants::NATIVE_SCALE;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
@@ -10,7 +8,6 @@ use crate::task::{self, Task, TaskSettings};
 #[derive(Clone, Debug, Default)]
 pub struct FaucetTransfer;
 
-#[async_trait]
 impl StepContext for FaucetTransfer {
     fn name(&self) -> String {
         "faucet-transfer".to_string()

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxUnshieldingTransferData};
 use namada_sdk::masp_primitives;
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
@@ -19,7 +18,7 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
 use crate::utils::{get_balance, get_shielded_balance, RetryConfig};
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct Unshielding {
     source: Alias,
     target: Alias,
@@ -27,7 +26,6 @@ pub struct Unshielding {
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for Unshielding {
     fn name(&self) -> String {
         "unshielding".to_string()

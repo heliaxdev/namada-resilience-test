@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use async_trait::async_trait;
 use namada_sdk::address::Address;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
@@ -18,7 +17,7 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount, Epoch, ValidatorAddress};
 use crate::utils::{get_bond, RetryConfig};
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct Unbond {
     source: Alias,
     validator: ValidatorAddress,
@@ -27,7 +26,6 @@ pub struct Unbond {
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for Unbond {
     fn name(&self) -> String {
         "unbond".to_string()

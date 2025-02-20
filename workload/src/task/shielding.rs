@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldingTransferData};
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
 use namada_sdk::signing::SigningTxData;
@@ -17,7 +16,7 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
 use crate::utils::{get_balance, get_shielded_balance, RetryConfig};
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct Shielding {
     source: Alias,
     target: Alias,
@@ -25,7 +24,6 @@ pub struct Shielding {
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for Shielding {
     fn name(&self) -> String {
         "shielding".to_string()

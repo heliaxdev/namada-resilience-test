@@ -1,4 +1,4 @@
-use std::{env, str::FromStr, thread, time::Duration};
+use std::{env, str::FromStr, time::Duration};
 
 use antithesis_sdk::antithesis_init;
 use clap::Parser;
@@ -7,13 +7,10 @@ use namada_chain_workload::config::AppConfig;
 use namada_chain_workload::executor::{StepError, WorkloadExecutor};
 use namada_chain_workload::sdk::namada::Sdk;
 use namada_chain_workload::state::{State, StateError};
-use namada_chain_workload::step::StepType;
 use namada_sdk::io::{Client, NullIo};
 use namada_sdk::masp::fs::FsShieldedUtils;
 use namada_sdk::masp::ShieldedContext;
-use namada_sdk::rpc;
 use namada_wallet::fs::FsWalletUtils;
-use serde_json::json;
 use tendermint_rpc::{HttpClient, Url};
 use tokio::time::sleep;
 use tracing::level_filters::LevelFilter;
@@ -52,7 +49,7 @@ async fn inner_main() -> Code {
     tracing::info!("Using config: {:#?}", config);
     tracing::info!("Sha commit: {}", env!("VERGEN_GIT_SHA").to_string());
 
-    let (mut state, locked_file) = match State::load(config.id) {
+    let (state, locked_file) = match State::load(config.id) {
         Ok(result) => result,
         Err(StateError::EmptyFile) => {
             tracing::warn!("State file is empty, creating new one");
@@ -84,27 +81,37 @@ async fn inner_main() -> Code {
         sleep(Duration::from_secs(5)).await;
     }
 
-    let sdk = while let Err(_) = setup_sdk(&http_client, &state, &config).await {
-        tracing::info!("Setup SDK failed, retrying...");
-        sleep(Duration::from_secs(2)).await;
+    let sdk = loop {
+        match setup_sdk(&http_client, &state, &config).await {
+            Ok(sdk) => break sdk,
+            Err(_) => {
+                tracing::info!("Setup SDK failed, retrying...");
+                sleep(Duration::from_secs(2)).await;
+            }
+        }
     };
 
-    let workload_executor = WorkloadExecutor::new(sdk, state);
-    workload_executor.init().await;
+    let mut workload_executor = WorkloadExecutor::new(sdk, state);
+    if let Err(e) = workload_executor.init().await {
+        return Code::InitFatal(e);
+    }
 
     let next_step = config.step_type;
-    if !workload_executor.is_valid(&next_step).await {
-        tracing::warn!(
-            "Invalid step: {next_step} -> {:>?}",
-            workload_executor.state()
-        );
-        return Code::InvalidStep(next_step);
+    match workload_executor.is_valid(&next_step).await {
+        Ok(true) => {}
+        _ => {
+            tracing::warn!(
+                "Invalid step: {next_step} -> {:>?}",
+                workload_executor.state()
+            );
+            return Code::InvalidStep(next_step);
+        }
     }
 
     let init_block_height = workload_executor.fetch_current_block_height().await;
 
     tracing::info!("Step is: {next_step}...");
-    let tasks = match workload_executor.build(next_step).await {
+    let tasks = match workload_executor.build(&next_step).await {
         Ok(tasks) if tasks.is_empty() => {
             return Code::NoTask(next_step);
         }
@@ -118,7 +125,10 @@ async fn inner_main() -> Code {
     let checks = if config.no_check {
         vec![]
     } else {
-        workload_executor.build_check(&tasks).await
+        match workload_executor.build_check(&tasks).await {
+            Ok(checks) => checks,
+            Err(e) => return Code::BuildFailure(next_step, e),
+        }
     };
     tracing::info!("Built checks for {next_step}");
 
@@ -155,15 +165,15 @@ async fn inner_main() -> Code {
     let exit_code = match workload_executor.checks(checks, execution_height).await {
         Ok(_) => {
             tracing::info!("Checks were successful, updating state...");
-            workload_executor.update_state(tasks, &mut state);
+            workload_executor.update_state(tasks);
             Code::Success(next_step)
         }
         Err(e) => Code::Fatal(next_step, e),
     };
 
-    tracing::info!("Statistics: {:>?}", state.stats);
+    tracing::info!("Statistics: {:>?}", workload_executor.state().stats);
 
-    if let Err(e) = state.save(Some(locked_file)) {
+    if let Err(e) = workload_executor.state().save(Some(locked_file)) {
         return Code::StateFatal(e);
     }
 

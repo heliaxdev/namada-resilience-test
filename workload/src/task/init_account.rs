@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use async_trait::async_trait;
 use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
@@ -16,7 +15,7 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Threshold};
 use crate::utils::RetryConfig;
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct InitAccount {
     target: Alias,
     sources: BTreeSet<Alias>,
@@ -24,7 +23,6 @@ pub struct InitAccount {
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for InitAccount {
     fn name(&self) -> String {
         "init-account".to_string()

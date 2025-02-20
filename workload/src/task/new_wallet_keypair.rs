@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use namada_sdk::key::SchemeType;
 use namada_sdk::masp::find_valid_diversifier;
 use namada_sdk::masp_primitives::zip32;
@@ -16,12 +15,11 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::Alias;
 use crate::utils::{build_reveal_pk, RetryConfig};
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct NewWalletKeyPair {
     source: Alias,
 }
 
-#[async_trait]
 impl TaskContext for NewWalletKeyPair {
     fn name(&self) -> String {
         "new-wallet-key-pair".to_string()

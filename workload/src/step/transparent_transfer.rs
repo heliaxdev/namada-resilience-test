@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::constants::MIN_TRANSFER_BALANCE;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
@@ -13,7 +11,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct TransparentTransfer;
 
-#[async_trait]
 impl StepContext for TransparentTransfer {
     fn name(&self) -> String {
         "transparent-transfer".to_string()

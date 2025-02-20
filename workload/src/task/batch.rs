@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use async_trait::async_trait;
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 use typed_builder::TypedBuilder;
 
@@ -12,13 +11,12 @@ use crate::task::{Task, TaskContext, TaskSettings};
 use crate::types::Alias;
 use crate::utils::{get_balance, get_bond, get_shielded_balance, merge_tx, RetryConfig};
 
-#[derive(Clone, TypedBuilder)]
+#[derive(Clone, Debug, TypedBuilder)]
 pub struct Batch {
     tasks: Vec<Task>,
     settings: TaskSettings,
 }
 
-#[async_trait]
 impl TaskContext for Batch {
     fn name(&self) -> String {
         "batch".to_string()

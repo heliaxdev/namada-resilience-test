@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -12,7 +10,6 @@ use super::utils;
 #[derive(Clone, Debug, Default)]
 pub struct ChangeMetadata;
 
-#[async_trait]
 impl StepContext for ChangeMetadata {
     fn name(&self) -> String {
         "change-metadata".to_string()
