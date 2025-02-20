@@ -78,7 +78,7 @@ impl Distribution<StepType> for Standard {
 }
 
 #[enum_dispatch(StepType)]
-trait StepContext {
+pub trait StepContext {
     fn name(&self) -> String;
 
     async fn is_valid(&self, sdk: &Sdk, state: &State) -> Result<bool, StepError>;

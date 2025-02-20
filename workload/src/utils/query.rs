@@ -1,31 +1,110 @@
-use std::{
-    str::FromStr,
-    time::{Duration, Instant},
-};
+use std::str::FromStr;
+use std::time::{Duration, Instant};
 
-use namada_sdk::{
-    address::Address,
-    control_flow::install_shutdown_signal,
-    io::DevNullProgressBar,
-    masp::{
-        shielded_wallet::ShieldedApi, IndexerMaspClient, LedgerMaspClient, MaspLocalTaskEnv,
-        ShieldedSyncConfig,
-    },
-    masp_primitives::zip32,
-    rpc, token, Namada,
-};
+use namada_sdk::account::Account;
+use namada_sdk::address::Address;
+use namada_sdk::control_flow::install_shutdown_signal;
+use namada_sdk::io::DevNullProgressBar;
+use namada_sdk::masp::shielded_wallet::ShieldedApi;
+use namada_sdk::masp::{IndexerMaspClient, LedgerMaspClient, MaspLocalTaskEnv, ShieldedSyncConfig};
+use namada_sdk::masp_primitives::zip32;
+use namada_sdk::proof_of_stake::types::ValidatorStateInfo;
+use namada_sdk::{rpc, token, Namada};
 use namada_wallet::DatedKeypair;
 use reqwest::Url;
 use serde_json::json;
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-use crate::{entities::Alias, executor::StepError, sdk::namada::Sdk};
+use crate::sdk::namada::Sdk;
+use crate::types::{Alias, Epoch, Height};
+use crate::{executor::StepError, utils::RetryConfig};
+
+pub async fn get_account_info(
+    sdk: &Sdk,
+    source: &Alias,
+    retry_config: RetryConfig,
+) -> Result<(Address, Option<Account>), StepError> {
+    let wallet = sdk.namada.wallet.read().await;
+    let source_address = wallet
+        .find_address(&source.name)
+        .ok_or_else(|| StepError::Wallet(format!("No account address: {}", source.name)))?
+        .into_owned();
+    drop(wallet);
+
+    let account = tryhard::retry_fn(|| rpc::get_account_info(&sdk.namada.client, &source_address))
+        .with_config(retry_config)
+        .on_retry(|attempt, _, error| {
+            let error = error.to_string();
+            async move {
+                tracing::info!("Retry {} due to {}...", attempt, error);
+            }
+        })
+        .await
+        .map_err(StepError::Rpc)?;
+
+    Ok((source_address, account))
+}
+
+pub async fn is_validator(
+    sdk: &Sdk,
+    target: &Alias,
+    retry_config: RetryConfig,
+) -> Result<(Address, bool), StepError> {
+    let wallet = sdk.namada.wallet.read().await;
+    let source_address = wallet
+        .find_address(&target.name)
+        .ok_or_else(|| StepError::Wallet(format!("No target address: {}", target.name)))?
+        .into_owned();
+    drop(wallet);
+
+    let is_validator = tryhard::retry_fn(|| rpc::is_validator(&sdk.namada.client, &source_address))
+        .with_config(retry_config)
+        .on_retry(|attempt, _, error| {
+            let error = error.to_string();
+            async move {
+                tracing::info!("Retry {} due to {}...", attempt, error);
+            }
+        })
+        .await
+        .map_err(StepError::Rpc)?;
+
+    Ok((source_address, is_validator))
+}
+
+pub async fn get_validator_state(
+    sdk: &Sdk,
+    target: &Alias,
+    epoch: Epoch,
+    retry_config: RetryConfig,
+) -> Result<(Address, ValidatorStateInfo), StepError> {
+    let wallet = sdk.namada.wallet.read().await;
+    let target_address = wallet
+        .find_address(&target.name)
+        .ok_or_else(|| StepError::Wallet(format!("No target address: {}", target.name)))?
+        .into_owned();
+    drop(wallet);
+
+    let state = tryhard::retry_fn(|| {
+        rpc::get_validator_state(&sdk.namada.client, &target_address, Some(epoch.into()))
+    })
+    .with_config(retry_config)
+    .on_retry(|attempt, _, error| {
+        let error = error.to_string();
+        async move {
+            tracing::info!("Retry {attempt} due to {error}...");
+        }
+    })
+    .await
+    .map_err(StepError::Rpc)?;
+
+    Ok((target_address, state))
+}
 
 pub async fn get_balance(
     sdk: &Sdk,
     source: &Alias,
-    retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
-) -> Result<token::Amount, StepError> {
+    retry_config: RetryConfig,
+) -> Result<(Address, token::Amount), StepError> {
     let wallet = sdk.namada.wallet.read().await;
     let native_token_alias = Alias::nam();
     let native_token_address = wallet
@@ -40,7 +119,7 @@ pub async fn get_balance(
         .find_address(&source.name)
         .ok_or_else(|| StepError::Wallet(format!("No target address: {}", source.name)))?;
 
-    tryhard::retry_fn(|| {
+    let balance = tryhard::retry_fn(|| {
         rpc::get_token_balance(
             &sdk.namada.client,
             &native_token_address,
@@ -56,13 +135,15 @@ pub async fn get_balance(
         }
     })
     .await
-    .map_err(|e| StepError::BuildCheck(e.to_string()))
+    .map_err(StepError::Rpc)?;
+
+    Ok((target_address.into_owned(), balance))
 }
 
 pub async fn get_shielded_balance(
     sdk: &Sdk,
     source: &Alias,
-    height: Option<u64>,
+    height: Option<Height>,
     with_indexer: bool,
 ) -> Result<Option<token::Amount>, StepError> {
     let (is_successful, error) = match shielded_sync(sdk, height, with_indexer).await {
@@ -160,11 +241,25 @@ pub async fn get_shielded_balance(
     Ok(Some(total_balance.into()))
 }
 
+pub async fn get_epoch(sdk: &Sdk, retry_config: RetryConfig) -> Result<Epoch, StepError> {
+    tryhard::retry_fn(|| rpc::query_epoch(&sdk.namada.client))
+        .with_config(retry_config)
+        .on_retry(|attempt, _, error| {
+            let error = error.to_string();
+            async move {
+                tracing::info!("Retry {} due to {}...", attempt, error);
+            }
+        })
+        .await
+        .map(|epoch| epoch.into())
+        .map_err(StepError::Rpc)
+}
+
 pub async fn get_bond(
     sdk: &Sdk,
     source: &Alias,
     validator: &str,
-    epoch: u64,
+    epoch: Epoch,
     retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
 ) -> Result<token::Amount, StepError> {
     let wallet = sdk.namada.wallet.read().await;
@@ -191,12 +286,12 @@ pub async fn get_bond(
         }
     })
     .await
-    .map_err(|e| StepError::BuildCheck(e.to_string()))
+    .map_err(StepError::Rpc)
 }
 
 pub async fn shielded_sync(
     sdk: &Sdk,
-    height: Option<u64>,
+    height: Option<Height>,
     with_indexer: bool,
 ) -> Result<(), StepError> {
     let now = Instant::now();

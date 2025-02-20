@@ -7,17 +7,13 @@ use namada_sdk::{
 };
 use typed_builder::TypedBuilder;
 
+use crate::check::Check;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::{
-    check::Check,
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    task::{Amount, TaskSettings},
-};
-
-use super::utils::get_balance;
-use super::{RetryConfig, TaskContext};
+use crate::task::{TaskContext, TaskSettings};
+use crate::types::{Alias, Amount};
+use crate::utils::{get_balance, RetryConfig};
 
 #[derive(Clone, TypedBuilder)]
 pub struct FaucetTransfer {
@@ -100,7 +96,7 @@ impl TaskContext for FaucetTransfer {
         sdk: &Sdk,
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        let pre_balance = get_balance(sdk, &self.target, retry_config).await?;
+        let (_, pre_balance) = get_balance(sdk, &self.target, retry_config).await?;
 
         Ok(vec![Check::BalanceTarget(
             self.target.clone(),

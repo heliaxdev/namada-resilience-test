@@ -9,16 +9,13 @@ use namada_sdk::{
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
+use crate::check::Check;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::{
-    check::Check,
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    task::{CommissionChange, CommissionRate, TaskSettings},
-};
-
-use super::{RetryConfig, TaskContext};
+use crate::task::{TaskContext, TaskSettings};
+use crate::types::{Alias, CommissionChange, CommissionRate};
+use crate::utils::RetryConfig;
 
 #[derive(Clone, TypedBuilder)]
 pub struct BecomeValidator {

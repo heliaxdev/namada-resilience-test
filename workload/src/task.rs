@@ -1,9 +1,9 @@
-use std::{collections::BTreeSet, fmt::Display, time::Duration};
+use std::{collections::BTreeSet, fmt::Display};
 
 use enum_dispatch::enum_dispatch;
 use namada_sdk::{args, dec::Dec, signing::SigningTxData, tx::Tx};
-use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
+use crate::utils::RetryConfig;
 use crate::{
     check::Check, constants::DEFAULT_GAS_LIMIT, entities::Alias, executor::StepError,
     sdk::namada::Sdk, state::State,
@@ -64,20 +64,6 @@ impl TaskSettings {
     }
 }
 
-pub type Target = Alias;
-pub type Source = Alias;
-pub type PaymentAddress = Alias;
-pub type Amount = u64;
-pub type ValidatorAddress = String;
-pub type Epoch = u64;
-pub type Threshold = u64;
-pub type WalletAlias = Alias;
-pub type CommissionRate = Dec;
-pub type CommissionChange = Dec;
-pub type ProposalId = u64;
-pub type Vote = String;
-type RetryConfig = RetryFutureConfig<ExponentialBackoff, NoOnRetry>;
-
 #[enum_dispatch]
 #[derive(Clone)]
 pub enum Task {
@@ -103,14 +89,6 @@ pub enum Task {
     Vote(vote::Vote),
 }
 
-impl Task {
-    fn retry_config() -> RetryConfig {
-        RetryFutureConfig::new(4)
-            .exponential_backoff(Duration::from_secs(1))
-            .max_delay(Duration::from_secs(10))
-    }
-}
-
 impl Display for Task {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.summary())
@@ -118,7 +96,7 @@ impl Display for Task {
 }
 
 #[enum_dispatch(Task)]
-trait TaskContext {
+pub trait TaskContext {
     fn name(&self) -> String;
 
     fn summary(&self) -> String;

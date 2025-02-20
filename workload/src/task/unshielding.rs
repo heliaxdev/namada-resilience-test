@@ -11,17 +11,13 @@ use namada_sdk::{
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
+use crate::check::Check;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::{
-    check::Check,
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    task::{Amount, TaskSettings},
-};
-
-use super::utils::{get_balance, get_shielded_balance};
-use super::{RetryConfig, TaskContext};
+use crate::task::{TaskContext, TaskSettings};
+use crate::types::{Alias, Amount};
+use crate::utils::{get_balance, get_shielded_balance, RetryConfig};
 
 #[derive(Clone, TypedBuilder)]
 pub struct Unshielding {
@@ -121,7 +117,7 @@ impl TaskContext for Unshielding {
         let source_check =
             Check::BalanceShieldedSource(self.source.clone(), pre_balance, self.amount);
 
-        let pre_balance = get_balance(sdk, &self.target, retry_config).await?;
+        let (_, pre_balance) = get_balance(sdk, &self.target, retry_config).await?;
         let target_check = Check::BalanceTarget(self.target.clone(), pre_balance, self.amount);
 
         Ok(vec![source_check, target_check])

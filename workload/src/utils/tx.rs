@@ -1,23 +1,20 @@
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
+use std::str::FromStr;
 
-use namada_sdk::{
-    args::{self, DeviceTransport, TxBuilder},
-    hash::Hash,
-    key::common,
-    rpc::TxResponse,
-    signing::{default_sign, SigningTxData},
-    tx::{
-        self,
-        data::{GasLimit, TxType},
-        either, ProcessTxResponse, Tx, TxCommitments, TX_REVEAL_PK,
-    },
-    Namada,
-};
+use namada_sdk::args::{self, DeviceTransport, TxBuilder};
+use namada_sdk::hash::Hash;
+use namada_sdk::key::common;
+use namada_sdk::rpc::TxResponse;
+use namada_sdk::signing::{default_sign, SigningTxData};
+use namada_sdk::tx::data::{GasLimit, TxType};
+use namada_sdk::tx::{self, either, ProcessTxResponse, Tx, TxCommitments, TX_REVEAL_PK};
+use namada_sdk::Namada;
 
-use crate::{
-    constants::DEFAULT_GAS_LIMIT, entities::Alias, executor::StepError, sdk::namada::Sdk,
-    task::TaskSettings,
-};
+use crate::constants::DEFAULT_GAS_LIMIT;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::task::TaskSettings;
+use crate::types::Alias;
 
 fn is_tx_rejected(
     cmt: &TxCommitments,

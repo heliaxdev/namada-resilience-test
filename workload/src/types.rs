@@ -1,5 +1,6 @@
 use std::fmt;
 
+use namada_sdk::dec::Dec;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -76,3 +77,31 @@ impl<'de> Deserialize<'de> for Alias {
         deserializer.deserialize_str(AliasVisitor)
     }
 }
+
+#[derive(Clone, Debug)]
+pub enum ValidatorStatus {
+    Active,
+    Reactivating,
+    Inactive,
+}
+
+impl fmt::Display for ValidatorStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ValidatorStatus::Active => write!(f, "active"),
+            ValidatorStatus::Inactive => write!(f, "inactive"),
+            ValidatorStatus::Reactivating => write!(f, "reactivating"),
+        }
+    }
+}
+
+pub type Amount = u64;
+pub type ValidatorAddress = String;
+pub type Epoch = u64;
+pub type Threshold = u64;
+pub type CommissionRate = Dec;
+pub type CommissionChange = Dec;
+pub type ProposalId = u64;
+pub type Vote = String;
+pub type Height = u64;
+pub type Balance = namada_sdk::token::Amount;

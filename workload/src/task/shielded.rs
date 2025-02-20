@@ -11,17 +11,13 @@ use namada_sdk::{
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
+use crate::check::Check;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::{
-    check::Check,
-    entities::Alias,
-    executor::StepError,
-    sdk::namada::Sdk,
-    task::{Amount, TaskSettings},
-};
-
-use super::utils::get_shielded_balance;
-use super::{RetryConfig, TaskContext};
+use crate::task::{TaskContext, TaskSettings};
+use crate::types::{Alias, Amount};
+use crate::utils::{get_shielded_balance, RetryConfig};
 
 #[derive(Clone, TypedBuilder)]
 pub struct ShieldedTransfer {

@@ -1,17 +1,19 @@
-use namada_sdk::{
-    args, key::SchemeType, masp::find_valid_diversifier, masp_primitives::zip32, rpc,
-    signing::SigningTxData, tx::Tx, PaymentAddress,
-};
+use namada_sdk::key::SchemeType;
+use namada_sdk::masp::find_valid_diversifier;
+use namada_sdk::masp_primitives::zip32;
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::tx::Tx;
+use namada_sdk::{args, rpc, PaymentAddress};
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
+use crate::check::Check;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::{
-    check::Check, entities::Alias, executor::StepError, sdk::namada::Sdk, task::TaskSettings,
-};
-
-use super::utils::build_reveal_pk;
-use super::{RetryConfig, TaskContext};
+use crate::task::{TaskContext, TaskSettings};
+use crate::types::Alias;
+use crate::utils::{build_reveal_pk, RetryConfig};
 
 #[derive(Clone, TypedBuilder)]
 pub struct NewWalletKeyPair {
