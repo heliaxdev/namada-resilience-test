@@ -74,7 +74,7 @@ impl TaskContext for InitAccount {
         let (init_account_tx, signing_data) = init_account_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((init_account_tx, vec![signing_data], init_account_builder.tx))
     }

@@ -75,7 +75,7 @@ impl TaskContext for UpdateAccount {
         let (update_account, signing_data) = update_account_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((
             update_account,

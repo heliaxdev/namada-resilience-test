@@ -63,7 +63,7 @@ impl TaskContext for ReactivateValidator {
         let (reactivate_validator, signing_data) = reactivate_validator_builder_tx
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((
             reactivate_validator,

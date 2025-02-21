@@ -227,7 +227,7 @@ pub async fn get_shielded_balance(
     let Some(balance) = shielded_ctx
         .compute_shielded_balance(&viewing_key)
         .await
-        .map_err(|e| StepError::BuildCheck(e.to_string()))?
+        .map_err(|e| StepError::ShieldedContext(e.to_string()))?
     else {
         return Ok(None);
     };

@@ -74,7 +74,7 @@ impl TaskContext for Unbond {
         let (unbond_tx, signing_data, _epoch) = unbond_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((unbond_tx, vec![signing_data], unbond_tx_builder.tx))
     }

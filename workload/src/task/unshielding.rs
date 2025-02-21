@@ -100,7 +100,7 @@ impl TaskContext for Unshielding {
         let (transfer_tx, signing_data) = transfer_tx_builder
             .build(&sdk.namada, &mut bparams)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((transfer_tx, vec![signing_data], transfer_tx_builder.tx))
     }

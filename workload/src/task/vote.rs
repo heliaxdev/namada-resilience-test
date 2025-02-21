@@ -66,7 +66,7 @@ impl TaskContext for Vote {
         let (vote_tx, signing_data) = vote_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((vote_tx, vec![signing_data], vote_tx_builder.tx))
     }

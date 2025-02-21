@@ -66,7 +66,7 @@ impl TaskContext for ClaimRewards {
         let (claim_tx, signing_data) = claim_rewards_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((claim_tx, vec![signing_data], claim_rewards_tx_builder.tx))
     }

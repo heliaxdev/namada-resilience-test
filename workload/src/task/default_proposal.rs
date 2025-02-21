@@ -85,7 +85,7 @@ impl TaskContext for DefaultProposal {
         let (default_proposal, signing_data) = default_proposal_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((
             default_proposal,

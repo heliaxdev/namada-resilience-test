@@ -40,7 +40,7 @@ impl TaskContext for Batch {
         for task in &self.tasks {
             let (tx, mut signing_data, _) = Box::pin(task.build_tx(sdk)).await?;
             if signing_data.len() != 1 {
-                return Err(StepError::Build("Unexpected sigining data".to_string()));
+                return Err(StepError::BuildTx("Unexpected sigining data".to_string()));
             }
             txs.push((tx, signing_data.remove(0)));
         }

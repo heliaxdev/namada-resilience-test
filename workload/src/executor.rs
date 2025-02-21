@@ -1,5 +1,9 @@
 use std::time::Instant;
 
+use namada_sdk::rpc;
+use thiserror::Error;
+use tokio::time::{sleep, Duration};
+
 use crate::check::{Check, CheckContext, CheckInfo};
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -7,30 +11,31 @@ use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
 use crate::types::Alias;
 use crate::utils::{execute_reveal_pk, retry_config};
-use namada_sdk::rpc;
-use thiserror::Error;
-use tokio::time::{sleep, Duration};
 
 #[derive(Error, Debug)]
 pub enum StepError {
-    #[error("building an empty batch")]
+    #[error("Building an empty batch")]
     EmptyBatch,
-    #[error("error wallet `{0}`")]
+    #[error("Wallet failed: `{0}`")]
     Wallet(String),
-    #[error("error building tx `{0}`")]
-    Build(String),
-    #[error("error fetching shielded context data `{0}`")]
-    ShieldedSync(String),
-    #[error("error broadcasting tx `{0}`")]
-    Broadcast(String),
-    #[error("error executing tx `{0}`")]
-    Execution(String),
-    #[error("error calling rpc `{0}`")]
-    Rpc(namada_sdk::error::Error),
-    #[error("build check: `{0}`")]
+    #[error("Building task failed: `{0}`")]
+    BuildTask(String),
+    #[error("Building tx failed: `{0}`")]
+    BuildTx(String),
+    #[error("Building check failed: `{0}`")]
     BuildCheck(String),
-    #[error("state check: `{0}`")]
+    #[error("Fetching shielded context data failed: `{0}`")]
+    ShieldedSync(String),
+    #[error("Broadcasting tx failed: `{0}`")]
+    Broadcast(namada_sdk::error::Error),
+    #[error("Executing tx failed: `{0}`")]
+    Execution(String),
+    #[error("Namada RPC request failed `{0}`")]
+    Rpc(namada_sdk::error::Error),
+    #[error("State check failed: `{0}`")]
     StateCheck(String),
+    #[error("Shielded context failed: `{0}`")]
+    ShieldedContext(String),
 }
 
 #[derive(Clone, Debug)]
@@ -183,7 +188,7 @@ impl WorkloadExecutor {
         };
 
         for check in checks {
-            tracing::info!("Running {} check...", check.to_string());
+            tracing::info!("Running {check} check...");
             check
                 .do_check(
                     &self.sdk,
@@ -203,6 +208,7 @@ impl WorkloadExecutor {
         let mut execution_results = vec![];
 
         for task in tasks {
+            tracing::info!("Executing {task}...");
             let now = Instant::now();
             let execution_height = task.execute(&self.sdk).await?;
             let execution_result = ExecutionResult {

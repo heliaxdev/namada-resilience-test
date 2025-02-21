@@ -78,7 +78,7 @@ impl TaskContext for ChangeConsensusKey {
         let (change_consensus_key, signing_data) = change_consensus_key_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((
             change_consensus_key,

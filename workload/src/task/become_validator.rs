@@ -132,7 +132,7 @@ impl TaskContext for BecomeValidator {
         let (become_validator, signing_data) = become_validator_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((
             become_validator,

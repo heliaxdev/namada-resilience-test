@@ -26,7 +26,7 @@ impl StepContext for DefaultProposal {
         let client = sdk.namada.clone_client();
         let source_account = state
             .random_account_with_min_balance(vec![], PROPOSAL_DEPOSIT)
-            .ok_or(StepError::Build("No more accounts".to_string()))?;
+            .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
 
         let current_epoch = rpc::query_epoch(&client).await.map_err(StepError::Rpc)?;
 

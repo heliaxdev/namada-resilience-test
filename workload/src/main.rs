@@ -121,7 +121,7 @@ async fn inner_main() -> Code {
             return Code::BuildFailure(next_step, e);
         }
     };
-    tracing::info!("Built {next_step} -> {tasks:?}");
+    tracing::info!("Built tasks for {next_step}");
 
     let checks = if config.no_check {
         vec![]

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use namada_sdk::args::{self, DeviceTransport, TxBuilder};
+use namada_sdk::collections::HashSet;
 use namada_sdk::hash::Hash;
 use namada_sdk::key::common;
 use namada_sdk::rpc::TxResponse;
@@ -16,21 +17,8 @@ use crate::sdk::namada::Sdk;
 use crate::task::TaskSettings;
 use crate::types::Alias;
 
-fn is_tx_rejected(
-    cmt: &TxCommitments,
-    wrapper_hash: Option<Hash>,
-    tx_response: &Result<ProcessTxResponse, namada_sdk::error::Error>,
-) -> bool {
-    match tx_response {
-        Ok(tx_result) => tx_result
-            .is_applied_and_valid(wrapper_hash.as_ref(), cmt)
-            .is_none(),
-        Err(_) => true,
-    }
-}
-
 fn get_tx_errors(
-    cmt: &TxCommitments,
+    cmts: HashSet<TxCommitments>,
     wrapper_hash: Option<Hash>,
     tx_response: &ProcessTxResponse,
 ) -> Option<String> {
@@ -38,16 +26,21 @@ fn get_tx_errors(
         if let Some(batch) = &result.batch {
             tracing::info!("batch result: {:#?}", batch);
 
-            return batch
-                .get_inner_tx_result(wrapper_hash.as_ref(), either::Right(cmt))
-                .map(|res| {
-                    res.as_ref()
-                        .map(|res| {
-                            serde_json::to_string(&res.vps_result.errors)
-                                .expect("Encoding shouldn't fail")
+            let errors = cmts
+                .iter()
+                .filter_map(|cmt| {
+                    batch
+                        .get_inner_tx_result(wrapper_hash.as_ref(), either::Right(cmt))
+                        .map(|res| match res.as_ref() {
+                            Ok(res) => serde_json::to_string(&res.vps_result.errors)
+                                .expect("errors should be json"),
+                            Err(e) => e.to_string(),
                         })
-                        .unwrap_or_else(|e| e.to_string())
-                });
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            return Some(errors);
         }
     }
     None
@@ -108,7 +101,7 @@ pub async fn build_reveal_pk(
     let (reveal_tx, signing_data) = reveal_pk_tx_builder
         .build(&sdk.namada)
         .await
-        .map_err(|e| StepError::Build(e.to_string()))?;
+        .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
     Ok((reveal_tx, vec![signing_data], reveal_pk_tx_builder.tx))
 }
@@ -128,7 +121,7 @@ pub async fn merge_tx(
     settings: &TaskSettings,
 ) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
     if txs.is_empty() {
-        return Err(StepError::Build("Empty tx batch".to_string()));
+        return Err(StepError::BuildTx("Empty tx batch".to_string()));
     }
     let tx_args = default_tx_arg(sdk).await;
 
@@ -145,7 +138,7 @@ pub async fn merge_tx(
         (tx, vec![signing_data])
     } else {
         let (mut tx, signing_datas) =
-            tx::build_batch(txs.clone()).map_err(|e| StepError::Build(e.to_string()))?;
+            tx::build_batch(txs.clone()).map_err(|e| StepError::BuildTx(e.to_string()))?;
         tx.header.atomic = true;
 
         let mut wrapper = tx.header.wrapper().expect("wrapper should exist");
@@ -173,24 +166,28 @@ pub(crate) async fn execute_tx(
 
     do_sign_tx(sdk, &mut tx, signing_datas, tx_args).await;
 
-    let cmt = tx
+    let first_cmt = tx
         .first_commitments()
         .expect("Commitments should exist")
         .clone();
+    let cmts = tx.commitments().clone();
     let wrapper_hash = tx.wrapper_hash();
-    let tx_response = sdk.namada.submit(tx, tx_args).await;
 
-    if is_tx_rejected(&cmt, wrapper_hash, &tx_response) {
-        match tx_response {
-            Ok(tx_response) => {
-                let errors = get_tx_errors(&cmt, wrapper_hash, &tx_response).unwrap_or_default();
-                return Err(StepError::Execution(errors));
-            }
-            Err(e) => return Err(StepError::Broadcast(e.to_string())),
-        }
+    let tx_response = sdk
+        .namada
+        .submit(tx, tx_args)
+        .await
+        .map_err(StepError::Broadcast)?;
+
+    if tx_response
+        .is_applied_and_valid(wrapper_hash.as_ref(), &first_cmt)
+        .is_none()
+    {
+        let errors = get_tx_errors(cmts, wrapper_hash, &tx_response).unwrap_or_default();
+        return Err(StepError::Execution(errors));
     }
 
-    if let Ok(ProcessTxResponse::Applied(TxResponse { height, .. })) = &tx_response {
+    if let ProcessTxResponse::Applied(TxResponse { height, .. }) = tx_response {
         Ok(Some(height.0))
     } else {
         Ok(None)

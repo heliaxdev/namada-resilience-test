@@ -23,10 +23,10 @@ impl StepContext for TransparentTransfer {
     async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
         let source_account = state
             .random_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
-            .ok_or(StepError::Build("No more accounts".to_string()))?;
+            .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let target_account = state
             .random_account(vec![source_account.alias.clone()])
-            .ok_or(StepError::Build("No more accounts".to_string()))?;
+            .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let amount_account = state.get_balance_for(&source_account.alias);
         let amount = utils::random_between(state, 1, amount_account);
 

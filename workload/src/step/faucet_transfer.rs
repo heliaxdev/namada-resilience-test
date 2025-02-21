@@ -20,7 +20,7 @@ impl StepContext for FaucetTransfer {
     async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
         let target_account = state
             .random_account(vec![])
-            .ok_or(StepError::Build("No more accounts".to_string()))?;
+            .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let amount = FAUCET_AMOUNT * NATIVE_SCALE;
 
         let task_settings = TaskSettings::faucet();

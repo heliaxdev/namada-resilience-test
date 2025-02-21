@@ -72,7 +72,7 @@ impl TaskContext for ChangeMetadata {
         let (change_metadata, signing_data) = change_metadata_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::Build(e.to_string()))?;
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
 
         Ok((
             change_metadata,

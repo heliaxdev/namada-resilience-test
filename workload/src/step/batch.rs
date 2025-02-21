@@ -80,7 +80,7 @@ async fn build_batch(
             task.update_state(&mut tmp_state, false);
         }
         if !tasks.is_empty() {
-            tracing::info!("Added {:?} tx type to the batch...", step);
+            tracing::info!("Added {step} to the batch...");
             batch_tasks.extend(tasks);
         }
     }

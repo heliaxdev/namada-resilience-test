@@ -27,7 +27,7 @@ impl StepContext for Bond {
         let client = &sdk.namada.client;
         let source_account = state
             .random_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
-            .ok_or(StepError::Build("No more accounts".to_string()))?;
+            .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let amount_account = state.get_balance_for(&source_account.alias);
         let amount = utils::random_between(state, 1, amount_account);
 
