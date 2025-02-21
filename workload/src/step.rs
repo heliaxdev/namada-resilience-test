@@ -2,7 +2,6 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use enum_dispatch::enum_dispatch;
-use rand::{distributions::Standard, prelude::Distribution, Rng};
 
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
@@ -65,8 +64,8 @@ impl FromStr for StepType {
             "new-wallet-key-pair" => Self::NewWalletKeyPair(Default::default()),
             "faucet-transfer" => Self::FaucetTransfer(Default::default()),
             "transparent-transfer" => Self::TransparentTransfer(Default::default()),
-            "shielding" => Self::Shielded(Default::default()),
-            "shielded" => Self::Shielding(Default::default()),
+            "shielding" => Self::Shielding(Default::default()),
+            "shielded" => Self::Shielded(Default::default()),
             "unshielding" => Self::Unshielding(Default::default()),
             "bond" => Self::Bond(Default::default()),
             "unbond" => Self::Unbond(Default::default()),
@@ -93,21 +92,6 @@ impl FromStr for StepType {
 impl Display for StepType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name())
-    }
-}
-
-impl Distribution<StepType> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StepType {
-        match rng.gen_range(0..6) {
-            0 => StepType::TransparentTransfer(Default::default()),
-            1 => StepType::Redelegate(Default::default()),
-            2 => StepType::Unbond(Default::default()),
-            3 => StepType::Shielding(Default::default()),
-            4 => StepType::ClaimRewards(Default::default()),
-            5 => StepType::Bond(Default::default()),
-            6 => StepType::Shielded(Default::default()),
-            _ => StepType::Unshielding(Default::default()),
-        }
     }
 }
 

@@ -215,7 +215,7 @@ impl WorkloadExecutor {
         Ok(execution_results)
     }
 
-    pub fn update_state(&mut self, tasks: Vec<Task>) {
+    pub fn update_state(&mut self, tasks: &[Task]) {
         for task in tasks {
             task.update_state(&mut self.state, true);
             task.update_stats(&mut self.state);

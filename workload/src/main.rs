@@ -7,6 +7,7 @@ use namada_chain_workload::config::AppConfig;
 use namada_chain_workload::executor::{StepError, WorkloadExecutor};
 use namada_chain_workload::sdk::namada::Sdk;
 use namada_chain_workload::state::{State, StateError};
+use namada_chain_workload::task::Task;
 use namada_sdk::io::{Client, NullIo};
 use namada_sdk::masp::fs::FsShieldedUtils;
 use namada_sdk::masp::ShieldedContext;
@@ -165,7 +166,17 @@ async fn inner_main() -> Code {
     let exit_code = match workload_executor.checks(checks, execution_height).await {
         Ok(_) => {
             tracing::info!("Checks were successful, updating state...");
-            workload_executor.update_state(tasks);
+            workload_executor.update_state(&tasks);
+            // save wallet for init-account
+            if tasks
+                .iter()
+                .any(|task| matches!(task, Task::InitAccount(_)))
+            {
+                let wallet = workload_executor.sdk().namada.wallet.read().await;
+                if let Err(e) = wallet.save().map_err(|e| StepError::Wallet(e.to_string())) {
+                    return Code::Fatal(next_step, e);
+                }
+            }
             Code::Success(next_step)
         }
         Err(e) => Code::Fatal(next_step, e),
