@@ -116,7 +116,7 @@ impl TaskContext for Batch {
                         .and_modify(|(_epoch, bond_amount)| {
                             *bond_amount -= bond_decrease.amount() as i64
                         })
-                        .or_insert((bond_decrease.epoch(), bond_decrease.amount() as i64));
+                        .or_insert((bond_decrease.epoch(), -(bond_decrease.amount() as i64)));
                 }
                 _ => {
                     return Err(StepError::BuildCheck(format!(
