@@ -6,6 +6,7 @@ pub const MAX_DELAY_SEC: u64 = 10;
 // For batch
 pub const MAX_BATCH_TX_NUM: u64 = 3;
 
+pub const FAUCET_AMOUNT: u64 = 1_000_000;
 pub const NATIVE_SCALE: u64 = namada_sdk::token::NATIVE_SCALE;
 pub const DEFAULT_GAS_LIMIT: u64 = namada_sdk::DEFAULT_GAS_LIMIT * 2;
 pub const DEFAULT_GAS_PRICE: f64 = 0.000001;

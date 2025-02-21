@@ -87,6 +87,7 @@ impl TaskContext for NewWalletKeyPair {
         wallet
             .save()
             .map_err(|e| StepError::Wallet(format!("Failed to save the wallet: {e}")))?;
+        drop(wallet);
 
         build_reveal_pk(sdk, sk.to_public()).await
     }

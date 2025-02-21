@@ -1,4 +1,4 @@
-use crate::constants::NATIVE_SCALE;
+use crate::constants::{FAUCET_AMOUNT, NATIVE_SCALE};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -21,7 +21,7 @@ impl StepContext for FaucetTransfer {
         let target_account = state
             .random_account(vec![])
             .ok_or(StepError::Build("No more accounts".to_string()))?;
-        let amount = 1_000_000 * NATIVE_SCALE;
+        let amount = FAUCET_AMOUNT * NATIVE_SCALE;
 
         let task_settings = TaskSettings::faucet();
 
