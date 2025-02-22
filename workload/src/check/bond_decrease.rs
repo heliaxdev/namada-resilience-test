@@ -47,14 +47,7 @@ impl CheckContext for BondDecrease {
         check_info: CheckInfo,
         retry_config: RetryConfig,
     ) -> Result<(), StepError> {
-        let mut epoch;
-        loop {
-            // NOTE: Need to change if the epoch duration is long
-            epoch = get_epoch(sdk, retry_config).await?;
-            if epoch > self.epoch + UNBONDING_LEN {
-                break;
-            }
-        }
+        let epoch = get_epoch(sdk, retry_config).await? + UNBONDING_LEN;
         let post_bond = get_bond(sdk, &self.target, &self.validator, epoch, retry_config).await?;
         let check_bond = self
             .pre_bond
