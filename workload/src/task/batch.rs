@@ -101,10 +101,12 @@ impl TaskContext for Batch {
                             *bond_amount += bond_increase.amount() as i64
                         })
                         .or_insert((bond_increase.epoch(), bond_increase.amount() as i64));
-                    balances
-                        .entry(bond_increase.target().clone())
-                        .and_modify(|balance| *balance -= bond_increase.amount() as i64)
-                        .or_insert(-(bond_increase.amount() as i64));
+                    if !bond_increase.is_redelegated() {
+                        balances
+                            .entry(bond_increase.target().clone())
+                            .and_modify(|balance| *balance -= bond_increase.amount() as i64)
+                            .or_insert(-(bond_increase.amount() as i64));
+                    }
                 }
                 Check::BondDecrease(bond_decrease) => {
                     bonds
@@ -159,6 +161,7 @@ impl TaskContext for Batch {
                         .pre_bond(pre_bond)
                         .epoch(epoch)
                         .amount(amount.unsigned_abs())
+                        .is_redelegated(false)
                         .build(),
                 ));
             } else {

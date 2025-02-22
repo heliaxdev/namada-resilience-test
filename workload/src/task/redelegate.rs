@@ -124,6 +124,7 @@ impl TaskContext for Redelegate {
                 .pre_bond(pre_bond)
                 .epoch(self.epoch)
                 .amount(self.amount)
+                .is_redelegated(true)
                 .build(),
         );
 

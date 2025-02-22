@@ -16,6 +16,7 @@ pub struct BondIncrease {
     pre_bond: Balance,
     epoch: Epoch,
     amount: Amount,
+    is_redelegated: bool,
 }
 
 impl BondIncrease {
@@ -33,6 +34,10 @@ impl BondIncrease {
 
     pub fn epoch(&self) -> Epoch {
         self.epoch
+    }
+
+    pub fn is_redelegated(&self) -> bool {
+        self.is_redelegated
     }
 }
 
