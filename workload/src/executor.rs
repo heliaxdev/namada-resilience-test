@@ -9,7 +9,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
-use crate::types::Alias;
+use crate::types::{Alias, Height};
 use crate::utils::{execute_reveal_pk, retry_config};
 
 #[derive(Error, Debug)]
@@ -36,12 +36,6 @@ pub enum StepError {
     StateCheck(String),
     #[error("Shielded context failed: `{0}`")]
     ShieldedContext(String),
-}
-
-#[derive(Clone, Debug)]
-pub struct ExecutionResult {
-    pub time_taken: u64,
-    pub execution_height: Option<u64>,
 }
 
 pub struct WorkloadExecutor {
@@ -204,28 +198,38 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub async fn execute(&self, tasks: &[Task]) -> Result<Vec<ExecutionResult>, StepError> {
-        let mut execution_results = vec![];
+    pub async fn execute(&self, tasks: &[Task]) -> Result<Option<Height>, StepError> {
+        let mut total_time = 0;
+        let mut heights = vec![];
 
         for task in tasks {
             tracing::info!("Executing {task}...");
             let now = Instant::now();
             let execution_height = task.execute(&self.sdk).await?;
-            let execution_result = ExecutionResult {
-                time_taken: now.elapsed().as_secs(),
-                execution_height,
-            };
-            execution_results.push(execution_result);
-        }
 
-        Ok(execution_results)
+            total_time += now.elapsed().as_secs();
+            heights.push(execution_height);
+        }
+        tracing::info!("Execution took {total_time}s...");
+
+        Ok(heights.into_iter().flatten().max())
     }
 
-    pub fn update_state(&mut self, tasks: &[Task]) {
+    pub async fn post_execute(&mut self, tasks: &[Task]) -> Result<(), StepError> {
         for task in tasks {
+            // update state
             task.update_state(&mut self.state, true);
             task.update_stats(&mut self.state);
+
+            // save wallet for init-account
+            if matches!(task, Task::InitAccount(_)) {
+                let wallet = self.sdk.namada.wallet.read().await;
+                wallet
+                    .save()
+                    .map_err(|e| StepError::Wallet(e.to_string()))?;
+            }
         }
+        Ok(())
     }
 
     pub fn update_failed_execution(&mut self, tasks: &[Task]) {

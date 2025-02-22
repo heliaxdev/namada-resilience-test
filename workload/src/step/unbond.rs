@@ -38,12 +38,7 @@ impl StepContext for Unbond {
                 .source(source_account.alias)
                 .validator(source_bond.validator)
                 .amount(amount)
-                .epoch(
-                    current_epoch
-                        .checked_add(6)
-                        .expect("Epoch shouldn't overflow")
-                        .into(),
-                )
+                .epoch(current_epoch.into())
                 .settings(task_settings)
                 .build(),
         )])

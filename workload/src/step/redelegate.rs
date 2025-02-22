@@ -68,12 +68,7 @@ impl StepContext for Redelegate {
                 .from_validator(source_bond.validator.to_string())
                 .to_validator(to_validator.to_string())
                 .amount(amount)
-                .epoch(
-                    current_epoch
-                        .checked_add(6)
-                        .expect("Epoch shouldn't overflow")
-                        .into(),
-                )
+                .epoch(current_epoch.into())
                 .settings(task_settings)
                 .build(),
         )])

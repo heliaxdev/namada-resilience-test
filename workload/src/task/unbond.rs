@@ -102,6 +102,6 @@ impl TaskContext for Unbond {
         if with_fee {
             state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
         }
-        state.modify_unbonds(&self.source, &self.validator, self.amount);
+        state.modify_unbond(&self.source, &self.validator, self.amount);
     }
 }

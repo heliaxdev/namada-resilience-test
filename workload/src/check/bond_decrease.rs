@@ -3,6 +3,7 @@ use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
+use crate::constants::UNBONDING_LEN;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::types::{Alias, Amount, Balance, Epoch, ValidatorAddress};
@@ -46,9 +47,15 @@ impl CheckContext for BondDecrease {
         check_info: CheckInfo,
         retry_config: RetryConfig,
     ) -> Result<(), StepError> {
-        let epoch = get_epoch(sdk, retry_config).await?;
-        let post_bond =
-            get_bond(sdk, &self.target, &self.validator, epoch + 2, retry_config).await?;
+        let mut epoch;
+        loop {
+            // NOTE: Need to change if the epoch duration is long
+            epoch = get_epoch(sdk, retry_config).await?;
+            if epoch > self.epoch + UNBONDING_LEN {
+                break;
+            }
+        }
+        let post_bond = get_bond(sdk, &self.target, &self.validator, epoch, retry_config).await?;
         let check_bond = self
             .pre_bond
             .checked_sub(token::Amount::from_u64(self.amount))

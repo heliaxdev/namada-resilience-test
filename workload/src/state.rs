@@ -547,7 +547,7 @@ impl State {
             .and_modify(|bond| *bond.get_mut(from).unwrap() -= amount);
     }
 
-    pub fn modify_unbonds(&mut self, source: &Alias, validator: &str, amount: u64) {
+    pub fn modify_unbond(&mut self, source: &Alias, validator: &str, amount: u64) {
         let default = HashMap::from_iter([(validator.to_string(), 0u64)]);
         *self
             .unbonds

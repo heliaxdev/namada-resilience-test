@@ -7,7 +7,6 @@ use namada_chain_workload::config::AppConfig;
 use namada_chain_workload::executor::{StepError, WorkloadExecutor};
 use namada_chain_workload::sdk::namada::Sdk;
 use namada_chain_workload::state::{State, StateError};
-use namada_chain_workload::task::Task;
 use namada_sdk::io::{Client, NullIo};
 use namada_sdk::masp::fs::FsShieldedUtils;
 use namada_sdk::masp::ShieldedContext;
@@ -134,14 +133,7 @@ async fn inner_main() -> Code {
     tracing::info!("Built checks for {next_step}");
 
     let execution_height = match workload_executor.execute(&tasks).await {
-        Ok(result) => {
-            let total_time_takes: u64 = result.iter().map(|execution| execution.time_taken).sum();
-            tracing::info!("Execution took {total_time_takes}s...");
-            result
-                .iter()
-                .filter_map(|execution| execution.execution_height)
-                .max()
-        }
+        Ok(height) => height,
         Err(e) if matches!(e, StepError::Execution(_)) => {
             workload_executor.update_failed_execution(&tasks); // remove fees
             return Code::ExecutionFailure(next_step, e);
@@ -163,22 +155,13 @@ async fn inner_main() -> Code {
         }
     };
 
+    tracing::info!("Execution were successful, updating state...");
+    if let Err(e) = workload_executor.post_execute(&tasks).await {
+        return Code::Fatal(next_step, e);
+    }
+
     let exit_code = match workload_executor.checks(checks, execution_height).await {
-        Ok(_) => {
-            tracing::info!("Checks were successful, updating state...");
-            workload_executor.update_state(&tasks);
-            // save wallet for init-account
-            if tasks
-                .iter()
-                .any(|task| matches!(task, Task::InitAccount(_)))
-            {
-                let wallet = workload_executor.sdk().namada.wallet.read().await;
-                if let Err(e) = wallet.save().map_err(|e| StepError::Wallet(e.to_string())) {
-                    return Code::Fatal(next_step, e);
-                }
-            }
-            Code::Success(next_step)
-        }
+        Ok(_) => Code::Success(next_step),
         Err(e) => Code::Fatal(next_step, e),
     };
 

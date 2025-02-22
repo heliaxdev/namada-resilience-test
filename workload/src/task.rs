@@ -8,7 +8,7 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::types::Alias;
+use crate::types::{Alias, Height};
 use crate::utils;
 use crate::utils::RetryConfig;
 
@@ -109,7 +109,7 @@ pub trait TaskContext {
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError>;
 
     #[allow(async_fn_in_trait)]
-    async fn execute(&self, sdk: &Sdk) -> Result<Option<u64>, StepError> {
+    async fn execute(&self, sdk: &Sdk) -> Result<Option<Height>, StepError> {
         let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
         utils::execute_tx(sdk, tx, signing_data, &tx_args).await
     }

@@ -31,11 +31,7 @@ impl StepContext for Bond {
         let amount_account = state.get_balance_for(&source_account.alias);
         let amount = utils::random_between(state, 1, amount_account);
 
-        let current_epoch = rpc::query_epoch(client)
-            .await
-            .map_err(StepError::Rpc)?
-            .checked_add(2)
-            .expect("Epoch shouldn't overflow");
+        let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
         let validators = rpc::get_all_consensus_validators(client, current_epoch)
             .await
             .map_err(StepError::Rpc)?;
@@ -53,12 +49,7 @@ impl StepContext for Bond {
                 .source(source_account.alias)
                 .validator(validator.to_string())
                 .amount(amount)
-                .epoch(
-                    current_epoch
-                        .checked_add(6)
-                        .expect("Epoch shouldn't overflow")
-                        .into(),
-                )
+                .epoch(current_epoch.into())
                 .settings(task_settings)
                 .build(),
         )])
