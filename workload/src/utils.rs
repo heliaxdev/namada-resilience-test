@@ -1,7 +1,19 @@
-use rand::Rng;
+use std::time::Duration;
 
-use crate::state::State;
+use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
-pub fn get_random_between(state: &mut State, min: u64, max: u64) -> u64 {
-    state.rng.gen_range(min..max)
+use crate::constants::{INIT_DELAY_SEC, MAX_DELAY_SEC, MAX_RETRY_COUNT};
+
+mod query;
+mod tx;
+
+pub use query::*;
+pub use tx::*;
+
+pub type RetryConfig = RetryFutureConfig<ExponentialBackoff, NoOnRetry>;
+
+pub fn retry_config() -> RetryConfig {
+    RetryFutureConfig::new(MAX_RETRY_COUNT)
+        .exponential_backoff(Duration::from_secs(INIT_DELAY_SEC))
+        .max_delay(Duration::from_secs(MAX_DELAY_SEC))
 }

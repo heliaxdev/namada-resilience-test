@@ -1,0 +1,134 @@
+use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldingTransferData};
+use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
+use namada_sdk::signing::SigningTxData;
+use namada_sdk::token::{self, DenominatedAmount};
+use namada_sdk::tx::data::GasLimit;
+use namada_sdk::tx::Tx;
+use namada_sdk::Namada;
+use rand::rngs::OsRng;
+use typed_builder::TypedBuilder;
+
+use crate::check::{self, Check};
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::state::State;
+use crate::task::{TaskContext, TaskSettings};
+use crate::types::{Alias, Amount};
+use crate::utils::{get_balance, get_shielded_balance, RetryConfig};
+
+#[derive(Clone, Debug, TypedBuilder)]
+pub struct Shielding {
+    source: Alias,
+    target: Alias,
+    amount: Amount,
+    settings: TaskSettings,
+}
+
+impl TaskContext for Shielding {
+    fn name(&self) -> String {
+        "shielding".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!(
+            "shielding/{}/{}/{}",
+            self.source.name, self.target.name, self.amount
+        )
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+        let mut bparams = RngBuildParams::new(OsRng);
+
+        let wallet = sdk.namada.wallet.read().await;
+
+        let native_token_alias = Alias::nam();
+
+        let source_address = wallet
+            .find_address(&self.source.name)
+            .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
+        let target_payment_address =
+            *wallet.find_payment_addr(&self.target.name).ok_or_else(|| {
+                StepError::Wallet(format!("No payment address: {}", self.target.name))
+            })?;
+        let token_address = wallet
+            .find_address(&native_token_alias.name)
+            .ok_or_else(|| {
+                StepError::Wallet(format!(
+                    "No native token address: {}",
+                    native_token_alias.name
+                ))
+            })?;
+        let fee_payer = wallet
+            .find_public_key(&self.settings.gas_payer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
+        let token_amount = token::Amount::from_u64(self.amount);
+
+        let tx_transfer_data = TxShieldingTransferData {
+            source: source_address.into_owned(),
+            token: token_address.into_owned(),
+            amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
+        };
+
+        let mut transfer_tx_builder = sdk
+            .namada
+            .new_shielding_transfer(target_payment_address, vec![tx_transfer_data]);
+        transfer_tx_builder =
+            transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
+        transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
+        let mut signing_keys = vec![];
+        for signer in &self.settings.signers {
+            let public_key = wallet
+                .find_public_key(&signer.name)
+                .map_err(|e| StepError::Wallet(e.to_string()))?;
+            signing_keys.push(public_key)
+        }
+        transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys);
+        drop(wallet);
+
+        let (transfer_tx, signing_data, _epoch) = transfer_tx_builder
+            .build(&sdk.namada, &mut bparams)
+            .await
+            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+
+        Ok((transfer_tx, vec![signing_data], transfer_tx_builder.tx))
+    }
+
+    async fn build_checks(
+        &self,
+        sdk: &Sdk,
+        retry_config: RetryConfig,
+    ) -> Result<Vec<Check>, StepError> {
+        let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
+        let source_check = Check::BalanceSource(
+            check::balance_source::BalanceSource::builder()
+                .target(self.source.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        );
+
+        let pre_balance = get_shielded_balance(sdk, &self.target, None, false)
+            .await?
+            .unwrap_or_default();
+        let target_check = Check::BalanceShieldedTarget(
+            check::balance_shielded_target::BalanceShieldedTarget::builder()
+                .target(self.target.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        );
+
+        Ok(vec![source_check, target_check])
+    }
+
+    fn update_state(&self, state: &mut State, with_fee: bool) {
+        if with_fee {
+            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+        }
+        state.modify_shielding(&self.source, &self.target, self.amount)
+    }
+}

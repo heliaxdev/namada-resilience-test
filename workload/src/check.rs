@@ -1,78 +1,57 @@
-use std::{
-    collections::BTreeSet,
-    fmt::{Display, Formatter},
-};
+use std::fmt::{Display, Formatter};
 
-use crate::entities::Alias;
+use enum_dispatch::enum_dispatch;
 
-pub type Target = Alias;
-pub type PreBalance = namada_sdk::token::Amount;
-pub type Amount = u64;
-pub type Address = String;
-pub type Threshold = u64;
+use crate::executor::StepError;
+use crate::sdk::namada::Sdk;
+use crate::types::Height;
+use crate::utils::RetryConfig;
 
-#[derive(Clone, Debug)]
-pub enum ValidatorStatus {
-    Active,
-    Reactivating,
-    Inactive,
-}
+pub mod account_exist;
+pub mod balance_shielded_source;
+pub mod balance_shielded_target;
+pub mod balance_source;
+pub mod balance_target;
+pub mod bond_decrease;
+pub mod bond_increase;
+pub mod reveal_pk;
+pub mod validator_account;
+pub mod validator_status;
 
-impl Display for ValidatorStatus {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ValidatorStatus::Active => write!(f, "active"),
-            ValidatorStatus::Inactive => write!(f, "inactive"),
-            ValidatorStatus::Reactivating => write!(f, "reactivating"),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
+#[enum_dispatch]
 pub enum Check {
-    RevealPk(Target),
-    BalanceTarget(Target, PreBalance, Amount),
-    BalanceSource(Target, PreBalance, Amount),
-    BalanceShieldedTarget(Target, PreBalance, Amount),
-    BalanceShieldedSource(Target, PreBalance, Amount),
-    BondIncrease(Target, Address, PreBalance, Amount),
-    BondDecrease(Target, Address, PreBalance, Amount),
-    AccountExist(Target, Threshold, BTreeSet<Target>),
-    IsValidatorAccount(Target),
-    ValidatorStatus(Target, ValidatorStatus),
+    RevealPk(reveal_pk::RevealPk),
+    BalanceTarget(balance_target::BalanceTarget),
+    BalanceSource(balance_source::BalanceSource),
+    BalanceShieldedTarget(balance_shielded_target::BalanceShieldedTarget),
+    BalanceShieldedSource(balance_shielded_source::BalanceShieldedSource),
+    BondIncrease(bond_increase::BondIncrease),
+    BondDecrease(bond_decrease::BondDecrease),
+    AccountExist(account_exist::AccountExist),
+    IsValidatorAccount(validator_account::ValidatorAccount),
+    ValidatorStatus(validator_status::ValidatorStatus),
 }
 
 impl Display for Check {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Check::RevealPk(alias) => write!(f, "reveal/{}", alias.name),
-            Check::BalanceSource(target, _pre_balance, _amount) => {
-                write!(f, "balance/source/{}", target.name)
-            }
-            Check::BalanceTarget(target, _pre_balance, _amount) => {
-                write!(f, "balance/target/{}", target.name)
-            }
-            Check::BalanceShieldedTarget(target, _pre_balance, _amount) => {
-                write!(f, "balance-shielded/target/{}", target.name)
-            }
-            Check::BalanceShieldedSource(target, _pre_balance, _amount) => {
-                write!(f, "balance-shielded/source/{}", target.name)
-            }
-            Check::BondIncrease(source, validator, _pre_balance, _amount) => {
-                write!(f, "bond/{}/{}/increase", source.name, validator)
-            }
-            Check::BondDecrease(source, validator, _pre_balance, _amount) => {
-                write!(f, "bond/{}/{}/decrease", source.name, validator)
-            }
-            Check::AccountExist(source, _threshold, _sources) => {
-                write!(f, "account-exist/{}", source.name)
-            }
-            Check::IsValidatorAccount(target) => {
-                write!(f, "is-validator/{}", target.name)
-            }
-            Check::ValidatorStatus(target, status) => {
-                write!(f, "validator-status/{}/{}", target.name, status)
-            }
-        }
+        write!(f, "{}", self.summary())
     }
+}
+
+pub struct CheckInfo {
+    pub execution_height: Height,
+    pub check_height: Height,
+}
+
+#[enum_dispatch(Check)]
+pub trait CheckContext {
+    fn summary(&self) -> String;
+
+    #[allow(async_fn_in_trait)]
+    async fn do_check(
+        &self,
+        sdk: &Sdk,
+        check_info: CheckInfo,
+        retry_config: RetryConfig,
+    ) -> Result<(), StepError>;
 }
