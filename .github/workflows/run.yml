@@ -3,6 +3,10 @@ name: Run antithesis (triggerable)
 on:
   workflow_dispatch:
     inputs:
+      namada_config_tag:
+        description: 'The docker tag of the namada config docker images'
+        required: true
+        type: string
       namada_genesis_docker_tag:
         description: 'The docker tag of the namada genesis docker images'
         required: true
@@ -24,7 +28,7 @@ jobs:
     steps:
       - uses: antithesishq/antithesis-trigger-action@v0.7
         with:
-          config_image: namada-config:${{ github.event.inputs.namada_genesis_docker_tag }}
+          config_image: namada-config:${{ github.event.inputs.namada_config_tag }}
           notebook_name: namada2
           tenant: heliax
           username: ${{ secrets.ANTITHESIS_USER_NAME }}
