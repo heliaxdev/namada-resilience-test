@@ -33,7 +33,7 @@ impl StepContext for ShieldedTransfer {
             .ok_or(StepError::BuildTask("No more source accounts".to_string()))?;
 
         let target_account = state
-            .random_payment_address(vec![])
+            .random_payment_address(vec![source_account.alias.clone()])
             .ok_or(StepError::BuildTask("No more target accounts".to_string()))?;
         let amount_account = state.get_shielded_balance_for(&source_account.payment_address);
         let amount = utils::random_between(1, amount_account);
