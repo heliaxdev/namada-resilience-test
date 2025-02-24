@@ -26,14 +26,14 @@ impl StepContext for DefaultProposal {
     }
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
-        let client = sdk.namada.clone_client();
+        let client = &sdk.namada.client;
         let source_account = state
             .random_account_with_min_balance(vec![], PROPOSAL_DEPOSIT)
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
 
-        let current_epoch = rpc::query_epoch(&client).await.map_err(StepError::Rpc)?;
+        let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
 
-        let gov_prams = rpc::query_governance_parameters(&client).await;
+        let gov_prams = rpc::query_governance_parameters(client).await;
 
         let start_epoch = utils::random_between(
             current_epoch.0 + 2,

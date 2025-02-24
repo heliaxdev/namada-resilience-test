@@ -28,11 +28,12 @@ impl StepContext for Vote {
     }
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
-        let client = sdk.namada.clone_client();
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
 
-        let current_epoch = rpc::query_epoch(&client).await.map_err(StepError::Rpc)?;
+        let current_epoch = rpc::query_epoch(&sdk.namada.client)
+            .await
+            .map_err(StepError::Rpc)?;
 
         let proposal_id = state.random_votable_proposal(current_epoch.0);
 
