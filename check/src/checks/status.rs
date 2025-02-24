@@ -9,7 +9,9 @@ pub struct StatusCheck;
 
 impl DoCheck for StatusCheck {
     async fn check(&self, sdk: &Sdk, _state: &mut crate::state::State) -> Result<(), String> {
-        let status = sdk.namada.client
+        let status = sdk
+            .namada
+            .client
             .status()
             .await
             .map_err(|e| format!("Failed to query status: {e}"))?;
