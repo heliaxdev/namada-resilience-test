@@ -10,7 +10,7 @@ use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
-use crate::task::{self, Task, TaskContext, TaskSettings};
+use crate::task::{self, Task, TaskSettings};
 
 #[derive(Clone, Debug, Default)]
 pub struct BatchBond;
@@ -114,17 +114,12 @@ async fn build_batch(
     max_size: u64,
     state: &State,
 ) -> Result<Vec<Task>, StepError> {
-    let mut tmp_state = state.clone();
-
     let mut batch_tasks = vec![];
     for _ in 0..max_size {
         let step = possibilities
             .choose(&mut AntithesisRng)
             .expect("at least one StepType should exist");
-        let tasks = step.build_task(sdk, &tmp_state).await?;
-        for task in &tasks {
-            task.update_state(&mut tmp_state, false);
-        }
+        let tasks = step.build_task(sdk, state).await?;
         if !tasks.is_empty() {
             tracing::info!("Added {step} to the batch...");
             batch_tasks.extend(tasks);
