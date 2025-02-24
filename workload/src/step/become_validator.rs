@@ -24,14 +24,14 @@ impl StepContext for BecomeValidator {
         Ok(state.min_n_enstablished_accounts(1))
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
-        let commission_rate = utils::random_between::<u64>(state, 0, 100);
+    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
+        let commission_rate = utils::random_between::<u64>(0, 100);
         let commission_rate = Dec::new(commission_rate as i128, 2).unwrap();
 
-        let commission_rate_change = utils::random_between::<u64>(state, 0, 100);
+        let commission_rate_change = utils::random_between::<u64>(0, 100);
         let commission_rate_change = Dec::new(commission_rate_change as i128, 2).unwrap();
 
-        let random_alias = utils::random_alias(state);
+        let random_alias = utils::random_alias();
         let consensus_key_alias = format!("{}-consensus", random_alias.name);
         let eth_cold_key_alias = format!("{}-eth-cold", random_alias.name);
         let eth_hot_key_alias = format!("{}-eth-hot", random_alias.name);

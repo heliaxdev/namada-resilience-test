@@ -1,11 +1,10 @@
-use std::{
-    collections::{BTreeSet, HashMap, HashSet},
-    env, fs,
-    path::PathBuf,
-};
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::path::PathBuf;
+use std::{env, fs};
 
+use antithesis_sdk::random::AntithesisRng;
 use fs2::FileExt;
-use rand::{seq::IteratorRandom, Rng, RngCore};
+use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -82,15 +81,12 @@ pub struct State {
     pub deactivated_validators: HashMap<Alias, Account>,
     pub proposals: HashMap<u64, (u64, u64)>,
     pub id: u64,
-    pub seed: u64,
-    pub rng: AntithesisRng,
     pub base_dir: PathBuf,
     pub stats: HashMap<String, u64>,
 }
 
 impl State {
-    pub fn new(id: u64, seed: Option<u64>) -> Self {
-        let seed = seed.unwrap_or(rand::thread_rng().gen_range(0..u64::MAX));
+    pub fn new(id: u64) -> Self {
         Self {
             accounts: HashMap::default(),
             masp_accounts: HashMap::default(),
@@ -103,8 +99,6 @@ impl State {
             deactivated_validators: HashMap::default(),
             proposals: HashMap::default(),
             id,
-            seed,
-            rng: AntithesisRng::default(),
             base_dir: env::current_dir().unwrap().join("base"),
             stats: HashMap::default(),
         }
@@ -130,11 +124,11 @@ impl State {
         Ok(())
     }
 
-    pub fn create_new(id: u64, seed: Option<u64>) -> Result<(Self, fs::File), StateError> {
+    pub fn create_new(id: u64) -> Result<(Self, fs::File), StateError> {
         // Lock the state file before writing the new
         let file = Self::lock_state_file(id)?;
 
-        let state = Self::new(id, seed);
+        let state = Self::new(id);
         state.save(None)?;
 
         Ok((state, file))
@@ -269,16 +263,16 @@ impl State {
 
     /// GET
 
-    pub fn random_account(&mut self, blacklist: Vec<Alias>) -> Option<Account> {
+    pub fn random_account(&self, blacklist: Vec<Alias>) -> Option<Account> {
         self.accounts
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
-            .choose(&mut self.rng)
+            .choose(&mut AntithesisRng)
             .map(|(_, account)| account.clone())
     }
 
     pub fn random_masp_account_with_min_balance(
-        &mut self,
+        &self,
         blacklist: Vec<Alias>,
         min_value: u64,
     ) -> Option<MaspAccount> {
@@ -294,19 +288,19 @@ impl State {
                     None
                 }
             })
-            .choose(&mut self.rng)
+            .choose(&mut AntithesisRng)
     }
 
-    pub fn random_payment_address(&mut self, blacklist: Vec<Alias>) -> Option<MaspAccount> {
+    pub fn random_payment_address(&self, blacklist: Vec<Alias>) -> Option<MaspAccount> {
         self.masp_accounts
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
-            .choose(&mut self.rng)
+            .choose(&mut AntithesisRng)
             .map(|(_, account)| account.clone())
     }
 
     pub fn random_implicit_accounts(
-        &mut self,
+        &self,
         blacklist: Vec<Alias>,
         sample_size: usize,
     ) -> Vec<Account> {
@@ -314,14 +308,14 @@ impl State {
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
             .filter(|(_, account)| account.is_implicit())
-            .choose_multiple(&mut self.rng, sample_size)
+            .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
             .collect()
     }
 
     pub fn random_enstablished_account(
-        &mut self,
+        &self,
         blacklist: Vec<Alias>,
         sample_size: usize,
     ) -> Vec<Account> {
@@ -329,25 +323,25 @@ impl State {
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
             .filter(|(_, account)| account.is_enstablished())
-            .choose_multiple(&mut self.rng, sample_size)
+            .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
             .collect()
     }
 
-    pub fn random_validator(&mut self, blacklist: Vec<Alias>, sample_size: usize) -> Vec<Account> {
+    pub fn random_validator(&self, blacklist: Vec<Alias>, sample_size: usize) -> Vec<Account> {
         self.validators
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
             .filter(|(_, account)| account.is_enstablished())
-            .choose_multiple(&mut self.rng, sample_size)
+            .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
             .collect()
     }
 
     pub fn random_deactivated_validator(
-        &mut self,
+        &self,
         blacklist: Vec<Alias>,
         sample_size: usize,
     ) -> Vec<Account> {
@@ -355,13 +349,13 @@ impl State {
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
             .filter(|(_, account)| account.is_enstablished())
-            .choose_multiple(&mut self.rng, sample_size)
+            .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
             .collect()
     }
 
-    pub fn random_bond(&mut self) -> Bond {
+    pub fn random_bond(&self) -> Bond {
         self.bonds
             .iter()
             .flat_map(|(source, bonds)| {
@@ -377,12 +371,12 @@ impl State {
                     }
                 })
             })
-            .choose(&mut self.rng)
+            .choose(&mut AntithesisRng)
             .unwrap()
     }
 
     pub fn random_account_with_min_balance(
-        &mut self,
+        &self,
         blacklist: Vec<Alias>,
         min_balance: u64,
     ) -> Option<Account> {
@@ -398,7 +392,7 @@ impl State {
                     None
                 }
             })
-            .choose(&mut self.rng)
+            .choose(&mut AntithesisRng)
     }
 
     pub fn get_account_by_alias(&self, alias: &Alias) -> Account {
@@ -423,14 +417,14 @@ impl State {
             .unwrap_or_default()
     }
 
-    pub fn get_redelegations_targets_for(&mut self, alias: &Alias) -> HashSet<String> {
+    pub fn get_redelegations_targets_for(&self, alias: &Alias) -> HashSet<String> {
         self.redelegations
             .get(alias)
             .map(|data| data.keys().cloned().collect::<HashSet<String>>())
             .unwrap_or_default()
     }
 
-    pub fn random_votable_proposal(&mut self, current_epoch: u64) -> u64 {
+    pub fn random_votable_proposal(&self, current_epoch: u64) -> u64 {
         self.proposals
             .iter()
             .filter_map(|(proposal_id, (start_epoch, end_epoch))| {
@@ -440,7 +434,7 @@ impl State {
                     None
                 }
             })
-            .choose(&mut self.rng)
+            .choose(&mut AntithesisRng)
             .unwrap()
     }
 
@@ -624,37 +618,5 @@ impl State {
         let latest_proposal_id = self.proposals.keys().max().unwrap_or(&0).to_owned();
         self.proposals
             .insert(latest_proposal_id, (start_epoch, end_epoch));
-    }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct AntithesisRng {}
-
-impl RngCore for AntithesisRng {
-    fn next_u32(&mut self) -> u32 {
-        (antithesis_sdk::random::get_random() & 0xFFFF_FFFF) as u32
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        antithesis_sdk::random::get_random()
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        let mut i = 0;
-        while i + 8 <= dest.len() {
-            let random = antithesis_sdk::random::get_random();
-            dest[i..i + 8].copy_from_slice(&random.to_le_bytes());
-            i += 8;
-        }
-        if i < dest.len() {
-            let random = antithesis_sdk::random::get_random();
-            let dest_len = dest.len();
-            dest[i..].copy_from_slice(&random.to_le_bytes()[..dest_len - i]);
-        }
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        self.fill_bytes(dest);
-        Ok(())
     }
 }

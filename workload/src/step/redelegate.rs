@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use antithesis_sdk::random::AntithesisRng;
 use namada_sdk::{address::Address, rpc};
 use rand::seq::IteratorRandom;
 use serde_json::json;
@@ -27,11 +28,11 @@ impl StepContext for Redelegate {
         Ok(state.any_bond())
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let client = &sdk.namada.client;
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
-        let amount = utils::random_between(state, 1, source_bond.amount);
+        let amount = utils::random_between(1, source_bond.amount);
 
         let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
         let validators = rpc::get_all_consensus_validators(client, current_epoch)
@@ -55,7 +56,7 @@ impl StepContext for Redelegate {
                     Some(v.address)
                 }
             })
-            .choose(&mut state.rng)
+            .choose(&mut AntithesisRng)
         {
             validator
         } else {

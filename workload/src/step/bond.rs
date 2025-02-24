@@ -1,3 +1,4 @@
+use antithesis_sdk::random::AntithesisRng;
 use namada_sdk::rpc;
 use rand::seq::IteratorRandom;
 use serde_json::json;
@@ -26,13 +27,13 @@ impl StepContext for Bond {
         Ok(state.any_account_with_min_balance(MIN_TRANSFER_BALANCE))
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let client = &sdk.namada.client;
         let source_account = state
             .random_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let amount_account = state.get_balance_for(&source_account.alias);
-        let amount = utils::random_between(state, 1, amount_account);
+        let amount = utils::random_between(1, amount_account);
 
         let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
         let validators = rpc::get_all_consensus_validators(client, current_epoch)
@@ -42,7 +43,7 @@ impl StepContext for Bond {
         let validator = validators
             .into_iter()
             .map(|v| v.address)
-            .choose(&mut state.rng)
+            .choose(&mut AntithesisRng)
             .expect("There is always at least a validator");
 
         let task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());

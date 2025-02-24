@@ -27,7 +27,7 @@ impl StepContext for Vote {
         Ok(state.any_bond() && state.any_votable_proposal(current_epoch.into()))
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let client = sdk.namada.clone_client();
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
@@ -36,9 +36,9 @@ impl StepContext for Vote {
 
         let proposal_id = state.random_votable_proposal(current_epoch.0);
 
-        let vote = if utils::coin_flip(state, 0.5) {
+        let vote = if utils::coin_flip(0.5) {
             "yay"
-        } else if utils::coin_flip(state, 0.5) {
+        } else if utils::coin_flip(0.5) {
             "nay"
         } else {
             "abstain"

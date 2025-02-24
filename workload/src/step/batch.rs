@@ -1,3 +1,4 @@
+use antithesis_sdk::random::AntithesisRng;
 use rand::seq::SliceRandom;
 use serde_json::json;
 
@@ -23,7 +24,7 @@ impl StepContext for BatchBond {
         Ok(state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE))
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         Box::pin(build_batch(
             sdk,
             vec![StepType::Bond(Default::default())],
@@ -67,7 +68,7 @@ impl StepContext for BatchRandom {
         Ok(state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE) && state.min_bonds(3))
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         Box::pin(build_batch(
             sdk,
             vec![
@@ -111,16 +112,16 @@ async fn build_batch(
     sdk: &Sdk,
     possibilities: Vec<StepType>,
     max_size: u64,
-    state: &mut State,
+    state: &State,
 ) -> Result<Vec<Task>, StepError> {
     let mut tmp_state = state.clone();
 
     let mut batch_tasks = vec![];
     for _ in 0..max_size {
         let step = possibilities
-            .choose(&mut state.rng)
+            .choose(&mut AntithesisRng)
             .expect("at least one StepType should exist");
-        let tasks = step.build_task(sdk, &mut tmp_state).await?;
+        let tasks = step.build_task(sdk, &tmp_state).await?;
         for task in &tasks {
             task.update_state(&mut tmp_state, false);
         }

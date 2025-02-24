@@ -25,11 +25,11 @@ impl StepContext for UpdateAccount {
         Ok(state.min_n_enstablished_accounts(1) && state.min_n_implicit_accounts(3))
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let account = state.random_enstablished_account(vec![], 1).pop().unwrap();
 
-        let total_signers = utils::random_between(state, 1, 4);
-        let required_signers = utils::random_between(state, 1, total_signers);
+        let total_signers = utils::random_between(1, 4);
+        let required_signers = utils::random_between(1, total_signers);
 
         let source_aliases = state
             .random_implicit_accounts(vec![], total_signers as usize)

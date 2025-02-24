@@ -12,8 +12,6 @@ pub struct AppConfig {
     #[arg(required = true)]
     pub chain_id: String,
     #[clap(long, env)]
-    pub seed: Option<u64>,
-    #[clap(long, env)]
     pub id: u64,
     #[clap(long, env)]
     #[arg(required = true)]
