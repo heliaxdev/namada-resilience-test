@@ -21,7 +21,7 @@ impl StepContext for FaucetTransfer {
         Ok(state.any_account())
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let target_account = state
             .random_account(vec![])
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;

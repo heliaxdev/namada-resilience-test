@@ -104,7 +104,7 @@ pub trait StepContext {
     async fn is_valid(&self, sdk: &Sdk, state: &State) -> Result<bool, StepError>;
 
     #[allow(async_fn_in_trait)]
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError>;
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError>;
 
     fn assert(&self, code: &Code);
 }

@@ -24,10 +24,10 @@ impl StepContext for Unbond {
         Ok(state.any_bond())
     }
 
-    async fn build_task(&self, sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
-        let amount = utils::random_between(state, 1, source_bond.amount);
+        let amount = utils::random_between(1, source_bond.amount);
 
         let current_epoch = rpc::query_epoch(&sdk.namada.client)
             .await

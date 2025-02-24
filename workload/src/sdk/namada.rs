@@ -42,7 +42,7 @@ impl Sdk {
             .insert_keypair("faucet".to_string(), true, sk, None, Some(address), None)
             .unwrap();
 
-        let native_token = rpc::query_native_token(&namada.clone_client())
+        let native_token = rpc::query_native_token(&namada.client)
             .await
             .map_err(|e| e.to_string())?;
         namada_wallet

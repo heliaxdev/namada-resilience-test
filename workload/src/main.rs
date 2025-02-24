@@ -61,7 +61,7 @@ async fn inner_main() -> Code {
         Ok(result) => result,
         Err(StateError::EmptyFile) => {
             tracing::warn!("State file is empty, creating new one");
-            match State::create_new(config.id, config.seed) {
+            match State::create_new(config.id) {
                 Ok(result) => result,
                 Err(e) => return Code::StateFatal(e),
             }
@@ -70,7 +70,6 @@ async fn inner_main() -> Code {
     };
 
     tracing::info!("Using base dir: {}", state.base_dir.as_path().display());
-    tracing::info!("Using seed: {}", state.seed);
 
     let url = Url::from_str(&config.rpc).expect("invalid RPC address");
     tracing::debug!("Opening connection to {url}");

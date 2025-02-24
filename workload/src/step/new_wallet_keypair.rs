@@ -22,8 +22,8 @@ impl StepContext for NewWalletKeyPair {
         Ok(true)
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
-        let alias = utils::random_alias(state);
+    async fn build_task(&self, _sdk: &Sdk, _state: &State) -> Result<Vec<Task>, StepError> {
+        let alias = utils::random_alias();
         Ok(vec![Task::NewWalletKeyPair(
             task::new_wallet_keypair::NewWalletKeyPair::builder()
                 .source(alias)

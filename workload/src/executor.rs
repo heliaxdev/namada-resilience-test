@@ -135,8 +135,8 @@ impl WorkloadExecutor {
         step_type.is_valid(&self.sdk, &self.state).await
     }
 
-    pub async fn build(&mut self, step_type: &StepType) -> Result<Vec<Task>, StepError> {
-        step_type.build_task(&self.sdk, &mut self.state).await
+    pub async fn build(&self, step_type: &StepType) -> Result<Vec<Task>, StepError> {
+        step_type.build_task(&self.sdk, &self.state).await
     }
 
     pub async fn build_check(&self, tasks: &[Task]) -> Result<Vec<Check>, StepError> {

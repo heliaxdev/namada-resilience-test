@@ -23,14 +23,14 @@ impl StepContext for ChangeMetadata {
         Ok(state.min_n_validators(1))
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let account = state.random_validator(vec![], 1).pop().unwrap();
 
-        let website = utils::get_random_string(state, 15);
-        let email = format!("{}@test.com", utils::get_random_string(state, 5));
-        let discord = utils::get_random_string(state, 10);
-        let description = utils::get_random_string(state, 30);
-        let avatar = utils::get_random_string(state, 20);
+        let website = utils::get_random_string(15);
+        let email = format!("{}@test.com", utils::get_random_string(5));
+        let discord = utils::get_random_string(10);
+        let description = utils::get_random_string(30);
+        let avatar = utils::get_random_string(20);
 
         let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
 

@@ -25,13 +25,13 @@ impl StepContext for InitAccount {
         Ok(state.min_n_implicit_accounts(3))
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &mut State) -> Result<Vec<Task>, StepError> {
-        let random_alias = utils::random_alias(state);
+    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
+        let random_alias = utils::random_alias();
         let account_alias = Alias {
             name: format!("{}-established", random_alias.name),
         };
-        let total_signers = utils::random_between(state, 1, 4);
-        let required_signers = utils::random_between(state, 1, total_signers);
+        let total_signers = utils::random_between(1, 4);
+        let required_signers = utils::random_between(1, total_signers);
 
         let source_aliases = state
             .random_implicit_accounts(vec![], total_signers as usize)
