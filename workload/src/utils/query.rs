@@ -16,7 +16,7 @@ use serde_json::json;
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
 use crate::sdk::namada::Sdk;
-use crate::types::{Alias, Epoch, Height};
+use crate::types::{Alias, Epoch, Height, ProposalId, ProposalVote};
 use crate::{executor::StepError, utils::RetryConfig};
 
 pub async fn get_account_info(
@@ -367,4 +367,42 @@ pub async fn shielded_sync(
     );
 
     res
+}
+
+pub async fn get_vote_results(
+    sdk: &Sdk,
+    target: &Alias,
+    proposal_id: ProposalId,
+    retry_config: RetryConfig,
+) -> Result<Vec<ProposalVote>, StepError> {
+    let wallet = sdk.namada.wallet.read().await;
+    let target_address = wallet
+        .find_address(&target.name)
+        .ok_or_else(|| StepError::Wallet(format!("No target address: {}", target.name)))?
+        .into_owned();
+    drop(wallet);
+
+    let votes = tryhard::retry_fn(|| rpc::query_proposal_votes(&sdk.namada.client, proposal_id))
+        .with_config(retry_config)
+        .on_retry(|attempt, _, error| {
+            let error = error.to_string();
+            async move {
+                tracing::info!("Retry {} due to {}...", attempt, error);
+            }
+        })
+        .await
+        .map_err(StepError::Rpc)?;
+
+    let votes = votes
+        .into_iter()
+        .filter_map(|vote| {
+            if vote.delegator == target_address {
+                Some(vote.data)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Ok(votes)
 }
