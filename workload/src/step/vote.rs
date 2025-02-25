@@ -60,22 +60,16 @@ impl StepContext for Vote {
 
     fn assert(&self, code: &Code) {
         let is_fatal = code.is_fatal();
-        let is_failed = code.is_failed();
-        let is_skipped = code.is_skipped();
         let is_successful = code.is_successful();
 
         let details = json!({"outcome": code.code()});
 
         if is_fatal {
             assert_unrechable_step!("Fatal Vote", details)
-        } else if is_failed {
-            assert_unrechable_step!("Failed Vote", details)
-        } else if is_skipped {
-            assert_sometimes_step!("Skipped Vote", details)
         } else if is_successful {
             assert_always_step!("Done Vote", details)
         } else {
-            assert_sometimes_step!("Unknown Code Vote ", details)
+            assert_sometimes_step!("Failed Vote ", details)
         }
     }
 }

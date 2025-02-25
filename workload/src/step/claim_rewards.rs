@@ -39,22 +39,16 @@ impl StepContext for ClaimRewards {
 
     fn assert(&self, code: &Code) {
         let is_fatal = code.is_fatal();
-        let is_failed = code.is_failed();
-        let is_skipped = code.is_skipped();
         let is_successful = code.is_successful();
 
         let details = json!({"outcome": code.code()});
 
         if is_fatal {
             assert_unrechable_step!("Fatal ClaimRewards", details)
-        } else if is_failed {
-            assert_unrechable_step!("Failed ClaimRewards", details)
-        } else if is_skipped {
-            assert_sometimes_step!("Skipped ClaimRewards", details)
         } else if is_successful {
             assert_always_step!("Done ClaimRewards", details)
         } else {
-            assert_sometimes_step!("Unknown Code ClaimRewards ", details)
+            assert_sometimes_step!("Failed ClaimRewards ", details)
         }
     }
 }

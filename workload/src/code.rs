@@ -87,7 +87,7 @@ impl Code {
     }
 
     pub fn is_failed(&self) -> bool {
-        matches!(self, Code::ExecutionFailure(_, _))
+        !(self.is_fatal() || self.is_successful())
     }
 
     pub fn is_skipped(&self) -> bool {

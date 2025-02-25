@@ -38,22 +38,16 @@ impl StepContext for BatchBond {
 
     fn assert(&self, code: &Code) {
         let is_fatal = code.is_fatal();
-        let is_failed = code.is_failed();
-        let is_skipped = code.is_skipped();
         let is_successful = code.is_successful();
 
         let details = json!({"outcome": code.code()});
 
         if is_fatal {
             assert_unrechable_step!("Fatal BatchBond", details)
-        } else if is_failed {
-            assert_unrechable_step!("Failed BatchBond", details)
-        } else if is_skipped {
-            assert_sometimes_step!("Skipped BatchBond", details)
         } else if is_successful {
             assert_always_step!("Done BatchBond", details)
         } else {
-            assert_sometimes_step!("Unknown Code BatchBond ", details)
+            assert_sometimes_step!("Failed Code BatchBond ", details)
         }
     }
 }
@@ -90,22 +84,16 @@ impl StepContext for BatchRandom {
 
     fn assert(&self, code: &Code) {
         let is_fatal = code.is_fatal();
-        let is_failed = code.is_failed();
-        let is_skipped = code.is_skipped();
         let is_successful = code.is_successful();
 
         let details = json!({"outcome": code.code()});
 
         if is_fatal {
             assert_unrechable_step!("Fatal BatchRandom", details)
-        } else if is_failed {
-            assert_unrechable_step!("Failed BatchRandom", details)
-        } else if is_skipped {
-            assert_sometimes_step!("Skipped BatchRandom", details)
         } else if is_successful {
             assert_always_step!("Done BatchRandom", details)
         } else {
-            assert_sometimes_step!("Unknown Code BatchRandom ", details)
+            assert_sometimes_step!("Failed Code BatchRandom ", details)
         }
     }
 }

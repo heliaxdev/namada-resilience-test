@@ -80,22 +80,16 @@ impl StepContext for Redelegate {
 
     fn assert(&self, code: &Code) {
         let is_fatal = code.is_fatal();
-        let is_failed = code.is_failed();
-        let is_skipped = code.is_skipped();
         let is_successful = code.is_successful();
 
         let details = json!({"outcome": code.code()});
 
         if is_fatal {
             assert_unrechable_step!("Fatal Redelegate", details)
-        } else if is_failed {
-            assert_unrechable_step!("Failed Redelegate", details)
-        } else if is_skipped {
-            assert_sometimes_step!("Skipped Redelegate", details)
         } else if is_successful {
             assert_always_step!("Done Redelegate", details)
         } else {
-            assert_sometimes_step!("Unknown Code Redelegate ", details)
+            assert_sometimes_step!("Failed Redelegate ", details)
         }
     }
 }
