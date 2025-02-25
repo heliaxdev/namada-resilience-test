@@ -12,7 +12,7 @@ mkdir -p /opt/antithesis/test/v1/namada/wallet-$WORKLOAD_ID
 mkdir -p /opt/antithesis/test/v1/namada/masp-$WORKLOAD_ID
 
 if [[ ! -v ANTITHESIS_OUTPUT_DIR ]]; then
-    source /opt/antithesis/test/v1/namada/init_script.sh
+    source /opt/antithesis/test/v1/namada/first_init_script.sh
     if [ $? -eq 0 ] 
     then 
         echo "<OK> init" 
