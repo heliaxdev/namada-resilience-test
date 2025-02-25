@@ -7,7 +7,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
+use crate::types::{Alias, ProposalVote};
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -38,11 +38,11 @@ impl StepContext for Vote {
         let proposal_id = state.random_votable_proposal(current_epoch.0);
 
         let vote = if utils::coin_flip(0.5) {
-            "yay"
+            ProposalVote::Yay
         } else if utils::coin_flip(0.5) {
-            "nay"
+            ProposalVote::Nay
         } else {
-            "abstain"
+            ProposalVote::Abstain
         };
 
         let mut task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
@@ -52,7 +52,7 @@ impl StepContext for Vote {
             task::vote::Vote::builder()
                 .source(source_account.alias)
                 .proposal_id(proposal_id)
-                .vote(vote.to_string())
+                .vote(vote)
                 .settings(task_settings)
                 .build(),
         )])

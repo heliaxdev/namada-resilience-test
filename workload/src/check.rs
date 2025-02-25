@@ -17,6 +17,7 @@ pub mod bond_increase;
 pub mod reveal_pk;
 pub mod validator_account;
 pub mod validator_status;
+pub mod vote_result;
 
 #[enum_dispatch]
 pub enum Check {
@@ -30,6 +31,7 @@ pub enum Check {
     AccountExist(account_exist::AccountExist),
     IsValidatorAccount(validator_account::ValidatorAccount),
     ValidatorStatus(validator_status::ValidatorStatus),
+    VoteResult(vote_result::VoteResult),
 }
 
 impl Display for Check {

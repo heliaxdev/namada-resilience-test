@@ -5,19 +5,19 @@ use namada_sdk::tx::Tx;
 use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
-use crate::types::{Alias, ProposalId, Vote as VoteOption};
+use crate::types::{Alias, ProposalId, ProposalVote};
 use crate::utils::RetryConfig;
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct Vote {
     source: Alias,
     proposal_id: ProposalId,
-    vote: VoteOption,
+    vote: ProposalVote,
     settings: TaskSettings,
 }
 
@@ -48,7 +48,7 @@ impl TaskContext for Vote {
 
         let mut vote_tx_builder = sdk.namada.new_proposal_vote(
             self.proposal_id,
-            self.vote.clone(),
+            self.vote.to_string(),
             source_address.into_owned(),
         );
         vote_tx_builder = vote_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
@@ -76,7 +76,13 @@ impl TaskContext for Vote {
         _sdk: &Sdk,
         _retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        Ok(vec![])
+        Ok(vec![Check::VoteResult(
+            check::vote_result::VoteResult::builder()
+                .source(self.source.clone())
+                .proposal_id(self.proposal_id)
+                .vote(self.vote.clone())
+                .build(),
+        )])
     }
 
     fn update_state(&self, state: &mut State, with_fee: bool) {

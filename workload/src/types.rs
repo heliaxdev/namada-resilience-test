@@ -121,6 +121,6 @@ pub type Threshold = u64;
 pub type CommissionRate = Dec;
 pub type CommissionChange = Dec;
 pub type ProposalId = u64;
-pub type Vote = String;
+pub type ProposalVote = namada_sdk::governance::ProposalVote;
 pub type Height = u64;
 pub type Balance = namada_sdk::token::Amount;
