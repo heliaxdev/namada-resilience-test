@@ -52,15 +52,6 @@ async fn inner_main() -> Code {
     rlimit::increase_nofile_limit(u64::MAX).unwrap();
 
     let config = AppConfig::parse();
-    tracing::info!("Using config: {:#?}", config);
-    tracing::info!("Sha commit: {}", env!("VERGEN_GIT_SHA").to_string());
-
-    // just to report the workload version
-    antithesis_sdk::assert_always!(
-        true,
-        "ID should be greater than 0",
-        &json!({"commit_sha": env!("VERGEN_GIT_SHA")})
-    );
 
     let (state, locked_file) = match State::load(config.id) {
         Ok(result) => result,
@@ -74,7 +65,17 @@ async fn inner_main() -> Code {
         Err(e) => return Code::StateFatal(e),
     };
 
-    tracing::info!("Using base dir: {}", state.base_dir.as_path().display());
+    tracing::info!("Using config: {:#?}", config);
+
+    // just to report the workload version
+    antithesis_sdk::assert_always!(
+        true,
+        "ID should be greater than 0",
+        &json!({
+            "base dir": state.base_dir.to_string_lossy().into_owned(),
+            "commit_sha": env!("VERGEN_GIT_SHA")
+        })
+    );
 
     let url = Url::from_str(&config.rpc).expect("invalid RPC address");
     tracing::debug!("Opening connection to {url}");
