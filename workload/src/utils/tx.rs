@@ -3,9 +3,11 @@ use std::str::FromStr;
 
 use namada_sdk::args::{self, DeviceTransport, TxBuilder};
 use namada_sdk::collections::HashSet;
+use namada_sdk::control_flow::time;
+use namada_sdk::error::{Error as NamadaError, TxSubmitError};
 use namada_sdk::hash::Hash;
 use namada_sdk::key::common;
-use namada_sdk::rpc::TxResponse;
+use namada_sdk::rpc::{self, TxResponse};
 use namada_sdk::signing::{default_sign, SigningTxData};
 use namada_sdk::tx::data::{GasLimit, TxType};
 use namada_sdk::tx::{self, either, ProcessTxResponse, Tx, TxCommitments, TX_REVEAL_PK};
@@ -171,13 +173,21 @@ pub(crate) async fn execute_tx(
         .expect("Commitments should exist")
         .clone();
     let cmts = tx.commitments().clone();
+    let tx_hash = tx.header_hash().to_string();
     let wrapper_hash = tx.wrapper_hash();
 
-    let tx_response = sdk
-        .namada
-        .submit(tx, tx_args)
-        .await
-        .map_err(StepError::Broadcast)?;
+    let tx_response = match sdk.namada.submit(tx, tx_args).await {
+        Ok(response) => response,
+        Err(NamadaError::Tx(TxSubmitError::AppliedTimeout)) => {
+            let tx_query = rpc::TxEventQuery::Applied(tx_hash.as_str());
+            let deadline = time::Instant::now() + time::Duration::from_secs(300);
+            let event = rpc::query_tx_status(&sdk.namada, tx_query, deadline)
+                .await
+                .map_err(StepError::Broadcast)?;
+            ProcessTxResponse::Applied(TxResponse::from_event(event))
+        }
+        Err(e) => return Err(StepError::Broadcast(e)),
+    };
 
     if tx_response
         .is_applied_and_valid(wrapper_hash.as_ref(), &first_cmt)
