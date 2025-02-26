@@ -31,6 +31,8 @@ do
     sleep 2
 done
 
+echo "Initializing workload-${WORKLOAD_ID} state..."
+
 source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
 source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
 source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
@@ -80,4 +82,5 @@ source /opt/antithesis/test/v1/namada/parallel_driver_init_account.sh
 source /opt/antithesis/test/v1/namada/parallel_driver_init_account.sh
 
 # Ready to start workload
+touch /container_ready/workload-${WORKLOAD_ID}
 echo "Ready to start the workload"
