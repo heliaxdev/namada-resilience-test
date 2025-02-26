@@ -6,6 +6,7 @@ use rand::seq::IteratorRandom;
 use serde_json::json;
 
 use crate::code::Code;
+use crate::constants::MAX_BATCH_TX_NUM;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -32,7 +33,7 @@ impl StepContext for Redelegate {
         let client = &sdk.namada.client;
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
-        let amount = utils::random_between(1, source_bond.amount);
+        let amount = utils::random_between(1, source_bond.amount / MAX_BATCH_TX_NUM);
 
         let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
         let validators = rpc::get_all_consensus_validators(client, current_epoch)

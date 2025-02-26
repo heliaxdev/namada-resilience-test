@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use serde_json::json;
 
 use crate::code::Code;
-use crate::constants::MIN_TRANSFER_BALANCE;
+use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -38,7 +38,7 @@ impl StepContext for Unshielding {
             .random_account(vec![source_account.alias.clone()])
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let amount_account = state.get_shielded_balance_for(&source_account.payment_address);
-        let amount = utils::random_between(1, amount_account);
+        let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
         //FIXME Review the signers
         let task_settings = TaskSettings::new(

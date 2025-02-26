@@ -2,6 +2,7 @@ use namada_sdk::rpc;
 use serde_json::json;
 
 use crate::code::Code;
+use crate::constants::MAX_BATCH_TX_NUM;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -27,7 +28,7 @@ impl StepContext for Unbond {
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
-        let amount = utils::random_between(1, source_bond.amount);
+        let amount = utils::random_between(1, source_bond.amount / MAX_BATCH_TX_NUM);
 
         let current_epoch = rpc::query_epoch(&sdk.namada.client)
             .await
