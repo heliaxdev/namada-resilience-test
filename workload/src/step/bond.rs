@@ -4,7 +4,7 @@ use rand::seq::IteratorRandom;
 use serde_json::json;
 
 use crate::code::Code;
-use crate::constants::MIN_TRANSFER_BALANCE;
+use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -33,7 +33,7 @@ impl StepContext for Bond {
             .random_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let amount_account = state.get_balance_for(&source_account.alias);
-        let amount = utils::random_between(1, amount_account);
+        let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
         let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
         let validators = rpc::get_all_consensus_validators(client, current_epoch)

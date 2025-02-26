@@ -19,7 +19,7 @@ pub enum Code {
 impl Code {
     pub fn code(&self) -> i32 {
         match self {
-            Code::Success(_) | Code::InvalidStep(_) => 0,
+            Code::Success(_) => 0,
             Code::Fatal(_, _) => 1,
             Code::BuildFailure(_, _) => 2,
             Code::ExecutionFailure(_, _) => 3,
@@ -29,6 +29,7 @@ impl Code {
             Code::EmptyBatch(_) => 7,
             Code::StateFatal(_) => 8,
             Code::InitFatal(_) => 9,
+            Code::InvalidStep(_) => 10,
         }
     }
 
