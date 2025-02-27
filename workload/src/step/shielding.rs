@@ -39,7 +39,7 @@ impl StepContext for Shielding {
         Ok(vec![Task::Shielding(
             task::shielding::Shielding::builder()
                 .source(source_account.alias)
-                .target(target_account.payment_address)
+                .target(target_account.alias.payment_address())
                 .amount(amount)
                 .settings(task_settings)
                 .build(),

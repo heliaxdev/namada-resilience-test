@@ -80,13 +80,13 @@ impl TaskContext for Batch {
                 }
                 Check::BalanceShieldedSource(balance_source) => {
                     shielded_balances
-                        .entry(balance_source.target().clone())
+                        .entry(balance_source.target().base().clone())
                         .and_modify(|balance| *balance -= balance_source.amount() as i64)
                         .or_insert(-(balance_source.amount() as i64));
                 }
                 Check::BalanceShieldedTarget(balance_target) => {
                     shielded_balances
-                        .entry(balance_target.target().clone())
+                        .entry(balance_target.target().base().clone())
                         .and_modify(|balance| *balance += balance_target.amount() as i64)
                         .or_insert(balance_target.amount() as i64);
                 }
