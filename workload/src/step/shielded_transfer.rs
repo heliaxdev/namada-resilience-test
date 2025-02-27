@@ -35,7 +35,7 @@ impl StepContext for ShieldedTransfer {
         let target_account = state
             .random_payment_address(vec![source_account.alias.clone()])
             .ok_or(StepError::BuildTask("No more target accounts".to_string()))?;
-        let amount_account = state.get_shielded_balance_for(&source_account.payment_address);
+        let amount_account = state.get_shielded_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
         //FIXME Review the signers
@@ -46,8 +46,8 @@ impl StepContext for ShieldedTransfer {
 
         Ok(vec![Task::ShieldedTransfer(
             task::shielded::ShieldedTransfer::builder()
-                .source(source_account.spending_key)
-                .target(target_account.payment_address)
+                .source(source_account.alias.spending_key())
+                .target(target_account.alias.payment_address())
                 .amount(amount)
                 .settings(task_settings)
                 .build(),

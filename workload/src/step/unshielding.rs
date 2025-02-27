@@ -25,7 +25,7 @@ impl StepContext for Unshielding {
     async fn is_valid(&self, _sdk: &Sdk, state: &State) -> Result<bool, StepError> {
         Ok(
             state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE)
-                && state.min_n_implicit_accounts(1),
+                && state.at_least_accounts(1),
         )
     }
 
@@ -37,7 +37,7 @@ impl StepContext for Unshielding {
         let target_account = state
             .random_account(vec![source_account.alias.clone()])
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
-        let amount_account = state.get_shielded_balance_for(&source_account.payment_address);
+        let amount_account = state.get_shielded_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
         //FIXME Review the signers
@@ -48,7 +48,7 @@ impl StepContext for Unshielding {
 
         Ok(vec![Task::Unshielding(
             task::unshielding::Unshielding::builder()
-                .source(source_account.spending_key)
+                .source(source_account.alias.spending_key())
                 .target(target_account.alias)
                 .amount(amount)
                 .settings(task_settings)

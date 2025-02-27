@@ -56,7 +56,7 @@ impl TaskContext for NewWalletKeyPair {
                 ))
             })?;
 
-        let spending_key_alias = format!("{}-spending-key", self.source.name);
+        let spending_key_alias = self.source.spending_key().name;
         let (_alias, spending_key) = wallet
             .gen_store_spending_key(
                 spending_key_alias.clone(),
@@ -78,11 +78,18 @@ impl TaskContext for NewWalletKeyPair {
         let (div, _g_d) = find_valid_diversifier(&mut OsRng);
         let masp_payment_addr: namada_sdk::masp_primitives::sapling::PaymentAddress = viewing_key
             .to_payment_address(div)
-            .expect("a PaymentAddress");
+            .expect("Conversion to PaymentAddress shouldn't fail");
         let payment_addr = PaymentAddress::from(masp_payment_addr);
 
-        let payment_address_alias = format!("{}-payment-address", self.source.name);
-        wallet.insert_payment_addr(payment_address_alias, payment_addr, true);
+        let payment_address_alias = self.source.payment_address().name;
+        wallet
+            .insert_payment_addr(payment_address_alias.clone(), payment_addr, true)
+            .ok_or_else(|| {
+                StepError::Wallet(format!(
+                    "Failed to insert payment address for {}",
+                    payment_address_alias
+                ))
+            })?;
 
         wallet
             .save()
@@ -106,6 +113,5 @@ impl TaskContext for NewWalletKeyPair {
 
     fn update_state(&self, state: &mut State, _with_fee: bool) {
         state.add_implicit_account(&self.source);
-        state.add_masp_account(&self.source);
     }
 }

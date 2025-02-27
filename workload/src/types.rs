@@ -1,5 +1,4 @@
 use std::fmt;
-use std::hash::{Hash, Hasher};
 
 use namada_sdk::dec::Dec;
 use serde::{
@@ -7,7 +6,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Alias {
     pub name: String,
 }
@@ -39,6 +38,35 @@ impl Alias {
 
     pub fn is_faucet(&self) -> bool {
         self.eq(&Self::faucet())
+    }
+
+    pub fn base(&self) -> Self {
+        let name = if self.name.ends_with("-spending-key") {
+            self.name
+                .strip_suffix("-spending-key")
+                .expect("the suffix should exist")
+        } else if self.name.ends_with("-payment-address") {
+            self.name
+                .strip_suffix("-payment-address")
+                .expect("the suffix should exist")
+        } else {
+            &self.name
+        }
+        .to_string();
+
+        Self { name }
+    }
+
+    pub fn spending_key(&self) -> Self {
+        let name = format!("{}-spending-key", self.base().name);
+
+        Self { name }
+    }
+
+    pub fn payment_address(&self) -> Self {
+        let name = format!("{}-payment-address", self.base().name);
+
+        Self { name }
     }
 }
 
@@ -76,24 +104,6 @@ impl<'de> Deserialize<'de> for Alias {
         }
 
         deserializer.deserialize_str(AliasVisitor)
-    }
-}
-
-// Hashing for balance check to handle the alias which has shielded addresses
-impl Hash for Alias {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let name = if self.name.ends_with("-spending-key") {
-            self.name
-                .strip_suffix("-spending-key")
-                .expect("the suffix should exist")
-        } else if self.name.ends_with("-payment-address") {
-            self.name
-                .strip_suffix("-payment-address")
-                .expect("the suffix should exist")
-        } else {
-            &self.name
-        };
-        name.hash(state)
     }
 }
 

@@ -45,13 +45,6 @@ pub struct Account {
     pub address_type: AddressType,
 }
 
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MaspAccount {
-    pub alias: Alias,
-    pub spending_key: Alias,
-    pub payment_address: Alias,
-}
-
 impl Account {
     pub fn is_implicit(&self) -> bool {
         self.address_type.is_implicit()
@@ -71,7 +64,6 @@ pub struct Bond {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
-    pub masp_accounts: HashMap<Alias, MaspAccount>,
     pub balances: HashMap<Alias, u64>,
     pub masp_balances: HashMap<Alias, u64>,
     pub bonds: HashMap<Alias, HashMap<String, u64>>,
@@ -89,7 +81,6 @@ impl State {
     pub fn new(id: u64) -> Self {
         Self {
             accounts: HashMap::default(),
-            masp_accounts: HashMap::default(),
             balances: HashMap::default(),
             masp_balances: HashMap::default(),
             bonds: HashMap::default(),
@@ -170,7 +161,11 @@ impl State {
     }
 
     pub fn at_least_masp_accounts(&self, sample: u64) -> bool {
-        self.masp_accounts.len() >= sample as usize
+        self.accounts
+            .iter()
+            .filter(|(_, account)| account.is_implicit())
+            .count()
+            >= sample as usize
     }
 
     pub fn at_least_masp_account_with_minimal_balance(
@@ -178,11 +173,9 @@ impl State {
         number_of_accounts: usize,
         min_balance: u64,
     ) -> bool {
-        self.masp_accounts
+        self.masp_balances
             .iter()
-            .filter(|(_, account)| {
-                self.get_shielded_balance_for(&account.payment_address) >= min_balance
-            })
+            .filter(|(_, balance)| **balance >= min_balance)
             .count()
             >= number_of_accounts
     }
@@ -275,28 +268,16 @@ impl State {
         &self,
         blacklist: Vec<Alias>,
         min_value: u64,
-    ) -> Option<MaspAccount> {
+    ) -> Option<Account> {
         self.masp_balances
             .iter()
-            .filter_map(|(alias, balance)| {
-                if blacklist.contains(alias) {
-                    return None;
-                }
-                if balance >= &min_value {
-                    Some(self.masp_accounts.get(alias).unwrap().clone())
-                } else {
-                    None
-                }
-            })
+            .filter(|(alias, balance)| !blacklist.contains(alias) && **balance >= min_value)
+            .filter_map(|(alias, _)| self.accounts.get(alias).cloned())
             .choose(&mut AntithesisRng)
     }
 
-    pub fn random_payment_address(&self, blacklist: Vec<Alias>) -> Option<MaspAccount> {
-        self.masp_accounts
-            .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .choose(&mut AntithesisRng)
-            .map(|(_, account)| account.clone())
+    pub fn random_payment_address(&self, blacklist: Vec<Alias>) -> Option<Account> {
+        self.random_implicit_accounts(blacklist, 1).first().cloned()
     }
 
     pub fn random_implicit_accounts(
@@ -306,8 +287,7 @@ impl State {
     ) -> Vec<Account> {
         self.accounts
             .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_implicit())
+            .filter(|(alias, account)| account.is_implicit() && !blacklist.contains(alias))
             .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
@@ -404,15 +384,8 @@ impl State {
     }
 
     pub fn get_shielded_balance_for(&self, alias: &Alias) -> u64 {
-        let stripped_alias = Alias {
-            name: alias
-                .name
-                .strip_suffix("-payment-address")
-                .unwrap()
-                .to_string(),
-        };
         self.masp_balances
-            .get(&stripped_alias)
+            .get(&alias.base())
             .cloned()
             .unwrap_or_default()
     }
@@ -451,17 +424,6 @@ impl State {
             },
         );
         self.balances.insert(alias.clone(), 0);
-    }
-
-    pub fn add_masp_account(&mut self, alias: &Alias) {
-        self.masp_accounts.insert(
-            alias.clone(),
-            MaspAccount {
-                alias: alias.clone(),
-                spending_key: format!("{}-spending-key", alias.name).into(),
-                payment_address: format!("{}-payment-address", alias.name).into(),
-            },
-        );
         self.masp_balances.insert(alias.clone(), 0);
     }
 
@@ -556,47 +518,17 @@ impl State {
 
     pub fn modify_shielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
         *self.balances.get_mut(source).unwrap() -= amount;
-        let target_alias = Alias {
-            name: target
-                .name
-                .strip_suffix("-payment-address")
-                .unwrap()
-                .to_string(),
-        };
-        *self.masp_balances.get_mut(&target_alias).unwrap() += amount;
+        *self.masp_balances.get_mut(&target.base()).unwrap() += amount;
     }
 
     pub fn modify_unshielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        let source_alias = Alias {
-            name: source
-                .name
-                .strip_suffix("-spending-key")
-                .unwrap()
-                .to_string(),
-        };
-
-        *self.masp_balances.get_mut(&source_alias).unwrap() -= amount;
+        *self.masp_balances.get_mut(&source.base()).unwrap() -= amount;
         *self.balances.get_mut(target).unwrap() += amount;
     }
 
     pub fn modify_shielded_transfer(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        let target_alias = Alias {
-            name: target
-                .name
-                .strip_suffix("-payment-address")
-                .unwrap()
-                .to_string(),
-        };
-        *self.masp_balances.get_mut(&target_alias).unwrap() += amount;
-
-        let source_alias = Alias {
-            name: source
-                .name
-                .strip_suffix("-spending-key")
-                .unwrap()
-                .to_string(),
-        };
-        *self.masp_balances.get_mut(&source_alias).unwrap() -= amount;
+        *self.masp_balances.get_mut(&target.base()).unwrap() += amount;
+        *self.masp_balances.get_mut(&source.base()).unwrap() -= amount;
     }
 
     pub fn set_enstablished_as_validator(&mut self, alias: &Alias) {
