@@ -7,10 +7,12 @@ use namada_sdk::control_flow::time;
 use namada_sdk::error::{Error as NamadaError, TxSubmitError};
 use namada_sdk::hash::Hash;
 use namada_sdk::key::common;
-use namada_sdk::rpc::{self, TxResponse};
+use namada_sdk::rpc::{self, InnerTxResult, TxResponse};
 use namada_sdk::signing::{default_sign, SigningTxData};
-use namada_sdk::tx::data::{GasLimit, TxType};
-use namada_sdk::tx::{self, either, ProcessTxResponse, Tx, TxCommitments, TX_REVEAL_PK};
+use namada_sdk::tx::data::{compute_inner_tx_hash, GasLimit, TxType};
+use namada_sdk::tx::{
+    self, either, save_initialized_accounts, ProcessTxResponse, Tx, TxCommitments, TX_REVEAL_PK,
+};
 use namada_sdk::Namada;
 
 use crate::constants::DEFAULT_GAS_LIMIT;
@@ -179,12 +181,7 @@ pub(crate) async fn execute_tx(
     let tx_response = match sdk.namada.submit(tx, tx_args).await {
         Ok(response) => response,
         Err(NamadaError::Tx(TxSubmitError::AppliedTimeout)) => {
-            let tx_query = rpc::TxEventQuery::Applied(tx_hash.as_str());
-            let deadline = time::Instant::now() + time::Duration::from_secs(300);
-            let event = rpc::query_tx_status(&sdk.namada, tx_query, deadline)
-                .await
-                .map_err(StepError::Broadcast)?;
-            ProcessTxResponse::Applied(TxResponse::from_event(event))
+            retry_tx_status_check(sdk, tx_args, &tx_hash, wrapper_hash, &cmts).await?
         }
         Err(e) => return Err(StepError::Broadcast(e)),
     };
@@ -211,4 +208,33 @@ async fn do_sign_tx(sdk: &Sdk, tx: &mut Tx, signing_datas: Vec<SigningTxData>, t
             .await
             .expect("unable to sign tx");
     }
+}
+
+async fn retry_tx_status_check(
+    sdk: &Sdk,
+    tx_args: &args::Tx,
+    tx_hash: &str,
+    wrapper_hash: Option<Hash>,
+    cmts: &HashSet<TxCommitments>,
+) -> Result<ProcessTxResponse, StepError> {
+    tracing::info!("Retrying to check if tx was applied...");
+
+    let tx_query = rpc::TxEventQuery::Applied(tx_hash);
+    let deadline = time::Instant::now() + time::Duration::from_secs(300);
+    let event = rpc::query_tx_status(&sdk.namada, tx_query, deadline)
+        .await
+        .map_err(StepError::Broadcast)?;
+    let tx_response = TxResponse::from_event(event);
+
+    // add initialized accounts when init-account
+    for cmt in cmts {
+        if let Some(InnerTxResult::Success(result)) = tx_response.batch_result().get(
+            &compute_inner_tx_hash(wrapper_hash.as_ref(), either::Right(cmt)),
+        ) {
+            save_initialized_accounts(&sdk.namada, tx_args, result.initialized_accounts.clone())
+                .await;
+        }
+    }
+
+    Ok(ProcessTxResponse::Applied(tx_response))
 }

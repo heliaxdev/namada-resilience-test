@@ -37,7 +37,11 @@ impl CheckContext for VoteResult {
             "check_height": check_info.check_height
         });
 
-        antithesis_sdk::assert_always!(is_valid_vote, "Vote was accepted as expected", &details);
+        antithesis_sdk::assert_always_or_unreachable!(
+            is_valid_vote,
+            "Vote was accepted as expected",
+            &details
+        );
 
         if is_valid_vote {
             Ok(())
