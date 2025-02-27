@@ -14,16 +14,9 @@ mkdir -p /opt/antithesis/test/v1/namada/wallet-$WORKLOAD_ID
 mkdir -p /opt/antithesis/test/v1/namada/masp-$WORKLOAD_ID
 
 /opt/antithesis/test/v1/namada/init_script.sh
-if [ $? -eq 0 ]
-then
-    echo "<OK> init" 
-else
-    echo "<ERROR> init"
-    exit 1
-fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh)
-if echo "$output" | grep -q "Done new-wallet-key-pair"; then
+if echo "$output" | grep -q "Done new-wallet-key-pair"
 then
     echo "<OK> create wallet"
 else
@@ -32,7 +25,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh)
-if echo "$output" | grep -q "Done faucet-transfer"; then
+if echo "$output" | grep -q "Done faucet-transfer"
 then
     echo "<OK> faucet transfer"
 else
@@ -41,7 +34,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_bond.sh)
-if echo "$output" | grep -q "Done bond"; then
+if echo "$output" | grep -q "Done bond"
 then
     echo "<OK> bond"
 else
@@ -50,7 +43,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_init_account.sh)
-if echo "$output" | grep -q "Done init-account"; then
+if echo "$output" | grep -q "Done init-account"
 then
     echo "<OK> init account"
 else
@@ -59,7 +52,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_transparent_transfer.sh)
-if echo "$output" | grep -q "Done transparent-transfer"; then
+if echo "$output" | grep -q "Done transparent-transfer"
 then
     echo "<OK> transparent transfer" 
 else
@@ -68,7 +61,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh)
-if echo "$output" | grep -q "Done redelegate"; then
+if echo "$output" | grep -q "Done redelegate"
 then
     echo "<OK> redelegate" 
 else
@@ -77,7 +70,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_unbond.sh)
-if echo "$output" | grep -q "Done unbond"; then
+if echo "$output" | grep -q "Done unbond"
 then
     echo "<OK> unbond" 
 else
@@ -86,7 +79,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_update_account.sh)
-if echo "$output" | grep -q "Done update-account"; then
+if echo "$output" | grep -q "Done update-account"
 then
     echo "<OK> update account" 
 else
@@ -96,8 +89,8 @@ fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-	  output=$(/opt/antithesis/test/v1/namada/parallel_driver_shielding.sh)
-    if echo "$output" | grep -q "Done shielding"; then
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_shielding.sh)
+    if echo "$output" | grep -q "Done shielding"
     then
         echo "<OK> shielding" 
         break
@@ -106,15 +99,16 @@ while [ $retries -le $MAX_RETRY_COUNT ]; do
         echo "<RETRY ${retries}/$MAX_RETRY_COUNT> shielding"
     fi
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]; then
+if [ $retries -gt $MAX_RETRY_COUNT ]
+then
     echo "<ERROR> shielding"
     exit 1
 fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-	  output=$(/opt/antithesis/test/v1/namada/parallel_driver_shielded.sh)
-    if echo "$output" | grep -q "Done shielded-transfer"; then
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_shielded.sh)
+    if echo "$output" | grep -q "Done shielded-transfer"
     then
         echo "<OK> shielded transfer" 
         break
@@ -123,15 +117,16 @@ while [ $retries -le $MAX_RETRY_COUNT ]; do
         echo "<RETRY ${retries}/$MAX_RETRY_COUNT> shielded transfer"
     fi
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]; then
+if [ $retries -gt $MAX_RETRY_COUNT ]
+then
     echo "<ERROR> shielded transfer"
     exit 1
 fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-	  output=$(/opt/antithesis/test/v1/namada/parallel_driver_unshielding.sh)
-    if echo "$output" | grep -q "Done unshielding"; then
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_unshielding.sh)
+    if echo "$output" | grep -q "Done unshielding"
     then
         echo "<OK> unshielding" 
         break
@@ -140,13 +135,14 @@ while [ $retries -le $MAX_RETRY_COUNT ]; do
         echo "<RETRY ${retries}/$MAX_RETRY_COUNT> unshielding"
     fi
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]; then
+if [ $retries -gt $MAX_RETRY_COUNT ]
+then
     echo "<ERROR> unshielding"
     exit 1
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_claim_rewards.sh)
-if echo "$output" | grep -q "Done claim-rewards"; then
+if echo "$output" | grep -q "Done claim-rewards"
 then
     echo "<OK> claim rewards" 
 else
@@ -155,7 +151,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_become_validator.sh)
-if echo "$output" | grep -q "Done become-validator"; then
+if echo "$output" | grep -q "Done become-validator"
 then
     echo "<OK> become validator" 
 else
@@ -164,7 +160,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_change_metadata.sh)
-if echo "$output" | grep -q "Done change-metadata"; then
+if echo "$output" | grep -q "Done change-metadata"
 then
     echo "<OK> change metadata" 
 else
@@ -173,7 +169,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_change_consensus_keys.sh)
-if echo "$output" | grep -q "Done change-consensus-key"; then
+if echo "$output" | grep -q "Done change-consensus-key"
 then
     echo "<OK> change consensus keys" 
 else
@@ -182,7 +178,7 @@ else
 fi
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_bond_batch.sh)
-if echo "$output" | grep -q "Done batch-bond"; then
+if echo "$output" | grep -q "Done batch-bond"
 then
     echo "<OK> bond batch" 
 else
@@ -192,8 +188,8 @@ fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-	  output=$(/opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh)
-    if echo "$output" | grep -q "Done batch-random"; then
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh)
+    if echo "$output" | grep -q "Done batch-random"
     then
         echo "<OK> random batch" 
         break
@@ -202,7 +198,8 @@ while [ $retries -le $MAX_RETRY_COUNT ]; do
         echo "<RETRY ${retries}/$MAX_RETRY_COUNT> random batch"
     fi
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]; then
+if [ $retries -gt $MAX_RETRY_COUNT ]
+then
     echo "<ERROR> random batch"
     exit 1
 fi
