@@ -69,7 +69,7 @@ impl CheckContext for BondDecrease {
             "check_height": check_info.check_height,
         });
 
-        antithesis_sdk::assert_always!(post_bond.eq(&check_bond), "Bond decreased.", &details);
+        antithesis_sdk::assert_always!(post_bond.eq(&check_bond), "Bond decreased", &details);
 
         if post_bond.eq(&check_bond) {
             Ok(())

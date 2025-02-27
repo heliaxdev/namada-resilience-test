@@ -77,7 +77,7 @@ impl CheckContext for BalanceShieldedSource {
 
         antithesis_sdk::assert_always!(
             post_balance.eq(&check_balance),
-            "BalanceShielded source decreased.",
+            "BalanceShielded source decreased",
             &details
         );
 

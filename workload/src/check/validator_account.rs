@@ -26,7 +26,7 @@ impl CheckContext for ValidatorAccount {
         let (target_address, is_validator) = is_validator(sdk, &self.target, retry_config).await?;
         antithesis_sdk::assert_always!(
             is_validator,
-            "OnChain account is a validator.",
+            "OnChain account is a validator",
             &json!({
                 "target_alias": self.target,
                 "target": target_address.to_pretty_string(),

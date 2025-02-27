@@ -39,7 +39,7 @@ impl CheckContext for RevealPk {
             Ok(was_pk_revealed) => {
                 antithesis_sdk::assert_always!(
                     was_pk_revealed,
-                    "The public key was revealed correctly.",
+                    "The public key was revealed correctly",
                     &json!({
                         "public_key": public_key,
                         "execution_height": check_info.execution_height,

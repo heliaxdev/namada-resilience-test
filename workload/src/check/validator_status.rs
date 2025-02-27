@@ -30,7 +30,7 @@ impl CheckContext for ValidatorStatus {
             get_validator_state(sdk, &self.target, epoch + 2, retry_config).await?;
         let state = state.ok_or_else(|| {
             antithesis_sdk::assert_unreachable!(
-                "OnChain validator account doesn't exist.",
+                "OnChain validator account doesn't exist",
                 &json!({
                     "target_alias": self.target,
                     "target": target_address.to_pretty_string(),
@@ -60,7 +60,7 @@ impl CheckContext for ValidatorStatus {
 
         antithesis_sdk::assert_always!(
             is_valid_status,
-            "Validator status correctly changed.",
+            "Validator status correctly changed",
             &details
         );
 
