@@ -22,11 +22,11 @@ pub struct NewWalletKeyPair {
 
 impl TaskContext for NewWalletKeyPair {
     fn name(&self) -> String {
-        "new-wallet-key-pair".to_string()
+        "new-wallet-keypair".to_string()
     }
 
     fn summary(&self) -> String {
-        format!("new-wallet-key-pair/{}", self.source.name)
+        format!("new-wallet-keypair/{}", self.source.name)
     }
 
     fn task_settings(&self) -> Option<&TaskSettings> {
