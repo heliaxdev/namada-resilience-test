@@ -47,5 +47,5 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
 ENV NAMADA_MASP_PARAMS_DIR=/root/.masp-params
 
 COPY --from=builder /root/.masp-params/* /root/.masp-params/
-COPY --from=builder /namada/target/release /namada/target/release
+COPY --from=builder /namada/target/release/namada* /usr/local/bin/
 COPY --from=builder /usr/local/bin/cometbft /usr/local/bin/cometbft
