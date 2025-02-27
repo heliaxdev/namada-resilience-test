@@ -59,7 +59,7 @@ impl CheckContext for BalanceTarget {
 
         antithesis_sdk::assert_always!(
             post_balance.eq(&check_balance),
-            "Balance target increased.",
+            "Balance target increased",
             &details
         );
 

@@ -59,7 +59,7 @@ impl CheckContext for BalanceSource {
 
         antithesis_sdk::assert_always!(
             post_balance.eq(&check_balance),
-            "Balance source decreased.",
+            "Balance source decreased",
             &details
         );
 

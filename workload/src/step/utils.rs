@@ -44,14 +44,14 @@ pub fn get_random_string(length: usize) -> String {
 #[macro_export]
 macro_rules! assert_always_step {
     ($msg:literal, $details:expr) => {
-        antithesis_sdk::assert_always!(true, $msg, &$details)
+        antithesis_sdk::assert_always_or_unreachable!(true, $msg, &$details)
     };
 }
 
 #[macro_export]
 macro_rules! assert_sometimes_step {
     ($msg:literal, $details:expr) => {
-        antithesis_sdk::assert_sometimes!(true, $msg, &$details)
+        antithesis_sdk::assert_always_or_unreachable!(true, $msg, &$details)
     };
 }
 

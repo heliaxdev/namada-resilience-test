@@ -30,7 +30,7 @@ impl CheckContext for AccountExist {
         let (target_address, account) = get_account_info(sdk, &self.target, retry_config).await?;
         let account = account.ok_or_else(|| {
             antithesis_sdk::assert_unreachable!(
-                "OnChain account doesn't exist.",
+                "OnChain account doesn't exist",
                 &json!({
                     "target_alias": self.target,
                     "target": target_address.to_pretty_string(),
@@ -61,7 +61,7 @@ impl CheckContext for AccountExist {
             "check_height": check_info.check_height
         });
 
-        antithesis_sdk::assert_always!(is_valid, "OnChain account is valid.", &details);
+        antithesis_sdk::assert_always!(is_valid, "OnChain account is valid", &details);
 
         if is_valid {
             Ok(())
