@@ -15,7 +15,7 @@ pub struct NewWalletKeyPair;
 
 impl StepContext for NewWalletKeyPair {
     fn name(&self) -> String {
-        "new-walleet-keypair".to_string()
+        "new-wallet-keypair".to_string()
     }
 
     async fn is_valid(&self, _sdk: &Sdk, _state: &State) -> Result<bool, StepError> {
