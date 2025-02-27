@@ -178,24 +178,25 @@ impl TaskContext for Batch {
         }
 
         for (alias, amount) in shielded_balances {
-            if let Some(pre_balance) = get_shielded_balance(sdk, &alias, None, true).await? {
-                if amount >= 0 {
-                    prepared_checks.push(Check::BalanceShieldedTarget(
-                        check::balance_shielded_target::BalanceShieldedTarget::builder()
-                            .target(alias)
-                            .pre_balance(pre_balance)
-                            .amount(amount.unsigned_abs())
-                            .build(),
-                    ));
-                } else {
-                    prepared_checks.push(Check::BalanceShieldedSource(
-                        check::balance_shielded_source::BalanceShieldedSource::builder()
-                            .target(alias)
-                            .pre_balance(pre_balance)
-                            .amount(amount.unsigned_abs())
-                            .build(),
-                    ));
-                }
+            let pre_balance = get_shielded_balance(sdk, &alias, None, true)
+                .await?
+                .unwrap_or_default();
+            if amount >= 0 {
+                prepared_checks.push(Check::BalanceShieldedTarget(
+                    check::balance_shielded_target::BalanceShieldedTarget::builder()
+                        .target(alias)
+                        .pre_balance(pre_balance)
+                        .amount(amount.unsigned_abs())
+                        .build(),
+                ));
+            } else {
+                prepared_checks.push(Check::BalanceShieldedSource(
+                    check::balance_shielded_source::BalanceShieldedSource::builder()
+                        .target(alias)
+                        .pre_balance(pre_balance)
+                        .amount(amount.unsigned_abs())
+                        .build(),
+                ));
             }
         }
 
