@@ -28,4 +28,4 @@ jobs:
     steps:
       - name: Start interactive session
         run: |
-          curl --fail -u '${{ secrets.ANTITHESIS_USER_NAME }}:${{ secrets.ANTITHESIS_PASSWORD }}' -X POST https://heliax.antithesis.com/api/v1/launch_experiment/launch_debugging -d '{"params": { "antithesis.debugging.session_id":"${{ github.event.inputs.session_id }}", "antithesis.debugging.input_hash":"${{ github.event.inputs.input_hash }}" , "antithesis.debugging.vtime":"${{ github.event.inputs.vtime }}", "antithesis.report.recipients":"gianmarco@heliax.dev" }}'
+          curl --fail -u '${{ secrets.ANTITHESIS_USER_NAME }}:${{ secrets.ANTITHESIS_PASSWORD }}' -X POST https://heliax.antithesis.com/api/v1/launch_experiment/launch_debugging -d '{"params": { "antithesis.debugging.session_id":"${{ github.event.inputs.session_id }}", "antithesis.debugging.input_hash":"${{ github.event.inputs.input_hash }}" , "antithesis.debugging.vtime":"${{ github.event.inputs.vtime }}", "antithesis.report.recipients":"gianmarco@heliax.dev,yuji@heliax.dev" }}'
