@@ -20,6 +20,10 @@ impl BalanceShieldedTarget {
         &self.target
     }
 
+    pub fn pre_balance(&self) -> Balance {
+        self.pre_balance
+    }
+
     pub fn amount(&self) -> Amount {
         self.amount
     }
