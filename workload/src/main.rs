@@ -175,7 +175,8 @@ async fn inner_main() -> Code {
 
     let exit_code = match workload_executor.checks(checks, execution_height).await {
         Ok(_) => Code::Success(next_step),
-        Err(e) => Code::Fatal(next_step, e),
+        Err(e) if matches!(e, StepError::StateCheck(_)) => Code::Fatal(next_step, e),
+        Err(e) => Code::OtherFailure(next_step, e),
     };
 
     tracing::info!("Statistics: {:>?}", workload_executor.state().stats);

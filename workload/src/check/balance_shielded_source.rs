@@ -20,6 +20,10 @@ impl BalanceShieldedSource {
         &self.target
     }
 
+    pub fn pre_balance(&self) -> Balance {
+        self.pre_balance
+    }
+
     pub fn amount(&self) -> Amount {
         self.amount
     }
@@ -34,27 +38,32 @@ impl CheckContext for BalanceShieldedSource {
         &self,
         sdk: &Sdk,
         check_info: CheckInfo,
-        _retry_config: RetryConfig,
+        retry_config: RetryConfig,
     ) -> Result<(), StepError> {
-        let post_balance =
-            get_shielded_balance(sdk, &self.target, Some(check_info.execution_height), true)
-                .await?
-                .ok_or_else(|| {
-                    antithesis_sdk::assert_unreachable!(
-                        "BalanceShieldedSource target doesn't exist.",
-                        &json!({
-                            "source_alias": self.target,
-                            "pre_balance": self.pre_balance,
-                            "amount": self.amount,
-                            "execution_height": check_info.execution_height,
-                            "check_height": check_info.check_height,
-                        })
-                    );
-                    StepError::StateCheck(format!(
-                        "BalanceShieldedSource check error: {} balance doesn't exist",
-                        self.target.name
-                    ))
-                })?;
+        let post_balance = get_shielded_balance(
+            sdk,
+            &self.target,
+            Some(check_info.execution_height),
+            true,
+            retry_config,
+        )
+        .await?
+        .ok_or_else(|| {
+            antithesis_sdk::assert_unreachable!(
+                "BalanceShieldedSource target doesn't exist.",
+                &json!({
+                    "source_alias": self.target,
+                    "pre_balance": self.pre_balance,
+                    "amount": self.amount,
+                    "execution_height": check_info.execution_height,
+                    "check_height": check_info.check_height,
+                })
+            );
+            StepError::StateCheck(format!(
+                "BalanceShieldedSource check error: {} balance doesn't exist",
+                self.target.name
+            ))
+        })?;
 
         let check_balance = self
             .pre_balance

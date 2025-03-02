@@ -9,6 +9,7 @@ use namada_sdk::masp::shielded_wallet::ShieldedApi;
 use namada_sdk::masp::{IndexerMaspClient, LedgerMaspClient, MaspLocalTaskEnv, ShieldedSyncConfig};
 use namada_sdk::masp_primitives::zip32;
 use namada_sdk::proof_of_stake::types::ValidatorStateInfo;
+use namada_sdk::token::MaspEpoch;
 use namada_sdk::{rpc, token, Namada};
 use namada_wallet::DatedKeypair;
 use reqwest::Url;
@@ -145,62 +146,25 @@ pub async fn get_shielded_balance(
     source: &Alias,
     height: Option<Height>,
     with_indexer: bool,
+    retry_config: RetryConfig,
 ) -> Result<Option<token::Amount>, StepError> {
-    let (is_successful, error) = match shielded_sync(sdk, height, with_indexer).await {
-        Ok(_) => (true, "".to_string()),
-        Err(e) => (false, e.to_string()),
-    };
-
-    tracing::warn!("First shielded sync result: {is_successful}, err: {error}");
-
-    if with_indexer {
-        antithesis_sdk::assert_sometimes!(
-            is_successful,
-            "shielded sync (indexer) was successful.",
-            &json!({
-                "source": source,
-                "error": error
-            })
-        );
-    } else {
-        antithesis_sdk::assert_always_or_unreachable!(
-            is_successful,
-            "shielded sync (node) was successful.",
-            &json!({
-                "source": source,
-                "error": error
-            })
-        );
-    }
-
-    if with_indexer && !is_successful {
-        let (is_successful, error) = match shielded_sync(sdk, height, false).await {
-            Ok(_) => (true, "".to_string()),
-            Err(e) => (false, e.to_string()),
-        };
-
-        tracing::warn!("Second shielded sync result: {is_successful}, err: {error}");
-
-        antithesis_sdk::assert_always_or_unreachable!(
-            is_successful,
-            "shielded sync (node) was successful.",
-            &json!({
-                "source": source,
-                "error": error
-            })
-        );
-    }
+    shielded_sync_with_retry(sdk, source, height, with_indexer).await?;
 
     let client = &sdk.namada.client;
 
-    let masp_epoch = rpc::query_masp_epoch(client)
-        .await
-        .map_err(StepError::Rpc)?;
-    let native_token = rpc::query_native_token(client)
-        .await
-        .map_err(StepError::Rpc)?;
+    let masp_epoch = get_masp_epoch(sdk, retry_config).await?;
 
     let mut wallet = sdk.namada.wallet.write().await;
+    let native_token_alias = Alias::nam();
+    let native_token_address = wallet
+        .find_address(&native_token_alias.name)
+        .ok_or_else(|| {
+            StepError::Wallet(format!(
+                "No native token address: {}",
+                native_token_alias.name
+            ))
+        })?
+        .into_owned();
     let spending_key = source.spending_key().name;
     let target_spending_key = wallet
         .find_spending_key(&spending_key, None)
@@ -226,7 +190,7 @@ pub async fn get_shielded_balance(
         .decode_combine_sum_to_epoch(client, balance, masp_epoch)
         .await
         .0
-        .get(&native_token);
+        .get(&native_token_address);
 
     Ok(Some(total_balance.into()))
 }
@@ -242,6 +206,19 @@ pub async fn get_epoch(sdk: &Sdk, retry_config: RetryConfig) -> Result<Epoch, St
         })
         .await
         .map(|epoch| epoch.into())
+        .map_err(StepError::Rpc)
+}
+
+pub async fn get_masp_epoch(sdk: &Sdk, retry_config: RetryConfig) -> Result<MaspEpoch, StepError> {
+    tryhard::retry_fn(|| rpc::query_masp_epoch(&sdk.namada.client))
+        .with_config(retry_config)
+        .on_retry(|attempt, _, error| {
+            let error = error.to_string();
+            async move {
+                tracing::info!("Retry {} due to {}...", attempt, error);
+            }
+        })
+        .await
         .map_err(StepError::Rpc)
 }
 
@@ -279,7 +256,70 @@ pub async fn get_bond(
     .map_err(StepError::Rpc)
 }
 
-pub async fn shielded_sync(
+async fn shielded_sync_with_retry(
+    sdk: &Sdk,
+    source: &Alias,
+    height: Option<Height>,
+    with_indexer: bool,
+) -> Result<(), StepError> {
+    let (is_successful, error) = match shielded_sync(sdk, height, with_indexer).await {
+        Ok(_) => (true, "".to_string()),
+        Err(e) => (false, e.to_string()),
+    };
+
+    tracing::warn!("First shielded sync result: {is_successful}, err: {error}");
+
+    if with_indexer {
+        antithesis_sdk::assert_always_or_unreachable!(
+            is_successful,
+            "shielded sync (indexer) was successful",
+            &json!({
+                "source": source,
+                "error": error
+            })
+        );
+    } else {
+        antithesis_sdk::assert_always_or_unreachable!(
+            is_successful,
+            "shielded sync (node) was successful",
+            &json!({
+                "source": source,
+                "error": error
+            })
+        );
+    }
+
+    if is_successful {
+        return Ok(());
+    } else if !with_indexer {
+        return Err(StepError::ShieldedSync(error));
+    }
+
+    // Try shielded sync without indexer only if the shielded sync with indexer failed
+    let (is_successful, error) = match shielded_sync(sdk, height, false).await {
+        Ok(_) => (true, "".to_string()),
+        Err(e) => (false, e.to_string()),
+    };
+
+    tracing::warn!("Second shielded sync result: {is_successful}, err: {error}");
+
+    antithesis_sdk::assert_always_or_unreachable!(
+        is_successful,
+        "Second shielded sync (node) was successful",
+        &json!({
+            "source": source,
+            "error": error
+        })
+    );
+
+    if is_successful {
+        Ok(())
+    } else {
+        Err(StepError::ShieldedSync(error))
+    }
+}
+
+async fn shielded_sync(
     sdk: &Sdk,
     height: Option<Height>,
     with_indexer: bool,
