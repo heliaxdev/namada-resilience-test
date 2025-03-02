@@ -111,7 +111,7 @@ impl TaskContext for Shielding {
                 .build(),
         );
 
-        let pre_balance = get_shielded_balance(sdk, &self.target, None, false)
+        let pre_balance = get_shielded_balance(sdk, &self.target, None, false, retry_config)
             .await?
             .unwrap_or_default();
         let target_check = Check::BalanceShieldedTarget(

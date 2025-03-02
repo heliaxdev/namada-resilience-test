@@ -178,7 +178,7 @@ impl TaskContext for Batch {
         }
 
         for (alias, amount) in shielded_balances {
-            let pre_balance = get_shielded_balance(sdk, &alias, None, true)
+            let pre_balance = get_shielded_balance(sdk, &alias, None, true, retry_config)
                 .await?
                 .unwrap_or_default();
             if amount >= 0 {

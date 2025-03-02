@@ -110,7 +110,7 @@ impl TaskContext for Unshielding {
         sdk: &Sdk,
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        let pre_balance = get_shielded_balance(sdk, &self.source, None, false)
+        let pre_balance = get_shielded_balance(sdk, &self.source, None, false, retry_config)
             .await?
             .unwrap_or_default();
         let source_check = Check::BalanceShieldedSource(
