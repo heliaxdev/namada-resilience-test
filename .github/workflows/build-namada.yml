@@ -83,8 +83,6 @@ jobs:
           tags: |
             ghcr.io/heliaxdev/ant-${{ matrix.images.image }}:main${{ matrix.images.tag }}
             us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.image }}:main${{ matrix.images.tag }}
-          cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
-          cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
             GENESIS_TEMPLATE_VERSION=0.46.0-ant
             GIT_SHA=main
@@ -109,8 +107,6 @@ jobs:
           tags: |
             ghcr.io/heliaxdev/ant-${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
             us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository/${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
-          cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
-          cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
             GENESIS_TEMPLATE_VERSION=${{ github.event.inputs.genesis_template_version }}
             GIT_SHA=${{ github.event.inputs.commit }}
