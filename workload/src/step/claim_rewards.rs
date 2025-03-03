@@ -7,6 +7,7 @@ use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
+use crate::utils::{get_epoch, get_rewards, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 #[derive(Clone, Debug, Default)]
@@ -21,9 +22,25 @@ impl StepContext for ClaimRewards {
         Ok(state.any_bond())
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
+
+        // Need the reward amount for the state updating
+        let retry_config = retry_config();
+        let epoch = get_epoch(sdk, retry_config).await?;
+        let rewards = get_rewards(
+            sdk,
+            &source_bond.alias,
+            &source_bond.validator,
+            epoch,
+            retry_config,
+        )
+        .await?;
+        let reward_amount = rewards
+            .to_string()
+            .parse()
+            .expect("Amount conversion shouldn't fail");
 
         let mut task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
         task_settings.gas_limit *= 5;
@@ -32,6 +49,7 @@ impl StepContext for ClaimRewards {
             task::claim_rewards::ClaimRewards::builder()
                 .source(source_bond.alias)
                 .from_validator(source_bond.validator.to_string())
+                .amount(reward_amount)
                 .settings(task_settings)
                 .build(),
         )])

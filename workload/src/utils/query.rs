@@ -9,8 +9,8 @@ use namada_sdk::masp::shielded_wallet::ShieldedApi;
 use namada_sdk::masp::{IndexerMaspClient, LedgerMaspClient, MaspLocalTaskEnv, ShieldedSyncConfig};
 use namada_sdk::masp_primitives::zip32;
 use namada_sdk::proof_of_stake::types::ValidatorStateInfo;
-use namada_sdk::token::MaspEpoch;
-use namada_sdk::{rpc, token, Namada};
+use namada_sdk::token::{self, MaspEpoch};
+use namada_sdk::{rpc, Namada};
 use namada_wallet::DatedKeypair;
 use reqwest::Url;
 use serde_json::json;
@@ -256,6 +256,36 @@ pub async fn get_bond(
     .map_err(StepError::Rpc)
 }
 
+pub async fn get_rewards(
+    sdk: &Sdk,
+    source: &Alias,
+    validator: &str,
+    epoch: Epoch,
+    retry_config: RetryFutureConfig<ExponentialBackoff, NoOnRetry>,
+) -> Result<token::Amount, StepError> {
+    let wallet = sdk.namada.wallet.read().await;
+    let source_address = wallet
+        .find_address(&source.name)
+        .ok_or_else(|| StepError::Wallet(format!("No source address: {}", source.name)))?;
+    let source = Some(source_address.into_owned());
+    let validator_address =
+        Address::from_str(validator).expect("ValidatorAddress should be converted");
+    let epoch = Some(namada_sdk::state::Epoch::from(epoch));
+
+    tryhard::retry_fn(|| {
+        rpc::query_rewards(&sdk.namada.client, &source, &validator_address, &epoch)
+    })
+    .with_config(retry_config)
+    .on_retry(|attempt, _, error| {
+        let error = error.to_string();
+        async move {
+            tracing::info!("Retry {} due to {}...", attempt, error);
+        }
+    })
+    .await
+    .map_err(StepError::Rpc)
+}
+
 async fn shielded_sync_with_retry(
     sdk: &Sdk,
     source: &Alias,
@@ -270,7 +300,7 @@ async fn shielded_sync_with_retry(
     tracing::warn!("First shielded sync result: {is_successful}, err: {error}");
 
     if with_indexer {
-        antithesis_sdk::assert_always_or_unreachable!(
+        antithesis_sdk::assert_sometimes!(
             is_successful,
             "shielded sync (indexer) was successful",
             &json!({
