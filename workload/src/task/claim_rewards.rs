@@ -8,18 +8,19 @@ use namada_sdk::tx::Tx;
 use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
-use crate::check::Check;
+use crate::check::{self, Check};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
-use crate::types::{Alias, ValidatorAddress};
-use crate::utils::RetryConfig;
+use crate::types::{Alias, Amount, ValidatorAddress};
+use crate::utils::{get_balance, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct ClaimRewards {
     source: Alias,
     from_validator: ValidatorAddress,
+    amount: Amount,
     settings: TaskSettings,
 }
 
@@ -73,15 +74,24 @@ impl TaskContext for ClaimRewards {
 
     async fn build_checks(
         &self,
-        _sdk: &Sdk,
-        _retry_config: RetryConfig,
+        sdk: &Sdk,
+        retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        Ok(vec![])
+        let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
+
+        Ok(vec![Check::BalanceTarget(
+            check::balance_target::BalanceTarget::builder()
+                .target(self.source.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        )])
     }
 
     fn update_state(&self, state: &mut State, with_fee: bool) {
         if with_fee {
             state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
         }
+        state.increase_balance(&self.source, self.amount);
     }
 }
