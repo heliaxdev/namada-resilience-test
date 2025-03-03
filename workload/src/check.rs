@@ -1,10 +1,12 @@
 use std::fmt::{Display, Formatter};
 
 use enum_dispatch::enum_dispatch;
+use serde_json::json;
 
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::types::Height;
+use crate::state::State;
+use crate::types::{Balance, Height};
 use crate::utils::RetryConfig;
 
 pub mod account_exist;
@@ -37,6 +39,64 @@ pub enum Check {
 impl Display for Check {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.summary())
+    }
+}
+
+impl Check {
+    pub fn assert_pre_balance(&self, state: &State) {
+        match self {
+            Check::BalanceSource(bs) => {
+                let expected_pre_balance = Balance::from_u64(state.get_balance_for(bs.target()));
+                antithesis_sdk::assert_always_or_unreachable!(
+                    bs.pre_balance() == expected_pre_balance,
+                    "Source pre balance matched",
+                    &json!({
+                        "source_alias": bs.target(),
+                        "expected_pre_balance": expected_pre_balance,
+                        "actual_pre_balance": bs.pre_balance(),
+                    })
+                );
+            }
+            Check::BalanceTarget(bt) => {
+                let expected_pre_balance = Balance::from_u64(state.get_balance_for(bt.target()));
+                antithesis_sdk::assert_always_or_unreachable!(
+                    bt.pre_balance() == expected_pre_balance,
+                    "Target pre balance matched",
+                    &json!({
+                        "target_alias": bt.target(),
+                        "expected_pre_balance": expected_pre_balance,
+                        "actual_pre_balance": bt.pre_balance(),
+                    })
+                );
+            }
+            Check::BalanceShieldedSource(bss) => {
+                let expected_pre_balance =
+                    Balance::from_u64(state.get_shielded_balance_for(bss.target()));
+                antithesis_sdk::assert_always_or_unreachable!(
+                    bss.pre_balance() == expected_pre_balance,
+                    "Source pre shielded balance matched",
+                    &json!({
+                        "source_alias": bss.target(),
+                        "expected_pre_balance": expected_pre_balance,
+                        "actual_pre_balance": bss.pre_balance(),
+                    })
+                );
+            }
+            Check::BalanceShieldedTarget(bst) => {
+                let expected_pre_balance =
+                    Balance::from_u64(state.get_shielded_balance_for(bst.target()));
+                antithesis_sdk::assert_always_or_unreachable!(
+                    bst.pre_balance() == expected_pre_balance,
+                    "Target pre shielded balance matched",
+                    &json!({
+                        "target_alias": bst.target(),
+                        "expected_pre_balance": expected_pre_balance,
+                        "actual_pre_balance": bst.pre_balance(),
+                    })
+                );
+            }
+            _ => {}
+        }
     }
 }
 
