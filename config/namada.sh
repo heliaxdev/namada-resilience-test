@@ -17,4 +17,4 @@ do
     sleep 10
 done
 
-/namada/target/release/namadan ledger run --base-dir $BASE_DIR
+namadan ledger run --base-dir $BASE_DIR
