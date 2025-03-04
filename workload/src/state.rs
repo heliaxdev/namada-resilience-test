@@ -551,4 +551,8 @@ impl State {
         self.proposals
             .insert(latest_proposal_id, (start_epoch, end_epoch));
     }
+
+    pub fn overwrite_balance(&mut self, source: &Alias, balance: u64) {
+        *self.balances.get_mut(source).unwrap() = balance;
+    }
 }

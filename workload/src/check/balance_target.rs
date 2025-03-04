@@ -13,6 +13,8 @@ pub struct BalanceTarget {
     target: Alias,
     pre_balance: Balance,
     amount: Amount,
+    #[builder(default)]
+    allow_greater: bool,
 }
 
 impl BalanceTarget {
@@ -50,24 +52,23 @@ impl CheckContext for BalanceTarget {
                     self.target.name
                 ))
             })?;
+        let is_expected =
+            post_balance == check_balance || (self.allow_greater && post_balance > check_balance);
 
         let details = json!({
             "target_alias": self.target,
             "target": target_address.to_pretty_string(),
             "pre_balance": self.pre_balance,
             "amount": self.amount,
+            "allow_greater": self.allow_greater,
             "post_balance": post_balance,
             "execution_height": check_info.execution_height,
             "check_height": check_info.check_height,
         });
 
-        antithesis_sdk::assert_always!(
-            post_balance.eq(&check_balance),
-            "Balance target increased",
-            &details
-        );
+        antithesis_sdk::assert_always!(is_expected, "Balance target increased", &details);
 
-        if post_balance.eq(&check_balance) {
+        if is_expected {
             Ok(())
         } else {
             tracing::error!("{}", details);

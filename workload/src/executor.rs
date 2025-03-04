@@ -221,12 +221,29 @@ impl WorkloadExecutor {
             task.update_state(&mut self.state, true);
             task.update_stats(&mut self.state);
 
-            // save wallet for init-account
-            if matches!(task, Task::InitAccount(_)) {
-                let wallet = self.sdk.namada.wallet.read().await;
-                wallet
-                    .save()
-                    .map_err(|e| StepError::Wallet(e.to_string()))?;
+            match task {
+                Task::ClaimRewards(cr) => {
+                    // workaround for exact balance update after claim-rewards
+                    let (_, balance) = crate::utils::get_balance(
+                        &self.sdk,
+                        cr.source(),
+                        crate::utils::retry_config(),
+                    )
+                    .await?;
+                    let balance = balance
+                        .to_string()
+                        .parse()
+                        .expect("Balance conversion shouldn't fail");
+                    self.state.overwrite_balance(cr.source(), balance);
+                }
+                Task::InitAccount(_) => {
+                    // save wallet for init-account
+                    let wallet = self.sdk.namada.wallet.read().await;
+                    wallet
+                        .save()
+                        .map_err(|e| StepError::Wallet(e.to_string()))?;
+                }
+                _ => {}
             }
         }
         Ok(())
