@@ -141,19 +141,15 @@ impl WorkloadExecutor {
 
     pub async fn build_check(&self, tasks: &[Task]) -> Result<Vec<Check>, StepError> {
         let retry_config = retry_config();
-        Ok(
-            futures::future::try_join_all(tasks.iter().map(|task| async move {
-                let checks = task.build_checks(&self.sdk, retry_config).await?;
-                checks
-                    .iter()
-                    .for_each(|check| check.assert_pre_balance(&self.state));
-                Ok(checks)
-            }))
-            .await?
-            .into_iter()
-            .flatten()
-            .collect(),
-        )
+        let mut checks = vec![];
+        for task in tasks {
+            let built_checks = task.build_checks(&self.sdk, retry_config).await?;
+            built_checks
+                .iter()
+                .for_each(|check| check.assert_pre_balance(&self.state));
+            checks.extend(built_checks)
+        }
+        Ok(checks)
     }
 
     pub async fn checks(
