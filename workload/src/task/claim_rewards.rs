@@ -24,6 +24,12 @@ pub struct ClaimRewards {
     settings: TaskSettings,
 }
 
+impl ClaimRewards {
+    pub fn source(&self) -> &Alias {
+        &self.source
+    }
+}
+
 impl TaskContext for ClaimRewards {
     fn name(&self) -> String {
         "claim-rewards".to_string()
@@ -84,6 +90,7 @@ impl TaskContext for ClaimRewards {
                 .target(self.source.clone())
                 .pre_balance(pre_balance)
                 .amount(self.amount)
+                .allow_greater(true)
                 .build(),
         )])
     }
