@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE};
-use crate::types::Alias;
+use crate::types::{Alias, Epoch};
 
 #[derive(Error, Debug)]
 pub enum StateError {
@@ -69,6 +69,7 @@ pub struct State {
     pub bonds: HashMap<Alias, HashMap<String, u64>>,
     pub unbonds: HashMap<Alias, HashMap<String, u64>>,
     pub redelegations: HashMap<Alias, HashMap<String, u64>>,
+    pub claimed_epochs: HashMap<Alias, Epoch>,
     pub validators: HashMap<Alias, Account>,
     pub deactivated_validators: HashMap<Alias, Account>,
     pub proposals: HashMap<u64, (u64, u64)>,
@@ -86,6 +87,7 @@ impl State {
             bonds: HashMap::default(),
             unbonds: HashMap::default(),
             redelegations: HashMap::default(),
+            claimed_epochs: HashMap::default(),
             validators: HashMap::default(),
             deactivated_validators: HashMap::default(),
             proposals: HashMap::default(),
@@ -379,6 +381,10 @@ impl State {
         self.accounts.get(alias).unwrap().to_owned()
     }
 
+    pub fn get_claimed_epoch(&self, alias: &Alias) -> Option<Epoch> {
+        self.claimed_epochs.get(alias).cloned()
+    }
+
     pub fn get_balance_for(&self, alias: &Alias) -> u64 {
         self.balances.get(alias).cloned().unwrap_or_default()
     }
@@ -550,6 +556,13 @@ impl State {
         let latest_proposal_id = self.proposals.keys().max().unwrap_or(&0).to_owned();
         self.proposals
             .insert(latest_proposal_id, (start_epoch, end_epoch));
+    }
+
+    pub fn set_claimed_epoch(&mut self, source: &Alias, epoch: Epoch) {
+        let claimed_epoch = self.claimed_epochs.entry(source.clone()).or_insert(0);
+        if epoch > *claimed_epoch {
+            *claimed_epoch = epoch;
+        }
     }
 
     pub fn overwrite_balance(&mut self, source: &Alias, balance: u64) {

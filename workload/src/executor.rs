@@ -9,7 +9,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
-use crate::types::{Alias, Height};
+use crate::types::{Alias, Epoch, Height};
 use crate::utils::{execute_reveal_pk, retry_config};
 
 #[derive(Error, Debug)]
@@ -56,7 +56,7 @@ impl WorkloadExecutor {
         &self.state
     }
 
-    pub async fn fetch_current_block_height(&self) -> u64 {
+    pub async fn fetch_current_block_height(&self) -> Height {
         loop {
             if let Ok(Some(latest_block)) = rpc::query_block(&self.sdk.namada.client).await {
                 return latest_block.height.into();
@@ -65,11 +65,11 @@ impl WorkloadExecutor {
         }
     }
 
-    pub async fn fetch_current_epoch(&self) -> u64 {
+    async fn fetch_epoch_at_height(&self, height: Height) -> Epoch {
         loop {
-            let latest_epoch = rpc::query_epoch(&self.sdk.namada.client).await;
-            if let Ok(epoch) = latest_epoch {
-                return epoch.into();
+            let epoch = rpc::query_epoch_at_height(&self.sdk.namada.client, height.into()).await;
+            if let Ok(epoch) = epoch {
+                return epoch.expect("Epoch should exist").into();
             }
             sleep(Duration::from_secs(1)).await
         }
@@ -215,7 +215,15 @@ impl WorkloadExecutor {
         Ok(heights.into_iter().flatten().max())
     }
 
-    pub async fn post_execute(&mut self, tasks: &[Task]) -> Result<(), StepError> {
+    pub async fn post_execute(
+        &mut self,
+        tasks: &[Task],
+        execution_height: Option<Height>,
+    ) -> Result<(), StepError> {
+        let Some(height) = execution_height else {
+            return Ok(());
+        };
+
         for task in tasks {
             // update state
             task.update_state(&mut self.state, true);
@@ -235,6 +243,9 @@ impl WorkloadExecutor {
                         .parse()
                         .expect("Balance conversion shouldn't fail");
                     self.state.overwrite_balance(cr.source(), balance);
+
+                    let claimed_epoch = self.fetch_epoch_at_height(height).await;
+                    self.state.set_claimed_epoch(cr.source(), claimed_epoch);
                 }
                 Task::InitAccount(_) => {
                     // save wallet for init-account

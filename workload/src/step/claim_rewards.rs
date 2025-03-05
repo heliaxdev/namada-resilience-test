@@ -29,18 +29,25 @@ impl StepContext for ClaimRewards {
         // Need the reward amount for the state updating
         let retry_config = retry_config();
         let epoch = get_epoch(sdk, retry_config).await?;
-        let rewards = get_rewards(
-            sdk,
-            &source_bond.alias,
-            &source_bond.validator,
-            epoch,
-            retry_config,
-        )
-        .await?;
-        let reward_amount = rewards
-            .to_string()
-            .parse()
-            .expect("Amount conversion shouldn't fail");
+        let already_claimed = state
+            .get_claimed_epoch(&source_bond.alias)
+            .map_or(false, |claimed_epoch| claimed_epoch >= epoch);
+        let reward_amount = if already_claimed {
+            0u64
+        } else {
+            let rewards = get_rewards(
+                sdk,
+                &source_bond.alias,
+                &source_bond.validator,
+                epoch,
+                retry_config,
+            )
+            .await?;
+            rewards
+                .to_string()
+                .parse()
+                .expect("Amount conversion shouldn't fail")
+        };
 
         let mut task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
         task_settings.gas_limit *= 5;
