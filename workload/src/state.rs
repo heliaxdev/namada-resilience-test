@@ -559,7 +559,10 @@ impl State {
     }
 
     pub fn set_claimed_epoch(&mut self, source: &Alias, epoch: Epoch) {
-        *self.claimed_epochs.get_mut(source).unwrap() = epoch;
+        let claimed_epoch = self.claimed_epochs.entry(source.clone()).or_insert(0);
+        if epoch > *claimed_epoch {
+            *claimed_epoch = epoch;
+        }
     }
 
     pub fn overwrite_balance(&mut self, source: &Alias, balance: u64) {
