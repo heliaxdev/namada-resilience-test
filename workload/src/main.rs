@@ -169,7 +169,10 @@ async fn inner_main() -> Code {
     };
 
     tracing::info!("Execution were successful, updating state...");
-    if let Err(e) = workload_executor.post_execute(&tasks).await {
+    if let Err(e) = workload_executor
+        .post_execute(&tasks, execution_height)
+        .await
+    {
         return Code::Fatal(next_step, e);
     }
 

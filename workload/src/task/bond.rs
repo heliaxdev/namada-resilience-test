@@ -15,7 +15,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount, Epoch, ValidatorAddress};
-use crate::utils::{get_bond, RetryConfig};
+use crate::utils::{get_balance, get_bond, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct Bond {
@@ -87,7 +87,7 @@ impl TaskContext for Bond {
         let pre_bond =
             get_bond(sdk, &self.source, &self.validator, self.epoch, retry_config).await?;
 
-        Ok(vec![Check::BondIncrease(
+        let check_bond = Check::BondIncrease(
             check::bond_increase::BondIncrease::builder()
                 .target(self.source.clone())
                 .validator(self.validator.clone())
@@ -96,7 +96,18 @@ impl TaskContext for Bond {
                 .amount(self.amount)
                 .is_redelegated(false)
                 .build(),
-        )])
+        );
+
+        let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
+        let check_balance = Check::BalanceSource(
+            check::balance_source::BalanceSource::builder()
+                .target(self.source.clone())
+                .pre_balance(pre_balance)
+                .amount(self.amount)
+                .build(),
+        );
+
+        Ok(vec![check_bond, check_balance])
     }
 
     fn update_state(&self, state: &mut State, with_fee: bool) {
