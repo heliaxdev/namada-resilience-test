@@ -94,7 +94,6 @@ impl TaskContext for Bond {
                 .pre_bond(pre_bond)
                 .epoch(self.epoch)
                 .amount(self.amount)
-                .is_redelegated(false)
                 .build(),
         );
 
