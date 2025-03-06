@@ -7,6 +7,7 @@ pub struct State {
     pub last_epoch: u64,
     pub last_total_supply: token::Amount,
     pub two_nodes_have_two_third: bool,
+    pub last_end_proposal_id: Option<u64>,
 }
 
 impl State {
@@ -17,6 +18,7 @@ impl State {
             last_epoch: 0,
             last_total_supply: token::Amount::default(),
             two_nodes_have_two_third: true,
+            last_end_proposal_id: None,
         }
     }
 }
