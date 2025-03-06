@@ -167,20 +167,7 @@ impl WorkloadExecutor {
             return Ok(());
         };
 
-        let check_height = loop {
-            let current_height = self.fetch_current_block_height().await;
-            if current_height >= execution_height {
-                break current_height;
-            } else {
-                tracing::info!(
-                    "Waiting for block height: {}, currently at: {}",
-                    execution_height,
-                    current_height
-                );
-            }
-            sleep(Duration::from_secs(2)).await
-        };
-
+        let check_height = self.fetch_current_block_height().await;
         for check in checks {
             tracing::info!("Running {check} check...");
             check
@@ -212,7 +199,25 @@ impl WorkloadExecutor {
         }
         tracing::info!("Execution took {total_time}s...");
 
-        Ok(heights.into_iter().flatten().max())
+        let Some(execution_height) = heights.into_iter().flatten().max() else {
+            return Ok(None);
+        };
+        // wait for the execution block settling
+        loop {
+            let current_height = self.fetch_current_block_height().await;
+            if current_height > execution_height {
+                break;
+            } else {
+                tracing::info!(
+                    "Waiting for block height: {}, currently at: {}",
+                    execution_height,
+                    current_height
+                );
+            }
+            sleep(Duration::from_secs(2)).await
+        }
+
+        Ok(Some(execution_height))
     }
 
     pub async fn post_execute(
