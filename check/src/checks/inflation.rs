@@ -51,6 +51,7 @@ impl DoCheck for InflationCheck {
 
 async fn count_rejected_proposals(sdk: &Sdk, state: &mut State) -> Result<u64, String> {
     let client = &sdk.namada.client;
+    let epoch = rpc::query_epoch(client).await.map_err(|e| e.to_string())?;
 
     let mut rejected = 0;
     let mut proposal_id = state.last_end_proposal_id.map_or(0, |last_id| last_id + 1);
@@ -62,7 +63,6 @@ async fn count_rejected_proposals(sdk: &Sdk, state: &mut State) -> Result<u64, S
             return Ok(0);
         };
 
-        let epoch = rpc::query_epoch(client).await.map_err(|e| e.to_string())?;
         if matches!(proposal.get_status(epoch), ProposalStatus::Ended) {
             state.last_end_proposal_id = Some(proposal_id);
 
