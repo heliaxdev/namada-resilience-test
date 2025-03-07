@@ -102,8 +102,10 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
+            CARGO_TERM_VERBOSE=true
             GENESIS_TEMPLATE_VERSION=0.46.0-ant
             GIT_SHA=main
+          progress: plain
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit ${{ github.event.inputs.commit }}/${{ github.event.inputs.genesis_template_version }} (workflow dispatch)
         if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: docker/build-push-action@v6
