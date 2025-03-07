@@ -44,7 +44,8 @@ RUN LD_LIBRARY_PATH=/usr/lib/libvoidstar.so cargo build --release --package nama
     --manifest-path Cargo.toml \
     --no-default-features \
     --features jemalloc \
-    --features migrations
+    --features migrations \
+		 --verbose
 
 RUN ldd target/release/namada | grep "libvoidstar"
 RUN nm target/release/namada | grep "sanitizer_cov_trace_pc_guard"
