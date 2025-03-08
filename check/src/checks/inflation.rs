@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use namada_sdk::governance::utils::{ProposalStatus, TallyResult};
+use namada_sdk::governance::utils::TallyResult;
 use namada_sdk::rpc;
 use namada_sdk::token::Amount;
 
@@ -39,7 +39,7 @@ impl DoCheck for InflationCheck {
             Ok(())
         } else {
             Err(format!(
-                "Total supply decreases: before: {} -> after {}",
+                "Total supply decreased: before: {} -> after {}",
                 last_total_supply, current_total_supply
             ))
         }
@@ -81,7 +81,7 @@ async fn count_rejected_proposals(sdk: &Sdk, state: &mut State) -> Result<u64, S
             .await
             .map_err(|e| e.to_string())?
             .expect("Porposal should exit");
-        if matches!(proposal.get_status(epoch), ProposalStatus::Ended) {
+        if epoch >= proposal.activation_epoch {
             let result = rpc::query_proposal_result(client, *proposal_id)
                 .await
                 .map_err(|e| e.to_string())?
