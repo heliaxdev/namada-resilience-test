@@ -43,7 +43,7 @@ RUN make cometbft
 COPY ./build_progress.sh .
 RUN chmod +x build_progress.sh
 
-RUN ./build_progress.sh & pid=$!
+RUN ./build_progress.sh & pid=$! \
     && LD_LIBRARY_PATH=/usr/lib/libvoidstar.so cargo build --release --package namada_apps \
     --manifest-path Cargo.toml \
     --no-default-features \
