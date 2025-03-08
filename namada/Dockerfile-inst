@@ -40,14 +40,16 @@ ENV RUSTFLAGS="-g -C passes=sancov-module \
 
 RUN make cometbft
 
-# try to compile dependencies before release-build
-RUN cargo build --package namada_apps --manifest-path Cargo.toml
+COPY ./build_progress.sh .
+RUN chmod +x build_progress.sh
 
-RUN LD_LIBRARY_PATH=/usr/lib/libvoidstar.so cargo build --release --package namada_apps \
+RUN ./build_progress.sh & pid=$!
+    && LD_LIBRARY_PATH=/usr/lib/libvoidstar.so cargo build --release --package namada_apps \
     --manifest-path Cargo.toml \
     --no-default-features \
     --features jemalloc \
-    --features migrations
+    --features migrations \
+    && kill $pid
 
 RUN ldd target/release/namada | grep "libvoidstar"
 RUN nm target/release/namada | grep "sanitizer_cov_trace_pc_guard"
