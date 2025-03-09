@@ -377,8 +377,12 @@ async fn shielded_sync(
     tracing::info!("Using height with shielded sync: {height:?}");
 
     let res = if with_indexer {
+        let client = reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(60))
+            .build()
+            .expect("Client should be built");
         let masp_client = IndexerMaspClient::new(
-            reqwest::Client::new(),
+            client,
             Url::parse(&sdk.masp_indexer_url).unwrap(),
             false,
             20,
@@ -416,10 +420,18 @@ async fn shielded_sync(
             .map_err(|e| StepError::ShieldedSync(e.to_string()))
     };
 
-    shielded_ctx
-        .save()
-        .await
-        .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
+    if res.is_ok() {
+        shielded_ctx
+            .save()
+            .await
+            .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
+    } else {
+        // revert the shielded context
+        shielded_ctx
+            .load()
+            .await
+            .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
+    }
 
     tracing::info!(
         "Done shielded sync (took {}s, with indexer: {with_indexer})!",
