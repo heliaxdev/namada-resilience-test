@@ -44,58 +44,74 @@ impl Display for Check {
 
 impl Check {
     pub fn assert_pre_balance(&self, state: &State) {
-        match self {
+        let (matched, details) = match self {
             Check::BalanceSource(bs) => {
                 let expected_pre_balance = Balance::from_u64(state.get_balance_for(bs.target()));
+                let matched = bs.pre_balance() == expected_pre_balance;
+                let details = json!({
+                    "source_alias": bs.target(),
+                    "expected_pre_balance": expected_pre_balance,
+                    "actual_pre_balance": bs.pre_balance(),
+                });
                 antithesis_sdk::assert_always_or_unreachable!(
-                    bs.pre_balance() == expected_pre_balance,
+                    matched,
                     "Source pre balance matched",
-                    &json!({
-                        "source_alias": bs.target(),
-                        "expected_pre_balance": expected_pre_balance,
-                        "actual_pre_balance": bs.pre_balance(),
-                    })
+                    &details
                 );
+                (matched, details)
             }
             Check::BalanceTarget(bt) => {
                 let expected_pre_balance = Balance::from_u64(state.get_balance_for(bt.target()));
+                let matched = bt.pre_balance() == expected_pre_balance;
+                let details = json!({
+                    "target_alias": bt.target(),
+                    "expected_pre_balance": expected_pre_balance,
+                    "actual_pre_balance": bt.pre_balance(),
+                });
                 antithesis_sdk::assert_always_or_unreachable!(
-                    bt.pre_balance() == expected_pre_balance,
+                    matched,
                     "Target pre balance matched",
-                    &json!({
-                        "target_alias": bt.target(),
-                        "expected_pre_balance": expected_pre_balance,
-                        "actual_pre_balance": bt.pre_balance(),
-                    })
+                    &details
                 );
+                (matched, details)
             }
             Check::BalanceShieldedSource(bss) => {
                 let expected_pre_balance =
                     Balance::from_u64(state.get_shielded_balance_for(bss.target()));
+                let matched = bss.pre_balance() == expected_pre_balance;
+                let details = json!({
+                    "source_alias": bss.target(),
+                    "expected_pre_balance": expected_pre_balance,
+                    "actual_pre_balance": bss.pre_balance(),
+                });
                 antithesis_sdk::assert_always_or_unreachable!(
-                    bss.pre_balance() == expected_pre_balance,
+                    matched,
                     "Source pre shielded balance matched",
-                    &json!({
-                        "source_alias": bss.target(),
-                        "expected_pre_balance": expected_pre_balance,
-                        "actual_pre_balance": bss.pre_balance(),
-                    })
+                    &details
                 );
+                (matched, details)
             }
             Check::BalanceShieldedTarget(bst) => {
                 let expected_pre_balance =
                     Balance::from_u64(state.get_shielded_balance_for(bst.target()));
+                let matched = bst.pre_balance() == expected_pre_balance;
+                let details = json!({
+                    "target_alias": bst.target(),
+                    "expected_pre_balance": expected_pre_balance,
+                    "actual_pre_balance": bst.pre_balance(),
+                });
                 antithesis_sdk::assert_always_or_unreachable!(
-                    bst.pre_balance() == expected_pre_balance,
+                    matched,
                     "Target pre shielded balance matched",
-                    &json!({
-                        "target_alias": bst.target(),
-                        "expected_pre_balance": expected_pre_balance,
-                        "actual_pre_balance": bst.pre_balance(),
-                    })
+                    &details
                 );
+                (matched, details)
             }
-            _ => {}
+            _ => (true, json!({})),
+        };
+
+        if !matched {
+            tracing::error!("Pre-balance mismatched: {details}");
         }
     }
 }
