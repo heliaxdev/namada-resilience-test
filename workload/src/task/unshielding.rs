@@ -16,7 +16,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
-use crate::utils::{get_balance, get_shielded_balance, RetryConfig};
+use crate::utils::{get_balance, get_shielded_balance, shielded_sync_with_retry, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct Unshielding {
@@ -110,7 +110,9 @@ impl TaskContext for Unshielding {
         sdk: &Sdk,
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        let pre_balance = get_shielded_balance(sdk, &self.source, None, false, retry_config)
+        shielded_sync_with_retry(sdk, &self.source, None, false).await?;
+
+        let pre_balance = get_shielded_balance(sdk, &self.source, retry_config)
             .await?
             .unwrap_or_default();
         let source_check = Check::BalanceShieldedSource(

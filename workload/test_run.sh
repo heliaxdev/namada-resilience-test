@@ -188,7 +188,7 @@ fi
 
 retries=1
 while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh)
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh | tee /dev/stderr)
     if echo "$output" | grep -q "Done batch-random"
     then
         echo "<OK> random batch" 

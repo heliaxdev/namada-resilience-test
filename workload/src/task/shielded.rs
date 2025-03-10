@@ -16,7 +16,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
-use crate::utils::{get_shielded_balance, RetryConfig};
+use crate::utils::{get_shielded_balance, shielded_sync_with_retry, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct ShieldedTransfer {
@@ -107,7 +107,9 @@ impl TaskContext for ShieldedTransfer {
         sdk: &Sdk,
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError> {
-        let pre_balance = get_shielded_balance(sdk, &self.source, None, false, retry_config)
+        shielded_sync_with_retry(sdk, &self.source, None, false).await?;
+
+        let pre_balance = get_shielded_balance(sdk, &self.source, retry_config)
             .await?
             .unwrap_or_default();
         let source_check = Check::BalanceShieldedSource(
@@ -118,7 +120,7 @@ impl TaskContext for ShieldedTransfer {
                 .build(),
         );
 
-        let pre_balance = get_shielded_balance(sdk, &self.target, None, false, retry_config)
+        let pre_balance = get_shielded_balance(sdk, &self.target, retry_config)
             .await?
             .unwrap_or_default();
         let target_check = Check::BalanceShieldedTarget(

@@ -14,7 +14,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
-use crate::utils::{get_balance, get_shielded_balance, RetryConfig};
+use crate::utils::{get_balance, get_shielded_balance, shielded_sync_with_retry, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct Shielding {
@@ -111,7 +111,9 @@ impl TaskContext for Shielding {
                 .build(),
         );
 
-        let pre_balance = get_shielded_balance(sdk, &self.target, None, false, retry_config)
+        shielded_sync_with_retry(sdk, &self.target, None, false).await?;
+
+        let pre_balance = get_shielded_balance(sdk, &self.target, retry_config)
             .await?
             .unwrap_or_default();
         let target_check = Check::BalanceShieldedTarget(
