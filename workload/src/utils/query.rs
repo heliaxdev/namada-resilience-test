@@ -141,15 +141,12 @@ pub async fn get_balance(
     Ok((target_address.into_owned(), balance))
 }
 
+/// Shielded balance. Need shielded-sync in advance.
 pub async fn get_shielded_balance(
     sdk: &Sdk,
     source: &Alias,
-    height: Option<Height>,
-    with_indexer: bool,
     retry_config: RetryConfig,
 ) -> Result<Option<token::Amount>, StepError> {
-    shielded_sync_with_retry(sdk, source, height, with_indexer).await?;
-
     let client = &sdk.namada.client;
 
     let masp_epoch = get_masp_epoch(sdk, retry_config).await?;
@@ -286,15 +283,12 @@ pub async fn get_rewards(
     .map_err(StepError::Rpc)
 }
 
-async fn shielded_sync_with_retry(
+pub async fn shielded_sync_with_retry(
     sdk: &Sdk,
     source: &Alias,
     height: Option<Height>,
-    _with_indexer: bool,
+    with_indexer: bool,
 ) -> Result<(), StepError> {
-    // TODO: for debug, revert this later
-    let with_indexer = false;
-
     let (is_successful, error) = match shielded_sync(sdk, height, with_indexer).await {
         Ok(_) => (true, "".to_string()),
         Err(e) => (false, e.to_string()),
@@ -359,9 +353,6 @@ async fn shielded_sync(
 ) -> Result<(), StepError> {
     let now = Instant::now();
     tracing::info!("Started shielded sync (using indexer: {})...", with_indexer);
-
-    // TODO: for debug, revert this later
-    let with_indexer = false;
 
     let wallet = sdk.namada.wallet.read().await;
     let vks = wallet
