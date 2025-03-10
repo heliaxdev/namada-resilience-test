@@ -290,8 +290,11 @@ async fn shielded_sync_with_retry(
     sdk: &Sdk,
     source: &Alias,
     height: Option<Height>,
-    with_indexer: bool,
+    _with_indexer: bool,
 ) -> Result<(), StepError> {
+    // TODO: for debug, revert this later
+    let with_indexer = false;
+
     let (is_successful, error) = match shielded_sync(sdk, height, with_indexer).await {
         Ok(_) => (true, "".to_string()),
         Err(e) => (false, e.to_string()),
@@ -357,14 +360,17 @@ async fn shielded_sync(
     let now = Instant::now();
     tracing::info!("Started shielded sync (using indexer: {})...", with_indexer);
 
+    // TODO: for debug, revert this later
+    let with_indexer = false;
+
     let wallet = sdk.namada.wallet.read().await;
-    let vks = sdk
-        .namada
-        .wallet()
-        .await
+    let vks = wallet
         .get_viewing_keys()
-        .values()
-        .map(|vk| DatedKeypair::new(vk.as_viewing_key(), None))
+        .iter()
+        .map(|(alias, vk)| {
+            let birthday = wallet.find_birthday(alias).cloned();
+            DatedKeypair::new(vk.as_viewing_key(), birthday)
+        })
         .collect::<Vec<_>>();
     drop(wallet);
 
@@ -420,12 +426,7 @@ async fn shielded_sync(
             .map_err(|e| StepError::ShieldedSync(e.to_string()))
     };
 
-    if res.is_ok() {
-        shielded_ctx
-            .save()
-            .await
-            .map_err(|e| StepError::ShieldedSync(e.to_string()))?;
-    } else {
+    if res.is_err() {
         // revert the shielded context
         shielded_ctx
             .load()
