@@ -157,6 +157,7 @@ impl WorkloadExecutor {
         &self,
         checks: Vec<Check>,
         execution_height: Height,
+        fees: &HashMap<Alias, Fee>,
     ) -> Result<(), StepError> {
         let retry_config = retry_config();
 
@@ -170,6 +171,7 @@ impl WorkloadExecutor {
             check
                 .do_check(
                     &self.sdk,
+                    fees,
                     CheckInfo {
                         execution_height,
                         check_height,
@@ -237,7 +239,7 @@ impl WorkloadExecutor {
     ) -> Result<(), StepError> {
         for task in tasks {
             // update state
-            task.update_state(&mut self.state, true);
+            task.update_state(&mut self.state);
             task.update_stats(&mut self.state);
 
             match task {
@@ -271,8 +273,8 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub fn pay_fees(&mut self, fees: HashMap<Alias, Fee>) {
-        fees.into_iter()
-            .for_each(|(payer, fee)| self.state.modify_balance_fee(&payer, fee));
+    pub fn pay_fees(&mut self, fees: &HashMap<Alias, Fee>) {
+        fees.iter()
+            .for_each(|(payer, fee)| self.state.modify_balance_fee(payer, *fee));
     }
 }

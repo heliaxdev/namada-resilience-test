@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use namada_sdk::proof_of_stake::types::ValidatorState;
 use serde_json::json;
 use typed_builder::TypedBuilder;
@@ -5,7 +7,7 @@ use typed_builder::TypedBuilder;
 use crate::check::{CheckContext, CheckInfo};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::types::{Alias, ValidatorStatus as Status};
+use crate::types::{Alias, Fee, ValidatorStatus as Status};
 use crate::utils::{get_epoch, get_validator_state, RetryConfig};
 
 #[derive(TypedBuilder)]
@@ -22,6 +24,7 @@ impl CheckContext for ValidatorStatus {
     async fn do_check(
         &self,
         sdk: &Sdk,
+        _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
     ) -> Result<(), StepError> {

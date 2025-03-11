@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::types::{Alias, ProposalId, ProposalVote};
+use crate::types::{Alias, Fee, ProposalId, ProposalVote};
 use crate::utils::{get_vote_results, RetryConfig};
 
 #[derive(TypedBuilder)]
@@ -22,6 +24,7 @@ impl CheckContext for VoteResult {
     async fn do_check(
         &self,
         sdk: &Sdk,
+        _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
     ) -> Result<(), StepError> {

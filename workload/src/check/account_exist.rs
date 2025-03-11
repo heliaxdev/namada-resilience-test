@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use serde_json::json;
 use typed_builder::TypedBuilder;
@@ -6,7 +6,7 @@ use typed_builder::TypedBuilder;
 use crate::check::{CheckContext, CheckInfo};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::types::{Alias, Threshold};
+use crate::types::{Alias, Fee, Threshold};
 use crate::utils::{get_account_info, RetryConfig};
 
 #[derive(TypedBuilder)]
@@ -24,6 +24,7 @@ impl CheckContext for AccountExist {
     async fn do_check(
         &self,
         sdk: &Sdk,
+        _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
     ) -> Result<(), StepError> {

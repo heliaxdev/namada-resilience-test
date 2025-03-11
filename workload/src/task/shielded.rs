@@ -134,10 +134,7 @@ impl TaskContext for ShieldedTransfer {
         Ok(vec![source_check, target_check])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
+    fn update_state(&self, state: &mut State) {
         state.modify_shielded_transfer(&self.source, &self.target, self.amount);
     }
 }

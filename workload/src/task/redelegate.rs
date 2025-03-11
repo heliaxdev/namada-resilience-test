@@ -130,10 +130,7 @@ impl TaskContext for Redelegate {
         Ok(vec![from_validator_bond_check, to_validator_bond_check])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
+    fn update_state(&self, state: &mut State) {
         state.modify_redelegate(
             &self.source,
             &self.from_validator,

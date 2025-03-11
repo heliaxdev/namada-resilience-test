@@ -95,9 +95,5 @@ impl TaskContext for ChangeConsensusKey {
         Ok(vec![])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
-    }
+    fn update_state(&self, _state: &mut State) {}
 }

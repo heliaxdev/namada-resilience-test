@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
-use crate::types::Alias;
+use crate::types::{Alias, Fee};
 use crate::utils::{is_validator, RetryConfig};
 
 #[derive(TypedBuilder)]
@@ -20,6 +22,7 @@ impl CheckContext for ValidatorAccount {
     async fn do_check(
         &self,
         sdk: &Sdk,
+        _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
     ) -> Result<(), StepError> {

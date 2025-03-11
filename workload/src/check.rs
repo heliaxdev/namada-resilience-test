@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use enum_dispatch::enum_dispatch;
@@ -6,7 +7,7 @@ use serde_json::json;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::types::{Balance, Height};
+use crate::types::{Alias, Balance, Fee, Height};
 use crate::utils::RetryConfig;
 
 pub mod account_exist;
@@ -129,6 +130,7 @@ pub trait CheckContext {
     async fn do_check(
         &self,
         sdk: &Sdk,
+        fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
     ) -> Result<(), StepError>;

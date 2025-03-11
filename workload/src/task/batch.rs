@@ -197,10 +197,9 @@ impl TaskContext for Batch {
         Ok(prepared_checks)
     }
 
-    fn update_state(&self, state: &mut State, _with_fee: bool) {
-        state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
+    fn update_state(&self, state: &mut State) {
         for task in &self.tasks {
-            task.update_state(state, false);
+            task.update_state(state);
         }
     }
 }

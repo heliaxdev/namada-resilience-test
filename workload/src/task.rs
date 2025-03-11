@@ -124,7 +124,7 @@ pub trait TaskContext {
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError>;
 
-    fn update_state(&self, state: &mut State, with_fee: bool);
+    fn update_state(&self, state: &mut State);
 
     fn update_stats(&self, state: &mut State) {
         state

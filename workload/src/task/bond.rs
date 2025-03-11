@@ -109,10 +109,7 @@ impl TaskContext for Bond {
         Ok(vec![check_bond, check_balance])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
+    fn update_state(&self, state: &mut State) {
         state.modify_bond(&self.source, &self.validator, self.amount);
     }
 }
