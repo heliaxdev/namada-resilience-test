@@ -145,10 +145,12 @@ async fn inner_main() -> Code {
     };
     tracing::info!("Built checks for {next_step}");
 
-    let execution_height = match workload_executor.execute(&tasks).await {
+    let (result, fees) = workload_executor.execute(&tasks).await;
+    workload_executor.pay_fees(fees);
+
+    let execution_height = match result {
         Ok(height) => height,
         Err(e) if matches!(e, StepError::Execution(_)) => {
-            workload_executor.update_failed_execution(&tasks); // remove fees
             return Code::ExecutionFailure(next_step, e);
         }
         Err(e) if matches!(e, StepError::Broadcast(_)) => {

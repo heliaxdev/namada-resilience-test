@@ -477,9 +477,9 @@ impl State {
         *self.balances.get_mut(target).unwrap() -= amount;
     }
 
-    pub fn modify_balance_fee(&mut self, source: &Alias, _gas_limit: u64) {
+    pub fn modify_balance_fee(&mut self, source: &Alias, fee: u64) {
         if !source.is_faucet() {
-            *self.balances.get_mut(source).unwrap() -= DEFAULT_FEE_IN_NATIVE_TOKEN;
+            *self.balances.get_mut(source).unwrap() -= fee;
         }
     }
 

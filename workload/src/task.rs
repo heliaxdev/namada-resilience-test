@@ -8,7 +8,7 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::types::{Alias, Height};
+use crate::types::{Alias, Fee, Height};
 use crate::utils;
 use crate::utils::RetryConfig;
 
@@ -109,8 +109,11 @@ pub trait TaskContext {
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError>;
 
     #[allow(async_fn_in_trait)]
-    async fn execute(&self, sdk: &Sdk) -> Result<Option<Height>, StepError> {
-        let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
+    async fn execute(&self, sdk: &Sdk) -> (Result<Height, StepError>, Fee) {
+        let (tx, signing_data, tx_args) = match self.build_tx(sdk).await {
+            Ok((tx, signing_data, tx_args)) => (tx, signing_data, tx_args),
+            Err(e) => return (Err(e), 0u64),
+        };
         utils::execute_tx(sdk, tx, signing_data, &tx_args).await
     }
 
@@ -129,11 +132,5 @@ pub trait TaskContext {
             .entry(self.name())
             .and_modify(|counter| *counter += 1)
             .or_insert(1);
-    }
-
-    fn update_failed_execution(&self, state: &mut State) {
-        if let Some(settings) = self.task_settings() {
-            state.modify_balance_fee(&settings.gas_payer, settings.gas_limit);
-        }
     }
 }
