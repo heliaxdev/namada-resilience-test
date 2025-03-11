@@ -68,6 +68,10 @@ impl Alias {
 
         Self { name }
     }
+
+    pub fn is_spending_key(&self) -> bool {
+        self.name.ends_with("-spending-key")
+    }
 }
 
 impl Serialize for Alias {

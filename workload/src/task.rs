@@ -8,7 +8,7 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::types::{Alias, Fee, Height};
+use crate::types::{Alias, Height};
 use crate::utils;
 use crate::utils::RetryConfig;
 
@@ -41,11 +41,20 @@ pub struct TaskSettings {
 }
 
 impl TaskSettings {
-    pub fn new(signers: BTreeSet<Alias>, gas_payer: Alias) -> Self {
+    pub fn new(signers: BTreeSet<Alias>) -> Self {
+        let gas_payer = signers.first().expect("at least one signer exists").clone();
         Self {
             signers,
             gas_payer,
-            gas_limit: DEFAULT_GAS_LIMIT * 2,
+            gas_limit: DEFAULT_GAS_LIMIT,
+        }
+    }
+
+    pub fn new_with_payer(signers: BTreeSet<Alias>, gas_payer: Alias) -> Self {
+        Self {
+            signers,
+            gas_payer,
+            gas_limit: DEFAULT_GAS_LIMIT,
         }
     }
 
@@ -53,7 +62,7 @@ impl TaskSettings {
         Self {
             signers: BTreeSet::from_iter(vec![Alias::faucet()]),
             gas_payer: Alias::faucet(),
-            gas_limit: DEFAULT_GAS_LIMIT * 2,
+            gas_limit: DEFAULT_GAS_LIMIT,
         }
     }
 
@@ -61,7 +70,7 @@ impl TaskSettings {
         Self {
             signers: BTreeSet::from_iter(vec![Alias::faucet()]),
             gas_payer: Alias::faucet(),
-            gas_limit: DEFAULT_GAS_LIMIT * size as u64 * 2,
+            gas_limit: DEFAULT_GAS_LIMIT * size as u64,
         }
     }
 }
@@ -109,11 +118,8 @@ pub trait TaskContext {
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError>;
 
     #[allow(async_fn_in_trait)]
-    async fn execute(&self, sdk: &Sdk) -> (Result<Height, StepError>, Fee) {
-        let (tx, signing_data, tx_args) = match self.build_tx(sdk).await {
-            Ok((tx, signing_data, tx_args)) => (tx, signing_data, tx_args),
-            Err(e) => return (Err(e), 0u64),
-        };
+    async fn execute(&self, sdk: &Sdk) -> Result<Height, StepError> {
+        let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
         utils::execute_tx(sdk, tx, signing_data, &tx_args).await
     }
 

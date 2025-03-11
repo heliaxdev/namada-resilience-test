@@ -7,7 +7,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::{Alias, ProposalVote};
+use crate::types::ProposalVote;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -45,7 +45,7 @@ impl StepContext for Vote {
             ProposalVote::Abstain
         };
 
-        let mut task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
+        let mut task_settings = TaskSettings::new(source_account.public_keys);
         task_settings.gas_limit *= 5;
 
         Ok(vec![Task::Vote(

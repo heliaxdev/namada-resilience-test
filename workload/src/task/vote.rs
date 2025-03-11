@@ -42,9 +42,6 @@ impl TaskContext for Vote {
         let source_address = wallet
             .find_address(&self.source.name)
             .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
-        let fee_payer = wallet
-            .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
 
         let mut vote_tx_builder = sdk.namada.new_proposal_vote(
             self.proposal_id,
@@ -52,7 +49,6 @@ impl TaskContext for Vote {
             source_address.into_owned(),
         );
         vote_tx_builder = vote_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        vote_tx_builder = vote_tx_builder.wrapper_fee_payer(fee_payer);
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {
             let public_key = wallet

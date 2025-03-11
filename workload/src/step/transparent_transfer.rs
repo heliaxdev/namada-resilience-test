@@ -7,7 +7,6 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -34,7 +33,7 @@ impl StepContext for TransparentTransfer {
         let amount_account = state.get_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
-        let task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
+        let task_settings = TaskSettings::new(source_account.public_keys);
 
         Ok(vec![Task::TransparentTransfer(
             task::transparent_transfer::TransparentTransfer::builder()

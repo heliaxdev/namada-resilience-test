@@ -10,7 +10,6 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -46,7 +45,7 @@ impl StepContext for Bond {
             .choose(&mut AntithesisRng)
             .expect("There is always at least a validator");
 
-        let task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
+        let task_settings = TaskSettings::new(source_account.public_keys);
 
         Ok(vec![Task::Bond(
             task::bond::Bond::builder()

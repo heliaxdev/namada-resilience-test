@@ -6,7 +6,6 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 #[derive(Clone, Debug, Default)]
@@ -24,7 +23,7 @@ impl StepContext for ReactivateValidator {
     async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let account = state.random_deactivated_validator(vec![], 1).pop().unwrap();
 
-        let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
+        let task_settings = TaskSettings::new(account.public_keys.clone());
 
         Ok(vec![Task::ReactivateValidator(
             task::reactivate_validator::ReactivateValidator::builder()

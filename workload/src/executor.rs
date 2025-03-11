@@ -122,7 +122,10 @@ impl WorkloadExecutor {
                     break;
                 }
             }
-            if let (Ok(_), _) = execute_reveal_pk(&self.sdk, faucet_public_key.clone()).await {
+            if execute_reveal_pk(&self.sdk, faucet_public_key.clone())
+                .await
+                .is_ok()
+            {
                 break;
             }
             tracing::warn!("Retry revealing faucet pk...");
@@ -195,11 +198,11 @@ impl WorkloadExecutor {
         for task in tasks {
             tracing::info!("Executing {task}...");
             let now = Instant::now();
-            let (execution_height, fee) = match task.execute(&self.sdk).await {
-                (Ok(height), fee) => (height, fee),
-                (Err(e), fee) => {
+            let execution_height = match task.execute(&self.sdk).await {
+                Ok(height) => height,
+                Err(e) => {
                     if let Some(settings) = task.task_settings() {
-                        fees.insert(settings.gas_payer.clone(), fee);
+                        fees.insert(settings.gas_payer.clone(), settings.gas_limit);
                     }
                     return (Err(e), fees);
                 }
@@ -208,7 +211,7 @@ impl WorkloadExecutor {
             total_time += now.elapsed().as_secs();
             heights.push(execution_height);
             if let Some(settings) = task.task_settings() {
-                fees.insert(settings.gas_payer.clone(), fee);
+                fees.insert(settings.gas_payer.clone(), settings.gas_limit);
             }
         }
         tracing::info!("Execution took {total_time}s...");

@@ -65,9 +65,6 @@ impl TaskContext for Unshielding {
                     native_token_alias.name
                 ))
             })?;
-        let fee_payer = wallet
-            .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
         let token_amount = token::Amount::from_u64(self.amount);
         let amount = InputAmount::Unvalidated(token::DenominatedAmount::native(token_amount));
 
@@ -77,25 +74,34 @@ impl TaskContext for Unshielding {
             amount,
         };
 
+        let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
+        let gas_spending_key = if disposable_gas_payer {
+            let spending_key = wallet
+                .find_spending_key(&self.settings.gas_payer.name, None)
+                .map_err(|e| StepError::Wallet(e.to_string()))?;
+            let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(spending_key);
+            Some(PseudoExtendedKey::from(tmp))
+        } else {
+            None
+        };
+
         let mut transfer_tx_builder = sdk.namada.new_unshielding_transfer(
             pseudo_spending_key_from_spending_key,
             vec![tx_transfer_data],
-            None,
-            false,
+            gas_spending_key,
+            disposable_gas_payer,
         );
-
         transfer_tx_builder =
             transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
-        let mut signing_keys = vec![];
-        for signer in &self.settings.signers {
-            let public_key = wallet
-                .find_public_key(&signer.name)
+        if !disposable_gas_payer {
+            let fee_payer = wallet
+                .find_public_key(&self.settings.gas_payer.name)
                 .map_err(|e| StepError::Wallet(e.to_string()))?;
-            signing_keys.push(public_key)
+            transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
         }
-        transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys);
         drop(wallet);
+
+        // signing key isn't needed for unshielding transfer
 
         let (transfer_tx, signing_data) = transfer_tx_builder
             .build(&sdk.namada, &mut bparams)

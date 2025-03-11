@@ -50,9 +50,6 @@ impl TaskContext for Redelegate {
             .find_address(&self.source.name)
             .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
         let token_amount = token::Amount::from_u64(self.amount);
-        let fee_payer = wallet
-            .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
         let from_validator =
             Address::from_str(&self.from_validator).expect("ValidatorAddress should be converted");
         let to_validator =
@@ -66,7 +63,6 @@ impl TaskContext for Redelegate {
         );
         redelegate_tx_builder =
             redelegate_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        redelegate_tx_builder = redelegate_tx_builder.wrapper_fee_payer(fee_payer);
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {
             let public_key = wallet

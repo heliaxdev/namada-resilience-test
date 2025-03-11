@@ -478,7 +478,9 @@ impl State {
     }
 
     pub fn modify_balance_fee(&mut self, source: &Alias, fee: u64) {
-        if !source.is_faucet() {
+        if source.is_spending_key() {
+            *self.masp_balances.get_mut(&source.base()).unwrap() -= fee;
+        } else if !source.is_faucet() {
             *self.balances.get_mut(source).unwrap() -= fee;
         }
     }

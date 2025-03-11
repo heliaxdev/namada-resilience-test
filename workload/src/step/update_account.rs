@@ -37,7 +37,7 @@ impl StepContext for UpdateAccount {
             .map(|account| account.alias)
             .collect::<BTreeSet<Alias>>();
 
-        let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
+        let task_settings = TaskSettings::new(account.public_keys.clone());
 
         Ok(vec![Task::UpdateAccount(
             task::update_account::UpdateAccount::builder()

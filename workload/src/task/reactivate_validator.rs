@@ -37,9 +37,6 @@ impl TaskContext for ReactivateValidator {
         let target_address = wallet
             .find_address(&self.target.name)
             .ok_or_else(|| StepError::Wallet(format!("No target address: {}", self.target.name)))?;
-        let fee_payer = wallet
-            .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
 
         let mut reactivate_validator_builder_tx = sdk
             .namada
@@ -47,8 +44,6 @@ impl TaskContext for ReactivateValidator {
 
         reactivate_validator_builder_tx =
             reactivate_validator_builder_tx.gas_limit(GasLimit::from(self.settings.gas_limit));
-        reactivate_validator_builder_tx =
-            reactivate_validator_builder_tx.wrapper_fee_payer(fee_payer);
 
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {

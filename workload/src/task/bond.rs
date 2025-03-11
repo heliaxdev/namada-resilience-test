@@ -49,9 +49,6 @@ impl TaskContext for Bond {
             .find_address(&self.source.name)
             .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
         let token_amount = token::Amount::from_u64(self.amount);
-        let fee_payer = wallet
-            .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
         let validator =
             Address::from_str(&self.validator).expect("ValidatorAddress should be converted");
 
@@ -60,7 +57,6 @@ impl TaskContext for Bond {
             .new_bond(validator, token_amount)
             .source(source_address.into_owned());
         bond_tx_builder = bond_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        bond_tx_builder = bond_tx_builder.wrapper_fee_payer(fee_payer);
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {
             let public_key = wallet

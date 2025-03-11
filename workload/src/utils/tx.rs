@@ -15,11 +15,11 @@ use namada_sdk::tx::{
 };
 use namada_sdk::Namada;
 
-use crate::constants::{DEFAULT_GAS_LIMIT, DEFAULT_GAS_PRICE, NATIVE_SCALE};
+use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::task::TaskSettings;
-use crate::types::{Alias, Fee, Height};
+use crate::types::{Alias, Height};
 
 fn get_tx_errors(
     cmts: HashSet<TxCommitments>,
@@ -91,7 +91,7 @@ pub async fn build_reveal_pk(
 ) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
     let wallet = sdk.namada.wallet.read().await;
     let fee_payer = wallet
-        .find_public_key("faucet")
+        .find_public_key(Alias::faucet().name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
     drop(wallet);
 
@@ -113,11 +113,8 @@ pub async fn build_reveal_pk(
 pub async fn execute_reveal_pk(
     sdk: &Sdk,
     public_key: common::PublicKey,
-) -> (Result<Height, StepError>, Fee) {
-    let (tx, signing_data, tx_args) = match build_reveal_pk(sdk, public_key).await {
-        Ok((tx, signing_data, tx_args)) => (tx, signing_data, tx_args),
-        Err(e) => return (Err(e), 0u64),
-    };
+) -> Result<Height, StepError> {
+    let (tx, signing_data, tx_args) = build_reveal_pk(sdk, public_key).await?;
 
     execute_tx(sdk, tx, signing_data, &tx_args).await
 }
@@ -168,7 +165,7 @@ pub(crate) async fn execute_tx(
     tx: Tx,
     signing_datas: Vec<SigningTxData>,
     tx_args: &args::Tx,
-) -> (Result<Height, StepError>, Fee) {
+) -> Result<Height, StepError> {
     let mut tx = tx;
 
     do_sign_tx(sdk, &mut tx, signing_datas, tx_args).await;
@@ -184,27 +181,21 @@ pub(crate) async fn execute_tx(
     let tx_response = match sdk.namada.submit(tx, tx_args).await {
         Ok(response) => response,
         Err(NamadaError::Tx(TxSubmitError::AppliedTimeout)) => {
-            match retry_tx_status_check(sdk, tx_args, &tx_hash, wrapper_hash, &cmts).await {
-                Ok(res) => res,
-                Err(e) => return (Err(e), 0u64),
-            }
+            retry_tx_status_check(sdk, tx_args, &tx_hash, wrapper_hash, &cmts).await?
         }
-        Err(e) => return (Err(StepError::Broadcast(e)), 0u64),
+        Err(e) => return Err(StepError::Broadcast(e)),
     };
 
-    let (height, fee) = if let ProcessTxResponse::Applied(TxResponse {
+    let height = if let ProcessTxResponse::Applied(TxResponse {
         height, gas_used, ..
     }) = tx_response
     {
-        let fee = u64::from(gas_used) * (DEFAULT_GAS_PRICE * NATIVE_SCALE as f64) as u64;
-        (height, fee)
+        tracing::info!("Used gas: {gas_used}");
+        height
     } else {
-        return (
-            Err(StepError::Execution(format!(
-                "Unexpected tx response type: {tx_response:?}"
-            ))),
-            0u64,
-        );
+        return Err(StepError::Execution(format!(
+            "Unexpected tx response type: {tx_response:?}"
+        )));
     };
 
     if tx_response
@@ -212,10 +203,10 @@ pub(crate) async fn execute_tx(
         .is_none()
     {
         let errors = get_tx_errors(cmts, wrapper_hash, &tx_response).unwrap_or_default();
-        return (Err(StepError::Execution(errors)), fee);
+        return Err(StepError::Execution(errors));
     }
 
-    (Ok(height.0), fee)
+    Ok(height.0)
 }
 
 async fn do_sign_tx(sdk: &Sdk, tx: &mut Tx, signing_datas: Vec<SigningTxData>, tx_args: &args::Tx) {
