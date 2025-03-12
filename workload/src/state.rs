@@ -8,7 +8,7 @@ use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::constants::{DEFAULT_FEE_IN_NATIVE_TOKEN, MIN_TRANSFER_BALANCE};
+use crate::constants::MIN_TRANSFER_BALANCE;
 use crate::types::{Alias, Epoch};
 
 #[derive(Error, Debug)]
@@ -194,17 +194,6 @@ impl State {
             .filter(|(_, balance)| **balance >= min_balance)
             .count()
             >= sample
-    }
-
-    pub fn any_account_can_pay_fees(&self) -> bool {
-        self.balances.iter().any(|(alias, balance)| {
-            if balance >= &DEFAULT_FEE_IN_NATIVE_TOKEN {
-                let account = self.accounts.get(alias).expect("Alias should exist.");
-                account.is_implicit()
-            } else {
-                false
-            }
-        })
     }
 
     pub fn any_account_can_make_transfer(&self) -> bool {

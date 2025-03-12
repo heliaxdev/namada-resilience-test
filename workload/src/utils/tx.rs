@@ -129,10 +129,13 @@ pub async fn merge_tx(
     }
     let tx_args = default_tx_arg(sdk).await;
 
-    let wallet = sdk.namada.wallet.read().await;
+    let mut wallet = sdk.namada.wallet.write().await;
 
     let faucet_alias = Alias::faucet();
-    let gas_payer = wallet
+    let gas_payer_sk = wallet
+        .find_secret_key(&faucet_alias.name, None)
+        .map_err(|e| StepError::Wallet(e.to_string()))?;
+    let gas_payer_pk = wallet
         .find_public_key(faucet_alias.name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
     drop(wallet);
@@ -147,15 +150,16 @@ pub async fn merge_tx(
 
         let mut wrapper = tx.header.wrapper().expect("wrapper should exist");
         wrapper.gas_limit = GasLimit::from(settings.gas_limit);
-        wrapper.pk = gas_payer.clone();
+        wrapper.pk = gas_payer_pk.clone();
         tx.header.tx_type = TxType::Wrapper(Box::new(wrapper));
+        tx.sign_wrapper(gas_payer_sk);
 
         (tx, signing_datas)
     };
 
     tracing::info!("Built batch with {} txs.", txs.len());
 
-    let tx_args = tx_args.wrapper_fee_payer(gas_payer).force(true);
+    let tx_args = tx_args.wrapper_fee_payer(gas_payer_pk);
 
     Ok((tx, signing_datas, tx_args))
 }
