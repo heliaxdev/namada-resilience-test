@@ -12,7 +12,6 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -64,7 +63,8 @@ impl StepContext for Redelegate {
             return Ok(vec![]);
         };
 
-        let mut task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
+        let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
+        let mut task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
         task_settings.gas_limit *= 5;
 
         Ok(vec![Task::Redelegate(

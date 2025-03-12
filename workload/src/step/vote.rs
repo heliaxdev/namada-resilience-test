@@ -45,8 +45,8 @@ impl StepContext for Vote {
             ProposalVote::Abstain
         };
 
-        let mut task_settings =
-            TaskSettings::new(source_account.public_keys, source_account.alias.clone());
+        let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
+        let mut task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
         task_settings.gas_limit *= 5;
 
         Ok(vec![Task::Vote(

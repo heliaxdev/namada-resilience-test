@@ -33,8 +33,8 @@ impl StepContext for TransparentTransfer {
         let amount_account = state.get_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
-        let task_settings =
-            TaskSettings::new(source_account.public_keys, source_account.alias.clone());
+        let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
+        let task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
 
         Ok(vec![Task::TransparentTransfer(
             task::transparent_transfer::TransparentTransfer::builder()

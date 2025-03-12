@@ -6,7 +6,6 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -32,7 +31,8 @@ impl StepContext for ChangeMetadata {
         let description = utils::get_random_string(30);
         let avatar = utils::get_random_string(20);
 
-        let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
+        let gas_payer = utils::get_gas_payer(account.public_keys.iter(), state);
+        let task_settings = TaskSettings::new(account.public_keys, gas_payer);
 
         Ok(vec![Task::ChangeMetadata(
             task::change_metadata::ChangeMetadata::builder()

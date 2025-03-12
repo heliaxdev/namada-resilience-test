@@ -47,8 +47,8 @@ impl StepContext for DefaultProposal {
             end_epoch + 5,
         );
 
-        let task_settings =
-            TaskSettings::new(source_account.public_keys, source_account.alias.clone());
+        let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
+        let task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
 
         Ok(vec![Task::DefaultProposal(
             task::default_proposal::DefaultProposal::builder()
