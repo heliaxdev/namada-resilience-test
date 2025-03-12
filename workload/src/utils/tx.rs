@@ -129,12 +129,8 @@ pub async fn merge_tx(
     }
     let tx_args = default_tx_arg(sdk).await;
 
-    let mut wallet = sdk.namada.wallet.write().await;
-
+    let wallet = sdk.namada.wallet.read().await;
     let faucet_alias = Alias::faucet();
-    let gas_payer_sk = wallet
-        .find_secret_key(&faucet_alias.name, None)
-        .map_err(|e| StepError::Wallet(e.to_string()))?;
     let gas_payer_pk = wallet
         .find_public_key(faucet_alias.name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
@@ -152,7 +148,6 @@ pub async fn merge_tx(
         wrapper.gas_limit = GasLimit::from(settings.gas_limit);
         wrapper.pk = gas_payer_pk.clone();
         tx.header.tx_type = TxType::Wrapper(Box::new(wrapper));
-        tx.sign_wrapper(gas_payer_sk);
 
         (tx, signing_datas)
     };
@@ -172,7 +167,17 @@ pub(crate) async fn execute_tx(
 ) -> Result<Height, StepError> {
     let mut tx = tx;
 
+    let is_batch = signing_datas.len() > 1;
     do_sign_tx(sdk, &mut tx, signing_datas, tx_args).await;
+    if is_batch {
+        let gas_payer_sk = sdk
+            .namada
+            .wallet_mut()
+            .await
+            .find_secret_key(Alias::faucet().name, None)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
+        tx.sign_wrapper(gas_payer_sk);
+    }
 
     let first_cmt = tx
         .first_commitments()
