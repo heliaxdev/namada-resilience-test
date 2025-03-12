@@ -110,10 +110,7 @@ impl TaskContext for DefaultProposal {
         )])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
+    fn update_state(&self, state: &mut State) {
         state.decrease_balance(&self.source, PROPOSAL_DEPOSIT);
         state.add_proposal(self.start_epoch, self.end_epoch);
     }

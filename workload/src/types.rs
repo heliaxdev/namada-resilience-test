@@ -68,6 +68,10 @@ impl Alias {
 
         Self { name }
     }
+
+    pub fn is_spending_key(&self) -> bool {
+        self.name.ends_with("-spending-key")
+    }
 }
 
 impl Serialize for Alias {
@@ -134,3 +138,4 @@ pub type ProposalId = u64;
 pub type ProposalVote = namada_sdk::governance::ProposalVote;
 pub type Height = u64;
 pub type Balance = namada_sdk::token::Amount;
+pub type Fee = u64;

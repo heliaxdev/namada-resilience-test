@@ -93,10 +93,7 @@ impl TaskContext for InitAccount {
         )])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
+    fn update_state(&self, state: &mut State) {
         state.add_enstablished_account(&self.target, &self.sources, self.threshold);
     }
 }

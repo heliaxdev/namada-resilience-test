@@ -67,9 +67,6 @@ impl TaskContext for ShieldedTransfer {
             })?;
         let token_amount = token::Amount::from_u64(self.amount);
         let amount = InputAmount::Unvalidated(token::DenominatedAmount::native(token_amount));
-        let fee_payer = wallet
-            .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
         let tx_transfer_data = TxShieldedTransferData {
             source: pseudo_spending_key_from_spending_key,
             target: target_payment_address,
@@ -77,22 +74,33 @@ impl TaskContext for ShieldedTransfer {
             amount,
         };
 
-        // FIXME review the gaspayer
-        let mut transfer_tx_builder =
-            sdk.namada
-                .new_shielded_transfer(vec![tx_transfer_data], None, false);
+        let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
+        let gas_spending_key = if disposable_gas_payer {
+            let spending_key = wallet
+                .find_spending_key(&self.settings.gas_payer.name, None)
+                .map_err(|e| StepError::Wallet(e.to_string()))?;
+            let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(spending_key);
+            Some(PseudoExtendedKey::from(tmp))
+        } else {
+            None
+        };
+
+        let mut transfer_tx_builder = sdk.namada.new_shielded_transfer(
+            vec![tx_transfer_data],
+            gas_spending_key,
+            disposable_gas_payer,
+        );
         transfer_tx_builder =
             transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
-        let mut signing_keys = vec![];
-        for signer in &self.settings.signers {
-            let public_key = wallet
-                .find_public_key(&signer.name)
+        if !disposable_gas_payer {
+            let fee_payer = wallet
+                .find_public_key(&self.settings.gas_payer.name)
                 .map_err(|e| StepError::Wallet(e.to_string()))?;
-            signing_keys.push(public_key)
+            transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
         }
-        transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys);
         drop(wallet);
+
+        // signing key isn't needed for shielded transfer
 
         let (transfer_tx, signing_data) = transfer_tx_builder
             .build(&sdk.namada, &mut bparams)
@@ -134,10 +142,7 @@ impl TaskContext for ShieldedTransfer {
         Ok(vec![source_check, target_check])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
+    fn update_state(&self, state: &mut State) {
         state.modify_shielded_transfer(&self.source, &self.target, self.amount);
     }
 }

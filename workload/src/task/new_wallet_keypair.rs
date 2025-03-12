@@ -111,7 +111,7 @@ impl TaskContext for NewWalletKeyPair {
         )])
     }
 
-    fn update_state(&self, state: &mut State, _with_fee: bool) {
+    fn update_state(&self, state: &mut State) {
         state.add_implicit_account(&self.source);
     }
 }

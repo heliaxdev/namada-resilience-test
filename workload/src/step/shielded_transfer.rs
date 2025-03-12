@@ -3,13 +3,13 @@ use std::collections::BTreeSet;
 use serde_json::json;
 
 use crate::code::Code;
-use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
+use crate::constants::{DEFAULT_FEE, MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
+use crate::step::utils::coin_flip;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -38,10 +38,15 @@ impl StepContext for ShieldedTransfer {
         let amount_account = state.get_shielded_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
-        //FIXME Review the signers
-        let task_settings = TaskSettings::new(
-            BTreeSet::from([source_account.alias.clone()]),
-            Alias::faucet(),
+        let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
+        let disposable_gas_payer = transparent_source_balance < DEFAULT_FEE || coin_flip(0.5);
+        let task_settings = TaskSettings::new_with_payer(
+            BTreeSet::from([source_account.alias.base()]),
+            if disposable_gas_payer {
+                source_account.alias.spending_key()
+            } else {
+                source_account.alias.base()
+            },
         );
 
         Ok(vec![Task::ShieldedTransfer(

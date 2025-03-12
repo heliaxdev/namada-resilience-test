@@ -32,7 +32,8 @@ impl StepContext for ChangeMetadata {
         let description = utils::get_random_string(30);
         let avatar = utils::get_random_string(20);
 
-        let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
+        let task_settings =
+            TaskSettings::new_with_payer(account.public_keys.clone(), Alias::faucet());
 
         Ok(vec![Task::ChangeMetadata(
             task::change_metadata::ChangeMetadata::builder()

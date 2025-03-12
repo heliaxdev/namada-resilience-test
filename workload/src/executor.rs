@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Instant;
 
 use namada_sdk::rpc;
@@ -9,7 +10,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
-use crate::types::{Alias, Epoch, Height};
+use crate::types::{Alias, Epoch, Fee, Height};
 use crate::utils::{execute_reveal_pk, retry_config};
 
 #[derive(Error, Debug)]
@@ -121,7 +122,10 @@ impl WorkloadExecutor {
                     break;
                 }
             }
-            if let Ok(Some(_)) = execute_reveal_pk(&self.sdk, faucet_public_key.clone()).await {
+            if execute_reveal_pk(&self.sdk, faucet_public_key.clone())
+                .await
+                .is_ok()
+            {
                 break;
             }
             tracing::warn!("Retry revealing faucet pk...");
@@ -155,7 +159,8 @@ impl WorkloadExecutor {
     pub async fn checks(
         &self,
         checks: Vec<Check>,
-        execution_height: Option<u64>,
+        execution_height: Height,
+        fees: &HashMap<Alias, Fee>,
     ) -> Result<(), StepError> {
         let retry_config = retry_config();
 
@@ -163,16 +168,13 @@ impl WorkloadExecutor {
             return Ok(());
         }
 
-        let Some(execution_height) = execution_height else {
-            return Ok(());
-        };
-
         let check_height = self.fetch_current_block_height().await;
         for check in checks {
             tracing::info!("Running {check} check...");
             check
                 .do_check(
                     &self.sdk,
+                    fees,
                     CheckInfo {
                         execution_height,
                         check_height,
@@ -185,23 +187,36 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub async fn execute(&self, tasks: &[Task]) -> Result<Option<Height>, StepError> {
+    pub async fn execute(
+        &self,
+        tasks: &[Task],
+    ) -> (Result<Height, StepError>, HashMap<Alias, Fee>) {
         let mut total_time = 0;
         let mut heights = vec![];
+        let mut fees = HashMap::new();
 
         for task in tasks {
             tracing::info!("Executing {task}...");
             let now = Instant::now();
-            let execution_height = task.execute(&self.sdk).await?;
+            let execution_height = match task.execute(&self.sdk).await {
+                Ok(height) => height,
+                Err(e) => {
+                    if let Some(settings) = task.task_settings() {
+                        fees.insert(settings.gas_payer.clone(), settings.gas_limit);
+                    }
+                    return (Err(e), fees);
+                }
+            };
 
             total_time += now.elapsed().as_secs();
             heights.push(execution_height);
+            if let Some(settings) = task.task_settings() {
+                fees.insert(settings.gas_payer.clone(), settings.gas_limit);
+            }
         }
         tracing::info!("Execution took {total_time}s...");
 
-        let Some(execution_height) = heights.into_iter().flatten().max() else {
-            return Ok(None);
-        };
+        let execution_height = heights.into_iter().max().unwrap_or_default();
         // wait for the execution block settling
         loop {
             let current_height = self.fetch_current_block_height().await;
@@ -217,21 +232,17 @@ impl WorkloadExecutor {
             sleep(Duration::from_secs(2)).await
         }
 
-        Ok(Some(execution_height))
+        (Ok(execution_height), fees)
     }
 
     pub async fn post_execute(
         &mut self,
         tasks: &[Task],
-        execution_height: Option<Height>,
+        execution_height: Height,
     ) -> Result<(), StepError> {
-        let Some(height) = execution_height else {
-            return Ok(());
-        };
-
         for task in tasks {
             // update state
-            task.update_state(&mut self.state, true);
+            task.update_state(&mut self.state);
             task.update_stats(&mut self.state);
 
             match task {
@@ -249,7 +260,7 @@ impl WorkloadExecutor {
                         .expect("Balance conversion shouldn't fail");
                     self.state.overwrite_balance(cr.source(), balance);
 
-                    let claimed_epoch = self.fetch_epoch_at_height(height).await;
+                    let claimed_epoch = self.fetch_epoch_at_height(execution_height).await;
                     self.state.set_claimed_epoch(cr.source(), claimed_epoch);
                 }
                 Task::InitAccount(_) => {
@@ -265,9 +276,8 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub fn update_failed_execution(&mut self, tasks: &[Task]) {
-        for task in tasks {
-            task.update_failed_execution(&mut self.state);
-        }
+    pub fn pay_fees(&mut self, fees: &HashMap<Alias, Fee>) {
+        fees.iter()
+            .for_each(|(payer, fee)| self.state.modify_balance_fee(payer, *fee));
     }
 }

@@ -64,7 +64,8 @@ impl StepContext for Redelegate {
             return Ok(vec![]);
         };
 
-        let mut task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
+        let mut task_settings =
+            TaskSettings::new_with_payer(source_account.public_keys, Alias::faucet());
         task_settings.gas_limit *= 5;
 
         Ok(vec![Task::Redelegate(

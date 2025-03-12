@@ -153,10 +153,7 @@ impl TaskContext for BecomeValidator {
         )])
     }
 
-    fn update_state(&self, state: &mut State, with_fee: bool) {
-        if with_fee {
-            state.modify_balance_fee(&self.settings.gas_payer, self.settings.gas_limit);
-        }
+    fn update_state(&self, state: &mut State) {
         state.set_enstablished_as_validator(&self.source)
     }
 }

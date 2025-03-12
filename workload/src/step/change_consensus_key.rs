@@ -29,7 +29,8 @@ impl StepContext for ChangeConsensusKey {
         let random_alias = utils::random_alias();
         let consensus_key_alias = format!("{}-consensus", random_alias.name);
 
-        let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
+        let task_settings =
+            TaskSettings::new_with_payer(account.public_keys.clone(), Alias::faucet());
 
         Ok(vec![Task::ChangeConsensusKey(
             task::change_consensus_key::ChangeConsensusKey::builder()

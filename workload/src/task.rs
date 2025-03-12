@@ -41,11 +41,20 @@ pub struct TaskSettings {
 }
 
 impl TaskSettings {
-    pub fn new(signers: BTreeSet<Alias>, gas_payer: Alias) -> Self {
+    pub fn new(signers: BTreeSet<Alias>) -> Self {
+        let gas_payer = signers.first().expect("at least one signer exists").clone();
         Self {
             signers,
             gas_payer,
-            gas_limit: DEFAULT_GAS_LIMIT * 2,
+            gas_limit: DEFAULT_GAS_LIMIT,
+        }
+    }
+
+    pub fn new_with_payer(signers: BTreeSet<Alias>, gas_payer: Alias) -> Self {
+        Self {
+            signers,
+            gas_payer,
+            gas_limit: DEFAULT_GAS_LIMIT,
         }
     }
 
@@ -53,7 +62,7 @@ impl TaskSettings {
         Self {
             signers: BTreeSet::from_iter(vec![Alias::faucet()]),
             gas_payer: Alias::faucet(),
-            gas_limit: DEFAULT_GAS_LIMIT * 2,
+            gas_limit: DEFAULT_GAS_LIMIT,
         }
     }
 
@@ -61,7 +70,7 @@ impl TaskSettings {
         Self {
             signers: BTreeSet::from_iter(vec![Alias::faucet()]),
             gas_payer: Alias::faucet(),
-            gas_limit: DEFAULT_GAS_LIMIT * size as u64 * 2,
+            gas_limit: DEFAULT_GAS_LIMIT * size as u64,
         }
     }
 }
@@ -109,7 +118,7 @@ pub trait TaskContext {
     async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError>;
 
     #[allow(async_fn_in_trait)]
-    async fn execute(&self, sdk: &Sdk) -> Result<Option<Height>, StepError> {
+    async fn execute(&self, sdk: &Sdk) -> Result<Height, StepError> {
         let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
         utils::execute_tx(sdk, tx, signing_data, &tx_args).await
     }
@@ -121,7 +130,7 @@ pub trait TaskContext {
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, StepError>;
 
-    fn update_state(&self, state: &mut State, with_fee: bool);
+    fn update_state(&self, state: &mut State);
 
     fn update_stats(&self, state: &mut State) {
         state
@@ -129,11 +138,5 @@ pub trait TaskContext {
             .entry(self.name())
             .and_modify(|counter| *counter += 1)
             .or_insert(1);
-    }
-
-    fn update_failed_execution(&self, state: &mut State) {
-        if let Some(settings) = self.task_settings() {
-            state.modify_balance_fee(&settings.gas_payer, settings.gas_limit);
-        }
     }
 }

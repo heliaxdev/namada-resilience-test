@@ -8,7 +8,6 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -34,7 +33,7 @@ impl StepContext for Unbond {
             .await
             .map_err(StepError::Rpc)?;
 
-        let mut task_settings = TaskSettings::new(source_account.public_keys, Alias::faucet());
+        let mut task_settings = TaskSettings::new(source_account.public_keys);
         task_settings.gas_limit *= 3;
 
         Ok(vec![Task::Unbond(

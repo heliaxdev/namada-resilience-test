@@ -39,7 +39,8 @@ impl StepContext for BecomeValidator {
 
         let account = state.random_enstablished_account(vec![], 1).pop().unwrap();
 
-        let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
+        let task_settings =
+            TaskSettings::new_with_payer(account.public_keys.clone(), Alias::faucet());
 
         Ok(vec![Task::BecomeValidator(
             task::become_validator::BecomeValidator::builder()

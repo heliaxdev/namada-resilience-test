@@ -19,7 +19,7 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::task::TaskSettings;
-use crate::types::Alias;
+use crate::types::{Alias, Height};
 
 fn get_tx_errors(
     cmts: HashSet<TxCommitments>,
@@ -91,7 +91,7 @@ pub async fn build_reveal_pk(
 ) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
     let wallet = sdk.namada.wallet.read().await;
     let fee_payer = wallet
-        .find_public_key("faucet")
+        .find_public_key(Alias::faucet().name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
     drop(wallet);
 
@@ -113,7 +113,7 @@ pub async fn build_reveal_pk(
 pub async fn execute_reveal_pk(
     sdk: &Sdk,
     public_key: common::PublicKey,
-) -> Result<Option<u64>, StepError> {
+) -> Result<Height, StepError> {
     let (tx, signing_data, tx_args) = build_reveal_pk(sdk, public_key).await?;
 
     execute_tx(sdk, tx, signing_data, &tx_args).await
@@ -130,9 +130,8 @@ pub async fn merge_tx(
     let tx_args = default_tx_arg(sdk).await;
 
     let wallet = sdk.namada.wallet.read().await;
-
     let faucet_alias = Alias::faucet();
-    let gas_payer = wallet
+    let gas_payer_pk = wallet
         .find_public_key(faucet_alias.name)
         .map_err(|e| StepError::Wallet(e.to_string()))?;
     drop(wallet);
@@ -147,7 +146,7 @@ pub async fn merge_tx(
 
         let mut wrapper = tx.header.wrapper().expect("wrapper should exist");
         wrapper.gas_limit = GasLimit::from(settings.gas_limit);
-        wrapper.pk = gas_payer.clone();
+        wrapper.pk = gas_payer_pk.clone();
         tx.header.tx_type = TxType::Wrapper(Box::new(wrapper));
 
         (tx, signing_datas)
@@ -155,7 +154,7 @@ pub async fn merge_tx(
 
     tracing::info!("Built batch with {} txs.", txs.len());
 
-    let tx_args = tx_args.wrapper_fee_payer(gas_payer).force(true);
+    let tx_args = tx_args.wrapper_fee_payer(gas_payer_pk);
 
     Ok((tx, signing_datas, tx_args))
 }
@@ -165,10 +164,20 @@ pub(crate) async fn execute_tx(
     tx: Tx,
     signing_datas: Vec<SigningTxData>,
     tx_args: &args::Tx,
-) -> Result<Option<u64>, StepError> {
+) -> Result<Height, StepError> {
     let mut tx = tx;
 
+    let is_batch = signing_datas.len() > 1;
     do_sign_tx(sdk, &mut tx, signing_datas, tx_args).await;
+    if is_batch {
+        let gas_payer_sk = sdk
+            .namada
+            .wallet_mut()
+            .await
+            .find_secret_key(Alias::faucet().name, None)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
+        tx.sign_wrapper(gas_payer_sk);
+    }
 
     let first_cmt = tx
         .first_commitments()
@@ -186,6 +195,18 @@ pub(crate) async fn execute_tx(
         Err(e) => return Err(StepError::Broadcast(e)),
     };
 
+    let height = if let ProcessTxResponse::Applied(TxResponse {
+        height, gas_used, ..
+    }) = tx_response
+    {
+        tracing::info!("Used gas: {gas_used}");
+        height
+    } else {
+        return Err(StepError::Execution(format!(
+            "Unexpected tx response type: {tx_response:?}"
+        )));
+    };
+
     if tx_response
         .is_applied_and_valid(wrapper_hash.as_ref(), &first_cmt)
         .is_none()
@@ -194,11 +215,7 @@ pub(crate) async fn execute_tx(
         return Err(StepError::Execution(errors));
     }
 
-    if let ProcessTxResponse::Applied(TxResponse { height, .. }) = tx_response {
-        Ok(Some(height.0))
-    } else {
-        Ok(None)
-    }
+    Ok(height.0)
 }
 
 async fn do_sign_tx(sdk: &Sdk, tx: &mut Tx, signing_datas: Vec<SigningTxData>, tx_args: &args::Tx) {

@@ -39,7 +39,7 @@ impl StepContext for InitAccount {
             .map(|account| account.alias)
             .collect::<BTreeSet<Alias>>();
 
-        let task_settings = TaskSettings::new(source_aliases.clone(), Alias::faucet());
+        let task_settings = TaskSettings::new_with_payer(source_aliases.clone(), Alias::faucet());
 
         Ok(vec![Task::InitAccount(
             task::init_account::InitAccount::builder()
