@@ -50,12 +50,17 @@ impl TaskContext for UpdateAccount {
             public_keys.push(source_pk);
         }
 
+        let fee_payer = wallet
+            .find_public_key(&self.settings.gas_payer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
+
         let mut update_account_builder =
             sdk.namada
                 .new_update_account(target.into_owned(), public_keys, self.threshold as u8);
 
         update_account_builder =
             update_account_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
+        update_account_builder = update_account_builder.wrapper_fee_payer(fee_payer);
 
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {

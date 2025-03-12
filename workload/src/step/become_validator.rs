@@ -6,6 +6,7 @@ use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{self, Task, TaskSettings};
+use crate::types::Alias;
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -38,7 +39,8 @@ impl StepContext for BecomeValidator {
 
         let account = state.random_enstablished_account(vec![], 1).pop().unwrap();
 
-        let task_settings = TaskSettings::new(account.public_keys.clone());
+        let task_settings =
+            TaskSettings::new_with_payer(account.public_keys.clone(), Alias::faucet());
 
         Ok(vec![Task::BecomeValidator(
             task::become_validator::BecomeValidator::builder()

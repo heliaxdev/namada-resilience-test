@@ -42,6 +42,9 @@ impl TaskContext for ChangeMetadata {
         let source_address = wallet
             .find_address(&self.source.name)
             .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
+        let fee_payer = wallet
+            .find_public_key(&self.settings.gas_payer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
 
         let mut change_metadata_tx_builder = sdk
             .namada
@@ -54,6 +57,7 @@ impl TaskContext for ChangeMetadata {
 
         change_metadata_tx_builder =
             change_metadata_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
+        change_metadata_tx_builder = change_metadata_tx_builder.wrapper_fee_payer(fee_payer);
 
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {

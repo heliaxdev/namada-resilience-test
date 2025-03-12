@@ -49,6 +49,9 @@ impl TaskContext for ClaimRewards {
         let source_address = wallet
             .find_address(&self.source.name)
             .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
+        let fee_payer = wallet
+            .find_public_key(&self.settings.gas_payer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         let from_validator =
             Address::from_str(&self.from_validator).expect("ValidatorAddress should be converted");
 
@@ -56,6 +59,7 @@ impl TaskContext for ClaimRewards {
         claim_rewards_tx_builder.source = Some(source_address.into_owned());
         claim_rewards_tx_builder =
             claim_rewards_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
+        claim_rewards_tx_builder = claim_rewards_tx_builder.wrapper_fee_payer(fee_payer);
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {
             let public_key = wallet

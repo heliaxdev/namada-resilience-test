@@ -47,6 +47,10 @@ impl TaskContext for InitAccount {
             public_keys.push(source_pk);
         }
 
+        let fee_payer = wallet
+            .find_public_key(&self.settings.gas_payer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
+
         let mut init_account_builder = sdk
             .namada
             .new_init_account(public_keys, Some(self.threshold as u8))
@@ -55,6 +59,7 @@ impl TaskContext for InitAccount {
 
         init_account_builder =
             init_account_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
+        init_account_builder = init_account_builder.wrapper_fee_payer(fee_payer);
 
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {

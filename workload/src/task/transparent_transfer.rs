@@ -57,6 +57,9 @@ impl TaskContext for TransparentTransfer {
                     native_token_alias.name
                 ))
             })?;
+        let fee_payer = wallet
+            .find_public_key(&self.settings.gas_payer.name)
+            .map_err(|e| StepError::Wallet(e.to_string()))?;
         let token_amount = token::Amount::from_u64(self.amount);
 
         let tx_transfer_data = TxTransparentTransferData {
@@ -69,6 +72,7 @@ impl TaskContext for TransparentTransfer {
         let mut transfer_tx_builder = sdk.namada.new_transparent_transfer(vec![tx_transfer_data]);
         transfer_tx_builder =
             transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
+        transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
         let mut signing_keys = vec![];
         for signer in &self.settings.signers {
             let public_key = wallet
