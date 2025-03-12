@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use serde_json::json;
 
 use crate::code::Code;
-use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
+use crate::constants::{DEFAULT_FEE, MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -38,7 +38,8 @@ impl StepContext for ShieldedTransfer {
         let amount_account = state.get_shielded_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
-        let disposable_gas_payer = coin_flip(0.5);
+        let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
+        let disposable_gas_payer = transparent_source_balance < DEFAULT_FEE || coin_flip(0.5);
         let task_settings = TaskSettings::new_with_payer(
             BTreeSet::from([source_account.alias.base()]),
             if disposable_gas_payer {
