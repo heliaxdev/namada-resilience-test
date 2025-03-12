@@ -47,7 +47,8 @@ impl StepContext for DefaultProposal {
             end_epoch + 5,
         );
 
-        let task_settings = TaskSettings::new(source_account.public_keys);
+        let task_settings =
+            TaskSettings::new(source_account.public_keys, source_account.alias.clone());
 
         Ok(vec![Task::DefaultProposal(
             task::default_proposal::DefaultProposal::builder()

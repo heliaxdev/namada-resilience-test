@@ -48,7 +48,8 @@ impl StepContext for ClaimRewards {
                 .expect("Amount conversion shouldn't fail")
         };
 
-        let mut task_settings = TaskSettings::new(source_account.public_keys);
+        let mut task_settings =
+            TaskSettings::new(source_account.public_keys, source_account.alias.clone());
         task_settings.gas_limit *= 5;
 
         Ok(vec![Task::ClaimRewards(

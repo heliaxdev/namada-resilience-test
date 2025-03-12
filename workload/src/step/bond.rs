@@ -45,7 +45,8 @@ impl StepContext for Bond {
             .choose(&mut AntithesisRng)
             .expect("There is always at least a validator");
 
-        let task_settings = TaskSettings::new(source_account.public_keys);
+        let task_settings =
+            TaskSettings::new(source_account.public_keys, source_account.alias.clone());
 
         Ok(vec![Task::Bond(
             task::bond::Bond::builder()

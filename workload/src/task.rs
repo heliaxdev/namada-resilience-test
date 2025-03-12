@@ -42,16 +42,7 @@ pub struct TaskSettings {
 }
 
 impl TaskSettings {
-    pub fn new(signers: BTreeSet<Alias>) -> Self {
-        let gas_payer = signers.first().expect("at least one signer exists").clone();
-        Self {
-            signers,
-            gas_payer,
-            gas_limit: DEFAULT_GAS_LIMIT,
-        }
-    }
-
-    pub fn new_with_payer(signers: BTreeSet<Alias>, gas_payer: Alias) -> Self {
+    pub fn new(signers: BTreeSet<Alias>, gas_payer: Alias) -> Self {
         Self {
             signers,
             gas_payer,

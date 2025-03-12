@@ -24,8 +24,7 @@ impl StepContext for ReactivateValidator {
     async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let account = state.random_deactivated_validator(vec![], 1).pop().unwrap();
 
-        let task_settings =
-            TaskSettings::new_with_payer(account.public_keys.clone(), Alias::faucet());
+        let task_settings = TaskSettings::new(account.public_keys.clone(), Alias::faucet());
 
         Ok(vec![Task::ReactivateValidator(
             task::reactivate_validator::ReactivateValidator::builder()

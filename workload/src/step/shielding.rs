@@ -33,7 +33,8 @@ impl StepContext for Shielding {
         let amount_account = state.get_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
-        let task_settings = TaskSettings::new(source_account.public_keys);
+        let task_settings =
+            TaskSettings::new(source_account.public_keys, source_account.alias.clone());
 
         Ok(vec![Task::Shielding(
             task::shielding::Shielding::builder()

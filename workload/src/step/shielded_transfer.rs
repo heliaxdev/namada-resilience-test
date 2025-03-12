@@ -40,7 +40,7 @@ impl StepContext for ShieldedTransfer {
 
         let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
         let disposable_gas_payer = transparent_source_balance < DEFAULT_FEE || coin_flip(0.5);
-        let task_settings = TaskSettings::new_with_payer(
+        let task_settings = TaskSettings::new(
             BTreeSet::from([source_account.alias.base()]),
             if disposable_gas_payer {
                 source_account.alias.spending_key()
