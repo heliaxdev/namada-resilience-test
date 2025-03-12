@@ -201,18 +201,15 @@ impl WorkloadExecutor {
             let execution_height = match task.execute(&self.sdk).await {
                 Ok(height) => height,
                 Err(e) => {
-                    if let Some(settings) = task.task_settings() {
-                        fees.insert(settings.gas_payer.clone(), settings.gas_limit);
-                    }
+                    task.aggregate_fees(&mut fees);
                     return (Err(e), fees);
                 }
             };
 
             total_time += now.elapsed().as_secs();
             heights.push(execution_height);
-            if let Some(settings) = task.task_settings() {
-                fees.insert(settings.gas_payer.clone(), settings.gas_limit);
-            }
+
+            task.aggregate_fees(&mut fees);
         }
         tracing::info!("Execution took {total_time}s...");
 

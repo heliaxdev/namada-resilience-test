@@ -1,4 +1,5 @@
-use std::{collections::BTreeSet, fmt::Display};
+use std::collections::{BTreeSet, HashMap};
+use std::fmt::Display;
 
 use enum_dispatch::enum_dispatch;
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
@@ -8,7 +9,7 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::types::{Alias, Height};
+use crate::types::{Alias, Fee, Height};
 use crate::utils;
 use crate::utils::RetryConfig;
 
@@ -98,6 +99,27 @@ pub enum Task {
     UpdateAccount(update_account::UpdateAccount),
     DefaultProposal(default_proposal::DefaultProposal),
     Vote(vote::Vote),
+}
+
+impl Task {
+    pub fn aggregate_fees(&self, fees: &mut HashMap<Alias, Fee>) {
+        match self {
+            Task::Batch(batch) => {
+                batch
+                    .tasks()
+                    .iter()
+                    .filter_map(|task| task.task_settings())
+                    .for_each(|settings| {
+                        *fees.entry(settings.gas_payer.clone()).or_insert(0) += settings.gas_limit;
+                    });
+            }
+            _ => {
+                if let Some(settings) = self.task_settings() {
+                    *fees.entry(settings.gas_payer.clone()).or_insert(0) += settings.gas_limit;
+                }
+            }
+        }
+    }
 }
 
 impl Display for Task {

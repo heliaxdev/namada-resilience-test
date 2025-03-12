@@ -17,6 +17,12 @@ pub struct Batch {
     settings: TaskSettings,
 }
 
+impl Batch {
+    pub fn tasks(&self) -> Vec<&Task> {
+        self.tasks.iter().collect()
+    }
+}
+
 impl TaskContext for Batch {
     fn name(&self) -> String {
         "batch".to_string()
