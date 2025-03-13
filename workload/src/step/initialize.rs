@@ -51,7 +51,6 @@ impl StepContext for Initialize {
         ));
 
         // established accounts
-        let mut batch_tasks = vec![];
         let task_settings = TaskSettings::faucet();
         for _ in 0..INIT_ESTABLISHED_ADDR_NUM {
             let alias = utils::random_alias();
@@ -66,8 +65,8 @@ impl StepContext for Initialize {
                 .choose_multiple(&mut AntithesisRng, total_signers as usize)
                 .into_iter()
                 .collect();
-
-            batch_tasks.push(Task::InitAccount(
+            // avoid batching them to save accounts to the wallet
+            tasks.push(Task::InitAccount(
                 task::init_account::InitAccount::builder()
                     .target(account_alias)
                     .sources(source_aliases)
@@ -76,7 +75,21 @@ impl StepContext for Initialize {
                     .build(),
             ));
         }
-        let settings = TaskSettings::faucet_batch(INIT_ESTABLISHED_ADDR_NUM as usize);
+
+        // faucet transafer to all created addresses
+        let batch_tasks = implicit_aliases
+            .iter()
+            .map(|alias| {
+                Task::FaucetTransfer(
+                    task::faucet_transfer::FaucetTransfer::builder()
+                        .target(alias.clone())
+                        .amount(FAUCET_AMOUNT)
+                        .settings(task_settings.clone())
+                        .build(),
+                )
+            })
+            .collect();
+        let settings = TaskSettings::faucet_batch(INIT_IMPLICIT_ADDR_NUM as usize);
         tasks.push(Task::Batch(
             task::batch::Batch::builder()
                 .tasks(batch_tasks)
@@ -84,22 +97,8 @@ impl StepContext for Initialize {
                 .build(),
         ));
 
-        // faucet transafer to all created addresses
-        let mut batch_tasks = vec![];
-        implicit_aliases
-            .iter()
-            //.chain(established_aliases.iter())
-            .for_each(|alias| {
-                batch_tasks.push(Task::FaucetTransfer(
-                    task::faucet_transfer::FaucetTransfer::builder()
-                        .target(alias.clone())
-                        .amount(FAUCET_AMOUNT)
-                        .settings(task_settings.clone())
-                        .build(),
-                ))
-            });
-
         // bond
+        let mut batch_tasks = vec![];
         let client = &sdk.namada.client;
         for alias in implicit_aliases {
             let amount = utils::random_between(1, FAUCET_AMOUNT);
@@ -127,9 +126,7 @@ impl StepContext for Initialize {
                     .build(),
             ));
         }
-
-        // Batch faucet transfers and bonds for checking
-        let settings = TaskSettings::faucet_batch((INIT_IMPLICIT_ADDR_NUM * 2) as usize);
+        let settings = TaskSettings::faucet_batch(INIT_IMPLICIT_ADDR_NUM as usize);
         tasks.push(Task::Batch(
             task::batch::Batch::builder()
                 .tasks(batch_tasks)

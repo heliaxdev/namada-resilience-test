@@ -23,7 +23,7 @@ pub enum StateError {
 
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AddressType {
-    Enstablished,
+    Established,
     #[default]
     Implicit,
 }
@@ -32,8 +32,8 @@ impl AddressType {
     pub fn is_implicit(&self) -> bool {
         matches!(self, AddressType::Implicit)
     }
-    pub fn is_enstablished(&self) -> bool {
-        matches!(self, AddressType::Enstablished)
+    pub fn is_established(&self) -> bool {
+        matches!(self, AddressType::Established)
     }
 }
 
@@ -49,8 +49,8 @@ impl Account {
     pub fn is_implicit(&self) -> bool {
         self.address_type.is_implicit()
     }
-    pub fn is_enstablished(&self) -> bool {
-        self.address_type.is_enstablished()
+    pub fn is_established(&self) -> bool {
+        self.address_type.is_established()
     }
 }
 
@@ -210,10 +210,10 @@ impl State {
             > sample_size
     }
 
-    pub fn min_n_enstablished_accounts(&self, sample_size: usize) -> bool {
+    pub fn min_n_established_accounts(&self, sample_size: usize) -> bool {
         self.accounts
             .iter()
-            .filter(|(_, account)| account.is_enstablished())
+            .filter(|(_, account)| account.is_established())
             .count()
             > sample_size
     }
@@ -285,7 +285,7 @@ impl State {
             .collect()
     }
 
-    pub fn random_enstablished_account(
+    pub fn random_established_account(
         &self,
         blacklist: Vec<Alias>,
         sample_size: usize,
@@ -293,7 +293,7 @@ impl State {
         self.accounts
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_enstablished())
+            .filter(|(_, account)| account.is_established())
             .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
@@ -304,7 +304,7 @@ impl State {
         self.validators
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_enstablished())
+            .filter(|(_, account)| account.is_established())
             .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
@@ -319,7 +319,7 @@ impl State {
         self.deactivated_validators
             .iter()
             .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_enstablished())
+            .filter(|(_, account)| account.is_established())
             .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
             .map(|(_, account)| account.clone())
@@ -422,7 +422,7 @@ impl State {
         self.masp_balances.insert(alias.clone(), 0);
     }
 
-    pub fn add_enstablished_account(
+    pub fn add_established_account(
         &mut self,
         alias: &Alias,
         aliases: &BTreeSet<Alias>,
@@ -434,13 +434,13 @@ impl State {
                 alias: alias.clone(),
                 public_keys: aliases.clone(),
                 threshold,
-                address_type: AddressType::Enstablished,
+                address_type: AddressType::Established,
             },
         );
         self.balances.insert(alias.clone(), 0);
     }
 
-    pub fn modify_enstablished_account(
+    pub fn modify_established_account(
         &mut self,
         alias: &Alias,
         aliases: &BTreeSet<Alias>,
@@ -528,7 +528,7 @@ impl State {
         *self.masp_balances.get_mut(&source.base()).unwrap() -= amount;
     }
 
-    pub fn set_enstablished_as_validator(&mut self, alias: &Alias) {
+    pub fn set_established_as_validator(&mut self, alias: &Alias) {
         let account = self.accounts.remove(alias).unwrap();
         self.balances.remove(alias).unwrap();
         self.validators.insert(alias.clone(), account);

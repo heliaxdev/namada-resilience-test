@@ -22,11 +22,11 @@ impl StepContext for UpdateAccount {
     }
 
     async fn is_valid(&self, _sdk: &Sdk, state: &State) -> Result<bool, StepError> {
-        Ok(state.min_n_enstablished_accounts(1) && state.min_n_implicit_accounts(3))
+        Ok(state.min_n_established_accounts(1) && state.min_n_implicit_accounts(3))
     }
 
     async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
-        let account = state.random_enstablished_account(vec![], 1).pop().unwrap();
+        let account = state.random_established_account(vec![], 1).pop().unwrap();
 
         let total_signers = utils::random_between(1, 4);
         let required_signers = utils::random_between(1, total_signers);

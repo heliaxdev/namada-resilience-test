@@ -18,6 +18,7 @@ mod claim_rewards;
 mod deactivate_validator;
 mod default_proposal;
 mod faucet_transfer;
+mod fund_all;
 mod init_account;
 mod initialize;
 mod new_wallet_keypair;
@@ -36,6 +37,7 @@ mod vote;
 #[derive(Clone, Debug)]
 pub enum StepType {
     Initialize(initialize::Initialize),
+    FundAll(fund_all::FundAll),
     NewWalletKeyPair(new_wallet_keypair::NewWalletKeyPair),
     FaucetTransfer(faucet_transfer::FaucetTransfer),
     TransparentTransfer(transparent_transfer::TransparentTransfer),
@@ -65,6 +67,7 @@ impl FromStr for StepType {
     fn from_str(step: &str) -> Result<Self, Self::Err> {
         let step_type = match step {
             "initialize" => Self::Initialize(Default::default()),
+            "fund-all" => Self::FundAll(Default::default()),
             "new-wallet-key-pair" => Self::NewWalletKeyPair(Default::default()),
             "faucet-transfer" => Self::FaucetTransfer(Default::default()),
             "transparent-transfer" => Self::TransparentTransfer(Default::default()),

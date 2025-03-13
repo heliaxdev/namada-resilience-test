@@ -20,7 +20,7 @@ impl StepContext for BecomeValidator {
     }
 
     async fn is_valid(&self, _sdk: &Sdk, state: &State) -> Result<bool, StepError> {
-        Ok(state.min_n_enstablished_accounts(1))
+        Ok(state.min_n_established_accounts(1))
     }
 
     async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
@@ -36,7 +36,7 @@ impl StepContext for BecomeValidator {
         let eth_hot_key_alias = format!("{}-eth-hot", random_alias.name);
         let protocol_key_alias = format!("{}-protocol", random_alias.name);
 
-        let account = state.random_enstablished_account(vec![], 1).pop().unwrap();
+        let account = state.random_established_account(vec![], 1).pop().unwrap();
 
         let gas_payer = utils::get_gas_payer(account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(account.public_keys, gas_payer);

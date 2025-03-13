@@ -99,6 +99,6 @@ impl TaskContext for UpdateAccount {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.modify_enstablished_account(&self.target, &self.sources, self.threshold);
+        state.modify_established_account(&self.target, &self.sources, self.threshold);
     }
 }

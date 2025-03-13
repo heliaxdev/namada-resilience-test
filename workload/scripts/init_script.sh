@@ -38,13 +38,27 @@ output=$(/app/namada-chain-workload initialize \
     --chain-id ${CHAIN_ID} \
     --faucet-sk ${FAUCET_SK} \
     --id ${WORKLOAD_ID} \
-		--masp-indexer-url ${MASP_INDEXER_URL} | tee /dev/stderr)
+    --masp-indexer-url ${MASP_INDEXER_URL} | tee /dev/stderr)
 if echo "$output" | grep -q "Done initialize"
+then
+    echo "Initialization succeeded!"
+else
+    echo "Initialization failed!"
+    exit 1
+fi
+
+output=$(/app/namada-chain-workload fund-all \
+    --rpc http://${RPC} \
+    --chain-id ${CHAIN_ID} \
+    --faucet-sk ${FAUCET_SK} \
+    --id ${WORKLOAD_ID} \
+    --masp-indexer-url ${MASP_INDEXER_URL} | tee /dev/stderr)
+if echo "$output" | grep -q "Done fund-all"
 then
     # Ready to start workload
     touch /container_ready/workload-${WORKLOAD_ID}
     echo "Ready to start the workload"
 else
-    echo "Initialization failed!"
+    echo "Fund failed!"
     exit 1
 fi
