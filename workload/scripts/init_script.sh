@@ -33,54 +33,18 @@ done
 
 echo "Initializing workload-${WORKLOAD_ID} state..."
 
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh
-
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh
-
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_bond.sh
-
-source /opt/antithesis/test/v1/namada/parallel_driver_init_account.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_init_account.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_init_account.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_init_account.sh
-source /opt/antithesis/test/v1/namada/parallel_driver_init_account.sh
-
-# Ready to start workload
-touch /container_ready/workload-${WORKLOAD_ID}
-echo "Ready to start the workload"
+output=$(/app/namada-chain-workload initialize \
+    --rpc http://${RPC} \
+    --chain-id ${CHAIN_ID} \
+    --faucet-sk ${FAUCET_SK} \
+    --id ${WORKLOAD_ID} \
+		--masp-indexer-url ${MASP_INDEXER_URL} | tee /dev/stderr)
+if echo "$output" | grep -q "Done initialize"
+then
+    # Ready to start workload
+    touch /container_ready/workload-${WORKLOAD_ID}
+    echo "Ready to start the workload"
+else
+    echo "Initialization failed!"
+    exit 1
+fi

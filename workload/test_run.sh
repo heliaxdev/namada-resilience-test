@@ -13,7 +13,7 @@ mkdir -p base/masp-$WORKLOAD_ID
 mkdir -p /opt/antithesis/test/v1/namada/wallet-$WORKLOAD_ID
 mkdir -p /opt/antithesis/test/v1/namada/masp-$WORKLOAD_ID
 
-/opt/antithesis/test/v1/namada/init_script.sh
+source /opt/antithesis/test/v1/namada/init_script.sh
 
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh | tee /dev/stderr)
 if echo "$output" | grep -q "Done new-wallet-keypair"

@@ -1,7 +1,7 @@
 use serde_json::json;
 
 use crate::code::Code;
-use crate::constants::{FAUCET_AMOUNT, NATIVE_SCALE};
+use crate::constants::FAUCET_AMOUNT;
 use crate::executor::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -25,14 +25,13 @@ impl StepContext for FaucetTransfer {
         let target_account = state
             .random_account(vec![])
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
-        let amount = FAUCET_AMOUNT * NATIVE_SCALE;
 
         let task_settings = TaskSettings::faucet();
 
         Ok(vec![Task::FaucetTransfer(
             task::faucet_transfer::FaucetTransfer::builder()
                 .target(target_account.alias)
-                .amount(amount)
+                .amount(FAUCET_AMOUNT)
                 .settings(task_settings)
                 .build(),
         )])

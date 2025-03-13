@@ -71,7 +71,7 @@ impl TaskContext for Batch {
         let mut bonds: HashMap<String, (u64, i64)> = HashMap::default();
         for check in checks {
             match check {
-                Check::RevealPk(_) => prepared_checks.push(check),
+                Check::RevealPk(_) | Check::AccountExist(_) => prepared_checks.push(check),
                 Check::BalanceSource(balance_source) => {
                     balances
                         .entry(balance_source.target().clone())
