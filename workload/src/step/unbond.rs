@@ -33,7 +33,8 @@ impl StepContext for Unbond {
             .await
             .map_err(StepError::Rpc)?;
 
-        let mut task_settings = TaskSettings::new(source_account.public_keys);
+        let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
+        let mut task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
         task_settings.gas_limit *= 3;
 
         Ok(vec![Task::Unbond(

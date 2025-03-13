@@ -45,7 +45,8 @@ impl StepContext for Bond {
             .choose(&mut AntithesisRng)
             .expect("There is always at least a validator");
 
-        let task_settings = TaskSettings::new(source_account.public_keys);
+        let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
+        let task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
 
         Ok(vec![Task::Bond(
             task::bond::Bond::builder()

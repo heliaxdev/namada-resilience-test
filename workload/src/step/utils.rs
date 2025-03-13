@@ -1,8 +1,11 @@
 use antithesis_sdk::random::AntithesisRng;
 use rand::distributions::uniform::SampleUniform;
 use rand::distributions::{Alphanumeric, DistString};
+use rand::prelude::IteratorRandom;
 use rand::Rng;
 
+use crate::constants::DEFAULT_FEE;
+use crate::state::State;
 use crate::types::Alias;
 
 pub(crate) fn coin_flip(p: f64) -> bool {
@@ -39,6 +42,15 @@ pub fn get_random_string(length: usize) -> String {
         result.push(c);
     }
     result
+}
+
+pub fn get_gas_payer<'a>(candidates: impl IntoIterator<Item = &'a Alias>, state: &State) -> Alias {
+    candidates
+        .into_iter()
+        .filter(|alias| state.get_balance_for(alias) >= DEFAULT_FEE)
+        .choose(&mut AntithesisRng)
+        .cloned()
+        .unwrap_or(Alias::faucet())
 }
 
 #[macro_export]

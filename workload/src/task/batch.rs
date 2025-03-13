@@ -17,6 +17,12 @@ pub struct Batch {
     settings: TaskSettings,
 }
 
+impl Batch {
+    pub fn tasks(&self) -> Vec<&Task> {
+        self.tasks.iter().collect()
+    }
+}
+
 impl TaskContext for Batch {
     fn name(&self) -> String {
         "batch".to_string()
@@ -178,7 +184,7 @@ impl TaskContext for Batch {
             if amount >= 0 {
                 prepared_checks.push(Check::BalanceShieldedTarget(
                     check::balance_shielded_target::BalanceShieldedTarget::builder()
-                        .target(alias)
+                        .target(alias.payment_address())
                         .pre_balance(pre_balance)
                         .amount(amount.unsigned_abs())
                         .build(),
@@ -186,7 +192,7 @@ impl TaskContext for Batch {
             } else {
                 prepared_checks.push(Check::BalanceShieldedSource(
                     check::balance_shielded_source::BalanceShieldedSource::builder()
-                        .target(alias)
+                        .target(alias.spending_key())
                         .pre_balance(pre_balance)
                         .amount(amount.unsigned_abs())
                         .build(),
