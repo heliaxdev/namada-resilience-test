@@ -65,7 +65,11 @@ impl CheckContext for BalanceShieldedTarget {
                 ))
             })?;
 
-        let fee = fees.get(&self.target).cloned().unwrap_or_default();
+        // The shielded address might have paid the fee for another tx in the same batched tx
+        let fee = fees
+            .get(&self.target.spending_key())
+            .cloned()
+            .unwrap_or_default();
 
         let check_balance = self
             .pre_balance

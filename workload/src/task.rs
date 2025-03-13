@@ -96,22 +96,31 @@ impl Task {
     pub fn aggregate_fees(&self, fees: &mut HashMap<Alias, Fee>) {
         match self {
             Task::Batch(batch) => {
-                batch
-                    .tasks()
-                    .iter()
-                    .filter(|task| matches!(task, Task::ShieldedTransfer(_) | Task::Unshielding(_)))
-                    .for_each(|task| {
-                        let settings = task
-                            .task_settings()
-                            .expect("Shielded task should have settings");
-                        let gas_payer = &settings.gas_payer;
-                        if gas_payer.is_spending_key() {
-                            *fees.entry(gas_payer.clone()).or_insert(0) += settings.gas_limit;
-                        }
-                    });
-                // fee for wrapper tx
-                let settings = batch.task_settings().expect("TaskSettings should exist");
-                *fees.entry(settings.gas_payer.clone()).or_insert(0) += settings.gas_limit;
+                let tasks = batch.tasks();
+                if tasks.len() == 1 {
+                    let task = tasks.first().expect("Task should exist");
+                    if let Some(settings) = task.task_settings() {
+                        *fees.entry(settings.gas_payer.clone()).or_insert(0) += settings.gas_limit;
+                    }
+                } else {
+                    tasks
+                        .iter()
+                        .filter(|task| {
+                            matches!(task, Task::ShieldedTransfer(_) | Task::Unshielding(_))
+                        })
+                        .for_each(|task| {
+                            let settings = task
+                                .task_settings()
+                                .expect("Shielded task should have settings");
+                            let gas_payer = &settings.gas_payer;
+                            if gas_payer.is_spending_key() {
+                                *fees.entry(gas_payer.clone()).or_insert(0) += settings.gas_limit;
+                            }
+                        });
+                    // fee for wrapper tx
+                    let settings = batch.task_settings().expect("TaskSettings should exist");
+                    *fees.entry(settings.gas_payer.clone()).or_insert(0) += settings.gas_limit;
+                }
             }
             _ => {
                 if let Some(settings) = self.task_settings() {
