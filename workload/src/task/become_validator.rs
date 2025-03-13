@@ -154,6 +154,6 @@ impl TaskContext for BecomeValidator {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.set_enstablished_as_validator(&self.source)
+        state.set_established_as_validator(&self.source)
     }
 }

@@ -94,6 +94,6 @@ impl TaskContext for InitAccount {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.add_enstablished_account(&self.target, &self.sources, self.threshold);
+        state.add_established_account(&self.target, &self.sources, self.threshold);
     }
 }

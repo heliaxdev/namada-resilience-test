@@ -57,6 +57,12 @@ impl Alias {
         Self { name }
     }
 
+    pub fn established(&self) -> Self {
+        let name = format!("{}-established", self.name);
+
+        Self { name }
+    }
+
     pub fn spending_key(&self) -> Self {
         let name = format!("{}-spending-key", self.base().name);
 

@@ -27,9 +27,7 @@ impl StepContext for InitAccount {
 
     async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let random_alias = utils::random_alias();
-        let account_alias = Alias {
-            name: format!("{}-established", random_alias.name),
-        };
+        let account_alias = random_alias.established();
         let total_signers = utils::random_between(1, 4);
         let required_signers = utils::random_between(1, total_signers);
 
