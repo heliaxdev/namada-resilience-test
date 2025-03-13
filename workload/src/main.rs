@@ -150,23 +150,29 @@ async fn inner_main() -> Code {
 
     let execution_height = match result {
         Ok(height) => height,
-        Err(e) if matches!(e, StepError::Execution(_)) => {
-            return Code::ExecutionFailure(next_step, e);
-        }
-        Err(e) if matches!(e, StepError::Broadcast(_)) => {
-            loop {
-                let current_block_height = workload_executor.fetch_current_block_height().await;
-                if current_block_height > init_block_height {
-                    break;
-                }
-            }
-            return Code::BroadcastFailure(next_step, e);
-        }
-        Err(StepError::EmptyBatch) => {
-            return Code::EmptyBatch(next_step);
-        }
         Err(e) => {
-            return Code::OtherFailure(next_step, e);
+            // Update the state file for the fee payment of the failure transactions
+            if let Err(e) = workload_executor.state().save(Some(locked_file)) {
+                return Code::StateFatal(e);
+            }
+
+            let code = match e {
+                StepError::Execution(_) => Code::ExecutionFailure(next_step, e),
+                StepError::Broadcast(_) => {
+                    loop {
+                        let current_block_height =
+                            workload_executor.fetch_current_block_height().await;
+                        if current_block_height > init_block_height {
+                            break;
+                        }
+                    }
+                    Code::BroadcastFailure(next_step, e)
+                }
+                StepError::EmptyBatch => Code::EmptyBatch(next_step),
+                _ => Code::OtherFailure(next_step, e),
+            };
+
+            return code;
         }
     };
 
