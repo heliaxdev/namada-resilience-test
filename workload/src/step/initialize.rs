@@ -15,6 +15,7 @@ use crate::{assert_always_step, assert_unrechable_step};
 
 use super::utils;
 
+/// Initialize accounts. Use this with `--no-check`.
 #[derive(Clone, Debug, Default)]
 pub struct Initialize;
 

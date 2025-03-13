@@ -34,6 +34,7 @@ done
 echo "Initializing workload-${WORKLOAD_ID} state..."
 
 output=$(/app/namada-chain-workload initialize \
+    --no-check \
     --rpc http://${RPC} \
     --chain-id ${CHAIN_ID} \
     --faucet-sk ${FAUCET_SK} \
