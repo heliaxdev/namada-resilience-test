@@ -6,7 +6,7 @@ use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
 use crate::constants::PIPELINE_LEN;
-use crate::executor::StepError;
+use crate::error::CheckError;
 use crate::sdk::namada::Sdk;
 use crate::types::{Alias, Amount, Balance, Epoch, Fee, ValidatorAddress};
 use crate::utils::{get_bond, get_epoch, RetryConfig};
@@ -49,14 +49,14 @@ impl CheckContext for BondIncrease {
         _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), CheckError> {
         let epoch = get_epoch(sdk, retry_config).await? + PIPELINE_LEN;
         let post_bond = get_bond(sdk, &self.target, &self.validator, epoch, retry_config).await?;
         let check_bond = self
             .pre_bond
             .checked_add(token::Amount::from_u64(self.amount))
             .ok_or_else(|| {
-                StepError::StateCheck(format!(
+                CheckError::State(format!(
                     "BondIncrease check error: {} bond is overflowing",
                     self.target.name
                 ))
@@ -78,7 +78,7 @@ impl CheckContext for BondIncrease {
             Ok(())
         } else {
             tracing::error!("{}", details);
-            Err(StepError::StateCheck(format!("BondIncrease check error: post bond amount is not equal to pre bond + amount: {} + {} = {check_bond} != {post_bond}", self.pre_bond, self.amount)))
+            Err(CheckError::State(format!("BondIncrease check error: post bond amount is not equal to pre bond + amount: {} + {} = {check_bond} != {post_bond}", self.pre_bond, self.amount)))
         }
     }
 }

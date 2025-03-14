@@ -8,7 +8,7 @@ use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -36,23 +36,23 @@ impl TaskContext for UpdateAccount {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let wallet = sdk.namada.wallet.read().await;
         let target = wallet
             .find_address(&self.target.name)
-            .ok_or_else(|| StepError::Wallet(format!("No target address: {}", self.target.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No target address: {}", self.target.name)))?;
 
         let mut public_keys = vec![];
         for source in &self.sources {
             let source_pk = wallet
                 .find_public_key(&source.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             public_keys.push(source_pk);
         }
 
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
 
         let mut update_account_builder =
             sdk.namada
@@ -66,7 +66,7 @@ impl TaskContext for UpdateAccount {
         for signer in &self.settings.signers {
             let public_key = wallet
                 .find_public_key(&signer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             signing_keys.push(public_key)
         }
         update_account_builder = update_account_builder.signing_keys(signing_keys);
@@ -75,7 +75,7 @@ impl TaskContext for UpdateAccount {
         let (update_account, signing_data) = update_account_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((
             update_account,
@@ -88,7 +88,7 @@ impl TaskContext for UpdateAccount {
         &self,
         _sdk: &Sdk,
         _retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         Ok(vec![Check::AccountExist(
             check::account_exist::AccountExist::builder()
                 .target(self.target.clone())

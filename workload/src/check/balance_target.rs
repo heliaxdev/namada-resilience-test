@@ -5,7 +5,7 @@ use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
-use crate::executor::StepError;
+use crate::error::CheckError;
 use crate::sdk::namada::Sdk;
 use crate::types::{Alias, Amount, Balance, Fee};
 use crate::utils::{get_balance, RetryConfig};
@@ -44,7 +44,7 @@ impl CheckContext for BalanceTarget {
         fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), CheckError> {
         let (target_address, post_balance) = get_balance(sdk, &self.target, retry_config).await?;
 
         let fee = fees.get(&self.target).cloned().unwrap_or_default();
@@ -54,7 +54,7 @@ impl CheckContext for BalanceTarget {
             .checked_add(token::Amount::from_u64(self.amount))
             .and_then(|b| b.checked_sub(token::Amount::from_u64(fee)))
             .ok_or_else(|| {
-                StepError::StateCheck(format!(
+                CheckError::State(format!(
                     "BalanceTarget check error: {} balance is overflowing",
                     self.target.name
                 ))
@@ -80,7 +80,7 @@ impl CheckContext for BalanceTarget {
             Ok(())
         } else {
             tracing::error!("{}", details);
-            Err(StepError::StateCheck(format!("BalanceTarget check error: post target amount is not equal to pre balance + amount: {} + {} - {fee} = {check_balance} != {post_balance}", self.pre_balance, self.amount)))
+            Err(CheckError::State(format!("BalanceTarget check error: post target amount is not equal to pre balance + amount: {} + {} - {fee} = {check_balance} != {post_balance}", self.pre_balance, self.amount)))
         }
     }
 }

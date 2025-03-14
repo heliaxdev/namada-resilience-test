@@ -2,7 +2,7 @@ use serde_json::json;
 
 use crate::code::Code;
 use crate::constants::FAUCET_AMOUNT;
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
@@ -21,11 +21,7 @@ impl StepContext for FundAll {
         Ok(!state.accounts.is_empty())
     }
 
-    async fn build_task(
-        &self,
-        _sdk: &Sdk,
-        state: &State,
-    ) -> Result<Vec<Task>, crate::executor::StepError> {
+    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let tasks: Vec<_> = state
             .accounts
             .keys()

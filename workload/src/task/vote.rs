@@ -6,7 +6,7 @@ use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -37,14 +37,14 @@ impl TaskContext for Vote {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let wallet = sdk.namada.wallet.read().await;
         let source_address = wallet
             .find_address(&self.source.name)
-            .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?;
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
 
         let mut vote_tx_builder = sdk.namada.new_proposal_vote(
             self.proposal_id,
@@ -57,7 +57,7 @@ impl TaskContext for Vote {
         for signer in &self.settings.signers {
             let public_key = wallet
                 .find_public_key(&signer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             signing_keys.push(public_key)
         }
         vote_tx_builder = vote_tx_builder.signing_keys(signing_keys);
@@ -66,7 +66,7 @@ impl TaskContext for Vote {
         let (vote_tx, signing_data) = vote_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((vote_tx, vec![signing_data], vote_tx_builder.tx))
     }
@@ -75,7 +75,7 @@ impl TaskContext for Vote {
         &self,
         _sdk: &Sdk,
         _retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         Ok(vec![Check::VoteResult(
             check::vote_result::VoteResult::builder()
                 .source(self.source.clone())

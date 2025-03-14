@@ -7,7 +7,7 @@ use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -38,28 +38,28 @@ impl TaskContext for TransparentTransfer {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let wallet = sdk.namada.wallet.read().await;
 
         let native_token_alias = Alias::nam();
 
         let source_address = wallet
             .find_address(&self.source.name)
-            .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?;
         let target_address = wallet
             .find_address(&self.target.name)
-            .ok_or_else(|| StepError::Wallet(format!("No target address: {}", self.target.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No target address: {}", self.target.name)))?;
         let token_address = wallet
             .find_address(&native_token_alias.name)
             .ok_or_else(|| {
-                StepError::Wallet(format!(
+                TaskError::Wallet(format!(
                     "No native token address: {}",
                     native_token_alias.name
                 ))
             })?;
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
         let token_amount = token::Amount::from_u64(self.amount);
 
         let tx_transfer_data = TxTransparentTransferData {
@@ -77,7 +77,7 @@ impl TaskContext for TransparentTransfer {
         for signer in &self.settings.signers {
             let public_key = wallet
                 .find_public_key(&signer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             signing_keys.push(public_key)
         }
         transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys);
@@ -86,7 +86,7 @@ impl TaskContext for TransparentTransfer {
         let (transfer_tx, signing_data) = transfer_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((transfer_tx, vec![signing_data], transfer_tx_builder.tx))
     }
@@ -95,7 +95,7 @@ impl TaskContext for TransparentTransfer {
         &self,
         sdk: &Sdk,
         retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
         let source_check = Check::BalanceSource(
             check::balance_source::BalanceSource::builder()

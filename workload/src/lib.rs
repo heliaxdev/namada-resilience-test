@@ -2,6 +2,7 @@ pub mod check;
 pub mod code;
 pub mod config;
 pub mod constants;
+pub mod error;
 pub mod executor;
 pub mod sdk;
 pub mod state;

@@ -4,7 +4,7 @@ use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
-use crate::executor::StepError;
+use crate::error::CheckError;
 use crate::sdk::namada::Sdk;
 use crate::types::{Alias, Fee, Threshold};
 use crate::utils::{get_account_info, RetryConfig};
@@ -27,7 +27,7 @@ impl CheckContext for AccountExist {
         _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), CheckError> {
         let (target_address, account) = get_account_info(sdk, &self.target, retry_config).await?;
         let account = account.ok_or_else(|| {
             antithesis_sdk::assert_unreachable!(
@@ -42,7 +42,7 @@ impl CheckContext for AccountExist {
                     "check_height": check_info.check_height
                 })
             );
-            StepError::StateCheck(format!(
+            CheckError::State(format!(
                 "AccountExist check error: account {} doesn't exist",
                 self.target.name
             ))
@@ -68,7 +68,7 @@ impl CheckContext for AccountExist {
             Ok(())
         } else {
             tracing::error!("{}", details);
-            Err(StepError::StateCheck(format!(
+            Err(CheckError::State(format!(
                 "AccountExist check error: account {} is invalid",
                 self.target.name
             )))

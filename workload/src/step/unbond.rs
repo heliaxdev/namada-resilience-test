@@ -1,13 +1,13 @@
-use namada_sdk::rpc;
 use serde_json::json;
 
 use crate::code::Code;
 use crate::constants::MAX_BATCH_TX_NUM;
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
+use crate::utils::{get_epoch, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -29,9 +29,7 @@ impl StepContext for Unbond {
         let source_account = state.get_account_by_alias(&source_bond.alias);
         let amount = utils::random_between(1, source_bond.amount / MAX_BATCH_TX_NUM);
 
-        let current_epoch = rpc::query_epoch(&sdk.namada.client)
-            .await
-            .map_err(StepError::Rpc)?;
+        let current_epoch = get_epoch(sdk, retry_config()).await?;
 
         let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
         let mut task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
@@ -42,7 +40,7 @@ impl StepContext for Unbond {
                 .source(source_account.alias)
                 .validator(source_bond.validator)
                 .amount(amount)
-                .epoch(current_epoch.into())
+                .epoch(current_epoch)
                 .settings(task_settings)
                 .build(),
         )])

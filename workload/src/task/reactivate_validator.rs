@@ -6,7 +6,7 @@ use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -32,14 +32,14 @@ impl TaskContext for ReactivateValidator {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let wallet = sdk.namada.wallet.read().await;
         let target_address = wallet
             .find_address(&self.target.name)
-            .ok_or_else(|| StepError::Wallet(format!("No target address: {}", self.target.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No target address: {}", self.target.name)))?;
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
 
         let mut reactivate_validator_builder_tx = sdk
             .namada
@@ -54,7 +54,7 @@ impl TaskContext for ReactivateValidator {
         for signer in &self.settings.signers {
             let public_key = wallet
                 .find_public_key(&signer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             signing_keys.push(public_key)
         }
         reactivate_validator_builder_tx =
@@ -63,7 +63,7 @@ impl TaskContext for ReactivateValidator {
         let (reactivate_validator, signing_data) = reactivate_validator_builder_tx
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((
             reactivate_validator,
@@ -76,7 +76,7 @@ impl TaskContext for ReactivateValidator {
         &self,
         _sdk: &Sdk,
         _retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         Ok(vec![Check::ValidatorStatus(
             check::validator_status::ValidatorStatus::builder()
                 .target(self.target.clone())

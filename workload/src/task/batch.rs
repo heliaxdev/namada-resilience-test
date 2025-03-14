@@ -4,7 +4,7 @@ use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{Task, TaskContext, TaskSettings};
@@ -41,12 +41,12 @@ impl TaskContext for Batch {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let mut txs = vec![];
         for task in &self.tasks {
             let (tx, mut signing_data, _) = Box::pin(task.build_tx(sdk)).await?;
             if signing_data.len() != 1 {
-                return Err(StepError::BuildTx("Unexpected sigining data".to_string()));
+                return Err(TaskError::BuildTx("Unexpected sigining data".to_string()));
             }
             txs.push((tx, signing_data.remove(0)));
         }
@@ -58,7 +58,7 @@ impl TaskContext for Batch {
         &self,
         sdk: &Sdk,
         retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         let mut checks = vec![];
         for task in &self.tasks {
             let task_checks = Box::pin(task.build_checks(sdk, retry_config)).await?;
@@ -121,7 +121,7 @@ impl TaskContext for Batch {
                         .or_insert((bond_decrease.epoch(), -(bond_decrease.amount() as i64)));
                 }
                 _ => {
-                    return Err(StepError::BuildCheck(format!(
+                    return Err(TaskError::BuildCheck(format!(
                         "Unexpected check happened: {check}"
                     )))
                 }

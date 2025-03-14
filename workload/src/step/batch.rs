@@ -8,7 +8,7 @@ use crate::assert_unrechable_step;
 use crate::code::Code;
 use crate::constants::MAX_BATCH_TX_NUM;
 use crate::constants::MIN_TRANSFER_BALANCE;
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};

@@ -1,17 +1,15 @@
-use std::str::FromStr;
-
 use antithesis_sdk::random::AntithesisRng;
-use namada_sdk::{address::Address, rpc};
 use rand::seq::IteratorRandom;
 use serde_json::json;
 
 use crate::code::Code;
 use crate::constants::MAX_BATCH_TX_NUM;
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
+use crate::utils::{get_epoch, get_validator_addresses, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -29,18 +27,12 @@ impl StepContext for Redelegate {
     }
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
-        let client = &sdk.namada.client;
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
         let amount = utils::random_between(1, source_bond.amount / MAX_BATCH_TX_NUM);
 
-        let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
-        let validators = rpc::get_all_consensus_validators(client, current_epoch)
-            .await
-            .map_err(StepError::Rpc)?;
-
-        let source_bond_validator_address = Address::from_str(&source_bond.validator)
-            .expect("ValidatorAddress should be converted");
+        let current_epoch = get_epoch(sdk, retry_config()).await?;
+        let validators = get_validator_addresses(sdk, retry_config()).await?;
 
         let source_redelegations = state.get_redelegations_targets_for(&source_account.alias);
         if source_redelegations.contains(&source_bond.validator) {
@@ -48,14 +40,8 @@ impl StepContext for Redelegate {
         }
 
         let to_validator = if let Some(validator) = validators
-            .into_iter()
-            .filter_map(|v| {
-                if v.address.eq(&source_bond_validator_address) {
-                    None
-                } else {
-                    Some(v.address)
-                }
-            })
+            .iter()
+            .filter(|v| v.to_string() != source_bond.validator)
             .choose(&mut AntithesisRng)
         {
             validator
@@ -73,7 +59,7 @@ impl StepContext for Redelegate {
                 .from_validator(source_bond.validator.to_string())
                 .to_validator(to_validator.to_string())
                 .amount(amount)
-                .epoch(current_epoch.into())
+                .epoch(current_epoch)
                 .settings(task_settings)
                 .build(),
         )])

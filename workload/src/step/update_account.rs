@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use serde_json::json;
 
 use crate::code::Code;
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;

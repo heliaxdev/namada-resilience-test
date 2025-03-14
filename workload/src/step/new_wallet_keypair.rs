@@ -1,16 +1,17 @@
 use namada_sdk::key::SchemeType;
 use namada_sdk::masp::find_valid_diversifier;
 use namada_sdk::masp_primitives::zip32;
-use namada_sdk::{rpc, PaymentAddress};
+use namada_sdk::PaymentAddress;
 use rand::rngs::OsRng;
 use serde_json::json;
 
 use crate::code::Code;
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task};
+use crate::utils::{get_block_height, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -30,10 +31,7 @@ impl StepContext for NewWalletKeyPair {
     async fn build_task(&self, sdk: &Sdk, _state: &State) -> Result<Vec<Task>, StepError> {
         let alias = utils::random_alias();
 
-        let block = rpc::query_block(&sdk.namada.client)
-            .await
-            .map_err(StepError::Rpc)?
-            .ok_or_else(|| StepError::StateCheck("No block found".to_string()))?;
+        let height = get_block_height(sdk, retry_config()).await?;
 
         let mut wallet = sdk.namada.wallet.write().await;
 
@@ -53,7 +51,7 @@ impl StepContext for NewWalletKeyPair {
         let (_alias, spending_key) = wallet
             .gen_store_spending_key(
                 spending_key_alias.clone(),
-                Some(block.height),
+                Some(height.into()),
                 None,
                 true,
                 &mut OsRng,

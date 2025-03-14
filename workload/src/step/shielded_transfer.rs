@@ -4,7 +4,7 @@ use serde_json::json;
 
 use crate::code::Code;
 use crate::constants::{DEFAULT_FEE, MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::utils::coin_flip;

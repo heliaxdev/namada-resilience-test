@@ -9,7 +9,7 @@ use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -40,7 +40,7 @@ impl TaskContext for Shielding {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let mut bparams = RngBuildParams::new(OsRng);
 
         let wallet = sdk.namada.wallet.read().await;
@@ -49,22 +49,22 @@ impl TaskContext for Shielding {
 
         let source_address = wallet
             .find_address(&self.source.name)
-            .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?;
         let target_payment_address =
             *wallet.find_payment_addr(&self.target.name).ok_or_else(|| {
-                StepError::Wallet(format!("No payment address: {}", self.target.name))
+                TaskError::Wallet(format!("No payment address: {}", self.target.name))
             })?;
         let token_address = wallet
             .find_address(&native_token_alias.name)
             .ok_or_else(|| {
-                StepError::Wallet(format!(
+                TaskError::Wallet(format!(
                     "No native token address: {}",
                     native_token_alias.name
                 ))
             })?;
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
         let token_amount = token::Amount::from_u64(self.amount);
 
         let tx_transfer_data = TxShieldingTransferData {
@@ -83,7 +83,7 @@ impl TaskContext for Shielding {
         for signer in &self.settings.signers {
             let public_key = wallet
                 .find_public_key(&signer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             signing_keys.push(public_key)
         }
         transfer_tx_builder = transfer_tx_builder.signing_keys(signing_keys);
@@ -92,7 +92,7 @@ impl TaskContext for Shielding {
         let (transfer_tx, signing_data, _epoch) = transfer_tx_builder
             .build(&sdk.namada, &mut bparams)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((transfer_tx, vec![signing_data], transfer_tx_builder.tx))
     }
@@ -101,7 +101,7 @@ impl TaskContext for Shielding {
         &self,
         sdk: &Sdk,
         retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
         let source_check = Check::BalanceSource(
             check::balance_source::BalanceSource::builder()

@@ -4,7 +4,8 @@ use antithesis_sdk::antithesis_init;
 use clap::Parser;
 use namada_chain_workload::code::Code;
 use namada_chain_workload::config::AppConfig;
-use namada_chain_workload::executor::{StepError, WorkloadExecutor};
+use namada_chain_workload::error::CheckError;
+use namada_chain_workload::executor::WorkloadExecutor;
 use namada_chain_workload::sdk::namada::Sdk;
 use namada_chain_workload::state::{State, StateError};
 use namada_sdk::io::{Client, NullIo};
@@ -121,8 +122,6 @@ async fn inner_main() -> Code {
         }
     }
 
-    let init_block_height = workload_executor.fetch_current_block_height().await;
-
     tracing::info!("Step is: {next_step}...");
     let tasks = match workload_executor.build(&next_step).await {
         Ok(tasks) if tasks.is_empty() => {
@@ -130,7 +129,7 @@ async fn inner_main() -> Code {
         }
         Ok(tasks) => tasks,
         Err(e) => {
-            return Code::BuildFailure(next_step, e);
+            return Code::StepFailure(next_step, e);
         }
     };
     tracing::info!("Built tasks for {next_step}");
@@ -140,13 +139,13 @@ async fn inner_main() -> Code {
     } else {
         match workload_executor.build_check(&tasks).await {
             Ok(checks) => checks,
-            Err(e) => return Code::BuildFailure(next_step, e),
+            Err(e) => return Code::TaskFailure(next_step, e),
         }
     };
     tracing::info!("Built checks for {next_step}");
 
     let (result, fees) = workload_executor.execute(&tasks).await;
-    workload_executor.pay_fees(&fees);
+    workload_executor.apply_fee_payments(&fees);
 
     let execution_height = match result {
         Ok(height) => height,
@@ -156,23 +155,7 @@ async fn inner_main() -> Code {
                 return Code::StateFatal(e);
             }
 
-            let code = match e {
-                StepError::Execution(_) => Code::ExecutionFailure(next_step, e),
-                StepError::Broadcast(_) => {
-                    loop {
-                        let current_block_height =
-                            workload_executor.fetch_current_block_height().await;
-                        if current_block_height > init_block_height {
-                            break;
-                        }
-                    }
-                    Code::BroadcastFailure(next_step, e)
-                }
-                StepError::EmptyBatch => Code::EmptyBatch(next_step),
-                _ => Code::OtherFailure(next_step, e),
-            };
-
-            return code;
+            return Code::TaskFailure(next_step, e);
         }
     };
 
@@ -181,7 +164,7 @@ async fn inner_main() -> Code {
         .post_execute(&tasks, execution_height)
         .await
     {
-        return Code::Fatal(next_step, e);
+        return Code::TaskFailure(next_step, e);
     }
 
     let exit_code = match workload_executor
@@ -189,8 +172,8 @@ async fn inner_main() -> Code {
         .await
     {
         Ok(_) => Code::Success(next_step),
-        Err(e) if matches!(e, StepError::StateCheck(_)) => Code::Fatal(next_step, e),
-        Err(e) => Code::OtherFailure(next_step, e),
+        Err(e) if matches!(e, CheckError::State(_)) => Code::Fatal(next_step, e),
+        Err(e) => Code::CheckFailure(next_step, e),
     };
 
     tracing::info!("Statistics: {:>?}", workload_executor.state().stats);
