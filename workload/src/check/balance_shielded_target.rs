@@ -5,7 +5,7 @@ use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
-use crate::executor::StepError;
+use crate::error::CheckError;
 use crate::sdk::namada::Sdk;
 use crate::types::{Alias, Amount, Balance, Fee};
 use crate::utils::{get_shielded_balance, shielded_sync_with_retry, RetryConfig};
@@ -42,7 +42,7 @@ impl CheckContext for BalanceShieldedTarget {
         fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), CheckError> {
         shielded_sync_with_retry(sdk, &self.target, Some(check_info.execution_height), true)
             .await?;
 
@@ -59,7 +59,7 @@ impl CheckContext for BalanceShieldedTarget {
                         "check_height": check_info.check_height,
                     })
                 );
-                StepError::StateCheck(format!(
+                CheckError::State(format!(
                     "BalanceShieldedTarget check error: {} balance doesn't exist",
                     self.target.name
                 ))
@@ -76,7 +76,7 @@ impl CheckContext for BalanceShieldedTarget {
             .checked_add(token::Amount::from_u64(self.amount))
             .and_then(|b| b.checked_sub(token::Amount::from_u64(fee)))
             .ok_or_else(|| {
-                StepError::StateCheck(format!(
+                CheckError::State(format!(
                     "BalanceShieldedTarget check error: {} balance is overflowing",
                     self.target.name
                 ))
@@ -102,7 +102,7 @@ impl CheckContext for BalanceShieldedTarget {
             Ok(())
         } else {
             tracing::error!("{}", details);
-            Err(StepError::StateCheck(format!("BalanceShieldedTarget check error: post target amount is not equal to pre balance + amount - fee: {} + {} - {fee} = {check_balance} != {post_balance}", self.pre_balance, self.amount)))
+            Err(CheckError::State(format!("BalanceShieldedTarget check error: post target amount is not equal to pre balance + amount - fee: {} + {} - {fee} = {check_balance} != {post_balance}", self.pre_balance, self.amount)))
         }
     }
 }

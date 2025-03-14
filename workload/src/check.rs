@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use enum_dispatch::enum_dispatch;
 use serde_json::json;
 
-use crate::executor::StepError;
+use crate::error::CheckError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::types::{Alias, Balance, Fee, Height};
@@ -133,5 +133,5 @@ pub trait CheckContext {
         fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
-    ) -> Result<(), StepError>;
+    ) -> Result<(), CheckError>;
 }

@@ -146,7 +146,7 @@ async fn inner_main() -> Code {
     tracing::info!("Built checks for {next_step}");
 
     let (result, fees) = workload_executor.execute(&tasks).await;
-    workload_executor.pay_fees(&fees);
+    workload_executor.apply_fee_payments(&fees);
 
     let execution_height = match result {
         Ok(height) => height,

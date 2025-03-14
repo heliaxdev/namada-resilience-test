@@ -5,7 +5,7 @@ use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
-use crate::executor::StepError;
+use crate::error::CheckError;
 use crate::sdk::namada::Sdk;
 use crate::types::{Alias, Fee, ValidatorStatus as Status};
 use crate::utils::{get_epoch, get_validator_state, RetryConfig};
@@ -27,7 +27,7 @@ impl CheckContext for ValidatorStatus {
         _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), CheckError> {
         let epoch = get_epoch(sdk, retry_config).await?;
         let (target_address, (state, _epoch)) =
             get_validator_state(sdk, &self.target, epoch + 2, retry_config).await?;
@@ -41,7 +41,7 @@ impl CheckContext for ValidatorStatus {
                     "check_height": check_info.check_height
                 })
             );
-            StepError::StateCheck(format!(
+            CheckError::State(format!(
                 "ValidatorStatus check error: validator {} doesn't exist",
                 self.target.name
             ))
@@ -71,7 +71,7 @@ impl CheckContext for ValidatorStatus {
             Ok(())
         } else {
             tracing::error!("{}", details);
-            Err(StepError::StateCheck(format!("ValidatorStatus check error: post target state {state:?} doesn't correspond to the expected status {}", self.status)))
+            Err(CheckError::State(format!("ValidatorStatus check error: post target state {state:?} doesn't correspond to the expected status {}", self.status)))
         }
     }
 }

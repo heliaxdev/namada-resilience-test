@@ -4,7 +4,7 @@ use std::str::FromStr;
 use enum_dispatch::enum_dispatch;
 
 use crate::code::Code;
-use crate::executor::StepError;
+use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::Task;

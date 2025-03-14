@@ -6,7 +6,7 @@ use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 
 use crate::check::Check;
 use crate::constants::DEFAULT_GAS_LIMIT;
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::types::{Alias, Fee, Height};
@@ -146,10 +146,10 @@ pub trait TaskContext {
     fn task_settings(&self) -> Option<&TaskSettings>;
 
     #[allow(async_fn_in_trait)]
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError>;
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError>;
 
     #[allow(async_fn_in_trait)]
-    async fn execute(&self, sdk: &Sdk) -> Result<Height, StepError> {
+    async fn execute(&self, sdk: &Sdk) -> Result<Height, TaskError> {
         let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
         utils::execute_tx(sdk, tx, signing_data, &tx_args).await
     }
@@ -159,7 +159,7 @@ pub trait TaskContext {
         &self,
         sdk: &Sdk,
         retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError>;
+    ) -> Result<Vec<Check>, TaskError>;
 
     fn update_state(&self, state: &mut State);
 

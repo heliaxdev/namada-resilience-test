@@ -45,12 +45,16 @@ pub fn get_random_string(length: usize) -> String {
 }
 
 pub fn get_gas_payer<'a>(candidates: impl IntoIterator<Item = &'a Alias>, state: &State) -> Alias {
-    candidates
+    let payer = candidates
         .into_iter()
         .filter(|alias| state.get_balance_for(alias) >= DEFAULT_FEE)
         .choose(&mut AntithesisRng)
         .cloned()
-        .unwrap_or(Alias::faucet())
+        .unwrap_or(Alias::faucet());
+
+    tracing::info!("Gas payer is {}", payer.name);
+
+    payer
 }
 
 #[macro_export]

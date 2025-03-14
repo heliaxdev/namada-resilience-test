@@ -4,7 +4,7 @@ use serde_json::json;
 use typed_builder::TypedBuilder;
 
 use crate::check::{CheckContext, CheckInfo};
-use crate::executor::StepError;
+use crate::error::CheckError;
 use crate::sdk::namada::Sdk;
 use crate::types::{Alias, Fee, ProposalId, ProposalVote};
 use crate::utils::{get_vote_results, RetryConfig};
@@ -27,7 +27,7 @@ impl CheckContext for VoteResult {
         _fees: &HashMap<Alias, Fee>,
         check_info: CheckInfo,
         retry_config: RetryConfig,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), CheckError> {
         let votes = get_vote_results(sdk, &self.source, self.proposal_id, retry_config).await?;
 
         let is_valid_vote = votes.iter().all(|v| *v == self.vote);
@@ -50,7 +50,7 @@ impl CheckContext for VoteResult {
             Ok(())
         } else {
             tracing::error!("{}", details);
-            Err(StepError::StateCheck(format!("VoteResult check error: Vote result {votes:?} doesn't correspond to the expected vote {}", self.vote)))
+            Err(CheckError::State(format!("VoteResult check error: Vote result {votes:?} doesn't correspond to the expected vote {}", self.vote)))
         }
     }
 }

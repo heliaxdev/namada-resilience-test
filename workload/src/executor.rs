@@ -6,6 +6,7 @@ use thiserror::Error;
 use tokio::time::{sleep, Duration};
 
 use crate::check::{Check, CheckContext, CheckInfo};
+use crate::error::{CheckError, StepError, TaskError};
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
@@ -143,7 +144,7 @@ impl WorkloadExecutor {
         step_type.build_task(&self.sdk, &self.state).await
     }
 
-    pub async fn build_check(&self, tasks: &[Task]) -> Result<Vec<Check>, StepError> {
+    pub async fn build_check(&self, tasks: &[Task]) -> Result<Vec<Check>, TaskError> {
         let retry_config = retry_config();
         let mut checks = vec![];
         for task in tasks {
@@ -161,7 +162,7 @@ impl WorkloadExecutor {
         checks: Vec<Check>,
         execution_height: Height,
         fees: &HashMap<Alias, Fee>,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), CheckError> {
         let retry_config = retry_config();
 
         if checks.is_empty() {
@@ -190,7 +191,7 @@ impl WorkloadExecutor {
     pub async fn execute(
         &self,
         tasks: &[Task],
-    ) -> (Result<Height, StepError>, HashMap<Alias, Fee>) {
+    ) -> (Result<Height, TaskError>, HashMap<Alias, Fee>) {
         let mut total_time = 0;
         let mut heights = vec![];
         let mut fees = HashMap::new();
@@ -236,7 +237,7 @@ impl WorkloadExecutor {
         &mut self,
         tasks: &[Task],
         execution_height: Height,
-    ) -> Result<(), StepError> {
+    ) -> Result<(), TaskError> {
         for task in tasks {
             // update state
             task.update_state(&mut self.state);
@@ -265,7 +266,7 @@ impl WorkloadExecutor {
                     let wallet = self.sdk.namada.wallet.read().await;
                     wallet
                         .save()
-                        .map_err(|e| StepError::Wallet(e.to_string()))?;
+                        .map_err(|e| TaskError::Wallet(e.to_string()))?;
                 }
                 _ => {}
             }
@@ -273,7 +274,7 @@ impl WorkloadExecutor {
         Ok(())
     }
 
-    pub fn pay_fees(&mut self, fees: &HashMap<Alias, Fee>) {
+    pub fn apply_fee_payments(&mut self, fees: &HashMap<Alias, Fee>) {
         fees.iter()
             .for_each(|(payer, fee)| self.state.modify_balance_fee(payer, *fee));
     }

@@ -16,7 +16,7 @@ use namada_sdk::tx::{
 use namada_sdk::Namada;
 
 use crate::constants::DEFAULT_GAS_LIMIT;
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::task::TaskSettings;
 use crate::types::{Alias, Height};
@@ -88,11 +88,11 @@ async fn default_tx_arg(sdk: &Sdk) -> args::Tx {
 pub async fn build_reveal_pk(
     sdk: &Sdk,
     public_key: common::PublicKey,
-) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
     let wallet = sdk.namada.wallet.read().await;
     let fee_payer = wallet
         .find_public_key(Alias::faucet().name)
-        .map_err(|e| StepError::Wallet(e.to_string()))?;
+        .map_err(|e| TaskError::Wallet(e.to_string()))?;
     drop(wallet);
 
     let reveal_pk_tx_builder = sdk
@@ -105,7 +105,7 @@ pub async fn build_reveal_pk(
     let (reveal_tx, signing_data) = reveal_pk_tx_builder
         .build(&sdk.namada)
         .await
-        .map_err(|e| StepError::BuildTx(e.to_string()))?;
+        .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
     Ok((reveal_tx, vec![signing_data], reveal_pk_tx_builder.tx))
 }
@@ -113,7 +113,7 @@ pub async fn build_reveal_pk(
 pub async fn execute_reveal_pk(
     sdk: &Sdk,
     public_key: common::PublicKey,
-) -> Result<Height, StepError> {
+) -> Result<Height, TaskError> {
     let (tx, signing_data, tx_args) = build_reveal_pk(sdk, public_key).await?;
 
     execute_tx(sdk, tx, signing_data, &tx_args).await
@@ -123,9 +123,9 @@ pub async fn merge_tx(
     sdk: &Sdk,
     txs: Vec<(Tx, SigningTxData)>,
     settings: &TaskSettings,
-) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
     if txs.is_empty() {
-        return Err(StepError::BuildTx("Empty tx batch".to_string()));
+        return Err(TaskError::BuildTx("Empty tx batch".to_string()));
     }
     let tx_args = default_tx_arg(sdk).await;
 
@@ -133,7 +133,7 @@ pub async fn merge_tx(
     let faucet_alias = Alias::faucet();
     let gas_payer_pk = wallet
         .find_public_key(faucet_alias.name)
-        .map_err(|e| StepError::Wallet(e.to_string()))?;
+        .map_err(|e| TaskError::Wallet(e.to_string()))?;
     drop(wallet);
 
     let (tx, signing_datas) = if txs.len() == 1 {
@@ -141,7 +141,7 @@ pub async fn merge_tx(
         (tx, vec![signing_data])
     } else {
         let (mut tx, signing_datas) =
-            tx::build_batch(txs.clone()).map_err(|e| StepError::BuildTx(e.to_string()))?;
+            tx::build_batch(txs.clone()).map_err(|e| TaskError::BuildTx(e.to_string()))?;
         tx.header.atomic = true;
 
         let mut wrapper = tx.header.wrapper().expect("wrapper should exist");
@@ -164,7 +164,7 @@ pub(crate) async fn execute_tx(
     tx: Tx,
     signing_datas: Vec<SigningTxData>,
     tx_args: &args::Tx,
-) -> Result<Height, StepError> {
+) -> Result<Height, TaskError> {
     let mut tx = tx;
 
     let is_batch = signing_datas.len() > 1;
@@ -175,7 +175,7 @@ pub(crate) async fn execute_tx(
             .wallet_mut()
             .await
             .find_secret_key(Alias::faucet().name, None)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
         tx.sign_wrapper(gas_payer_sk);
     }
 
@@ -192,7 +192,7 @@ pub(crate) async fn execute_tx(
         Err(NamadaError::Tx(TxSubmitError::AppliedTimeout)) => {
             retry_tx_status_check(sdk, tx_args, &tx_hash, wrapper_hash, &cmts).await?
         }
-        Err(e) => return Err(StepError::Broadcast(e)),
+        Err(e) => return Err(TaskError::Broadcast(e)),
     };
 
     let height = if let ProcessTxResponse::Applied(TxResponse {
@@ -202,7 +202,7 @@ pub(crate) async fn execute_tx(
         tracing::info!("Used gas: {gas_used}");
         height
     } else {
-        return Err(StepError::Execution(format!(
+        return Err(TaskError::Execution(format!(
             "Unexpected tx response type: {tx_response:?}"
         )));
     };
@@ -212,7 +212,7 @@ pub(crate) async fn execute_tx(
         .is_none()
     {
         let errors = get_tx_errors(cmts, wrapper_hash, &tx_response).unwrap_or_default();
-        return Err(StepError::Execution(errors));
+        return Err(TaskError::Execution(errors));
     }
 
     Ok(height.0)
@@ -233,14 +233,14 @@ async fn retry_tx_status_check(
     tx_hash: &str,
     wrapper_hash: Option<Hash>,
     cmts: &HashSet<TxCommitments>,
-) -> Result<ProcessTxResponse, StepError> {
+) -> Result<ProcessTxResponse, TaskError> {
     tracing::info!("Retrying to check if tx was applied...");
 
     let tx_query = rpc::TxEventQuery::Applied(tx_hash);
     let deadline = time::Instant::now() + time::Duration::from_secs(300);
     let event = rpc::query_tx_status(&sdk.namada, tx_query, deadline)
         .await
-        .map_err(StepError::Broadcast)?;
+        .map_err(TaskError::Broadcast)?;
     let tx_response = TxResponse::from_event(event);
 
     // add initialized accounts when init-account
