@@ -8,6 +8,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
+use crate::utils::{get_epoch, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -30,13 +31,13 @@ impl StepContext for DefaultProposal {
             .random_account_with_min_balance(vec![], PROPOSAL_DEPOSIT)
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
 
-        let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
+        let current_epoch = get_epoch(sdk, retry_config()).await?;
 
         let gov_prams = rpc::query_governance_parameters(client).await;
 
         let start_epoch = utils::random_between(
-            current_epoch.0 + 2,
-            current_epoch.0 + gov_prams.max_proposal_latency,
+            current_epoch + 2,
+            current_epoch + gov_prams.max_proposal_latency,
         );
         let end_epoch = utils::random_between(
             start_epoch + gov_prams.min_proposal_voting_period,

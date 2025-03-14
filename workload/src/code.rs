@@ -1,17 +1,15 @@
-use crate::executor::StepError;
+use crate::error::{CheckError, StepError, TaskError};
 use crate::state::StateError;
 use crate::step::{StepContext, StepType};
 
 pub enum Code {
     Success(StepType),
-    Fatal(StepType, StepError),
-    ExecutionFailure(StepType, StepError),
-    BroadcastFailure(StepType, StepError),
-    OtherFailure(StepType, StepError),
-    BuildFailure(StepType, StepError),
+    Fatal(StepType, CheckError),
+    StepFailure(StepType, StepError),
+    TaskFailure(StepType, TaskError),
+    CheckFailure(StepType, CheckError),
     InvalidStep(StepType),
     NoTask(StepType),
-    EmptyBatch(StepType),
     StateFatal(StateError),
     InitFatal(StepError),
 }
@@ -21,12 +19,10 @@ impl Code {
         match self {
             Code::Success(_) => 0,
             Code::Fatal(_, _) => 1,
-            Code::BuildFailure(_, _) => 2,
-            Code::ExecutionFailure(_, _) => 3,
-            Code::BroadcastFailure(_, _) => 4,
-            Code::OtherFailure(_, _) => 5,
+            Code::StepFailure(_, _) => 2,
+            Code::TaskFailure(_, _) => 4,
+            Code::CheckFailure(_, _) => 5,
             Code::NoTask(_) => 6,
-            Code::EmptyBatch(_) => 7,
             Code::StateFatal(_) => 8,
             Code::InitFatal(_) => 9,
             Code::InvalidStep(_) => 10,
@@ -37,13 +33,11 @@ impl Code {
         match self {
             Code::Success(st) => Some(st),
             Code::Fatal(st, _) => Some(st),
-            Code::ExecutionFailure(st, _) => Some(st),
-            Code::BroadcastFailure(st, _) => Some(st),
-            Code::OtherFailure(st, _) => Some(st),
-            Code::BuildFailure(st, _) => Some(st),
+            Code::StepFailure(st, _) => Some(st),
+            Code::TaskFailure(st, _) => Some(st),
+            Code::CheckFailure(st, _) => Some(st),
             Code::InvalidStep(st) => Some(st),
             Code::NoTask(st) => Some(st),
-            Code::EmptyBatch(st) => Some(st),
             Code::StateFatal(_) => None,
             Code::InitFatal(_) => None,
         }
@@ -55,25 +49,19 @@ impl Code {
             Code::Fatal(step_type, reason) => {
                 tracing::error!("State check error for {step_type} -> {reason}")
             }
-            Code::ExecutionFailure(step_type, reason) => {
-                tracing::error!("Transaction execution failure for {step_type} -> {reason}")
+            Code::StepFailure(step_type, reason) => {
+                tracing::error!("Step failure for {step_type} -> {reason}")
             }
-            Code::BroadcastFailure(step_type, reason) => tracing::info!(
-                "Transaction broadcast failure for {step_type} -> {reason}, waiting for next block"
-            ),
-            Code::OtherFailure(step_type, reason) => {
-                tracing::warn!("Failure for {step_type} -> {reason}")
+            Code::TaskFailure(step_type, reason) => {
+                tracing::error!("Task failure for {step_type} -> {reason}")
+            }
+            Code::CheckFailure(step_type, reason) => {
+                tracing::error!("Check failure for {step_type} -> {reason}")
             }
             Code::InvalidStep(step_type) => {
                 tracing::warn!("Invalid step for {step_type}, skipping...")
             }
             Code::NoTask(step_type) => tracing::info!("No task for {step_type}, skipping..."),
-            Code::BuildFailure(step_type, reason) => {
-                tracing::warn!("Build failure for {step_type} -> {reason}")
-            }
-            Code::EmptyBatch(step_type) => {
-                tracing::error!("Building an empty batch for {step_type}")
-            }
             Code::StateFatal(reason) => {
                 tracing::error!("State error -> {reason}")
             }

@@ -11,7 +11,7 @@ use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -42,7 +42,7 @@ impl TaskContext for ShieldedTransfer {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let mut bparams = RngBuildParams::new(OsRng);
         let mut wallet = sdk.namada.wallet.write().await;
 
@@ -50,17 +50,17 @@ impl TaskContext for ShieldedTransfer {
 
         let source_spending_key = wallet
             .find_spending_key(&self.source.name, None)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
         let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(source_spending_key);
         let pseudo_spending_key_from_spending_key = PseudoExtendedKey::from(tmp);
         let target_payment_address =
             *wallet.find_payment_addr(&self.target.name).ok_or_else(|| {
-                StepError::Wallet(format!("No payment address: {}", self.target.name))
+                TaskError::Wallet(format!("No payment address: {}", self.target.name))
             })?;
         let token = wallet
             .find_address(&native_token_alias.name)
             .ok_or_else(|| {
-                StepError::Wallet(format!(
+                TaskError::Wallet(format!(
                     "No native token address: {}",
                     native_token_alias.name
                 ))
@@ -78,7 +78,7 @@ impl TaskContext for ShieldedTransfer {
         let gas_spending_key = if disposable_gas_payer {
             let spending_key = wallet
                 .find_spending_key(&self.settings.gas_payer.name, None)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(spending_key);
             Some(PseudoExtendedKey::from(tmp))
         } else {
@@ -95,7 +95,7 @@ impl TaskContext for ShieldedTransfer {
         if !disposable_gas_payer {
             let fee_payer = wallet
                 .find_public_key(&self.settings.gas_payer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
         }
         drop(wallet);
@@ -105,7 +105,7 @@ impl TaskContext for ShieldedTransfer {
         let (transfer_tx, signing_data) = transfer_tx_builder
             .build(&sdk.namada, &mut bparams)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((transfer_tx, vec![signing_data], transfer_tx_builder.tx))
     }
@@ -114,7 +114,7 @@ impl TaskContext for ShieldedTransfer {
         &self,
         sdk: &Sdk,
         retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         shielded_sync_with_retry(sdk, &self.source, None, false).await?;
 
         let pre_balance = get_shielded_balance(sdk, &self.source, retry_config)

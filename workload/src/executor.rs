@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use namada_sdk::rpc;
-use thiserror::Error;
 use tokio::time::{sleep, Duration};
 
 use crate::check::{Check, CheckContext, CheckInfo};
@@ -12,33 +11,7 @@ use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
 use crate::types::{Alias, Epoch, Fee, Height};
-use crate::utils::{execute_reveal_pk, retry_config};
-
-#[derive(Error, Debug)]
-pub enum StepError {
-    #[error("Building an empty batch")]
-    EmptyBatch,
-    #[error("Wallet failed: `{0}`")]
-    Wallet(String),
-    #[error("Building task failed: `{0}`")]
-    BuildTask(String),
-    #[error("Building tx failed: `{0}`")]
-    BuildTx(String),
-    #[error("Building check failed: `{0}`")]
-    BuildCheck(String),
-    #[error("Fetching shielded context data failed: `{0}`")]
-    ShieldedSync(String),
-    #[error("Broadcasting tx failed: `{0}`")]
-    Broadcast(namada_sdk::error::Error),
-    #[error("Executing tx failed: `{0}`")]
-    Execution(String),
-    #[error("Namada RPC request failed `{0}`")]
-    Rpc(namada_sdk::error::Error),
-    #[error("State check failed: `{0}`")]
-    StateCheck(String),
-    #[error("Shielded context failed: `{0}`")]
-    ShieldedContext(String),
-}
+use crate::utils::{execute_reveal_pk, is_pk_revealed, retry_config};
 
 pub struct WorkloadExecutor {
     sdk: Sdk,
@@ -58,12 +31,28 @@ impl WorkloadExecutor {
         &self.state
     }
 
-    pub async fn fetch_current_block_height(&self) -> Height {
+    async fn fetch_current_block_height(&self) -> Height {
         loop {
             if let Ok(Some(latest_block)) = rpc::query_block(&self.sdk.namada.client).await {
                 return latest_block.height.into();
             }
             sleep(Duration::from_secs(1)).await
+        }
+    }
+
+    async fn wait_block_settlement(&self, height: Height) {
+        loop {
+            let current_height = self.fetch_current_block_height().await;
+            if current_height > height {
+                break;
+            } else {
+                tracing::info!(
+                    "Waiting for block settlement at height: {}, currently at: {}",
+                    height,
+                    current_height
+                );
+            }
+            sleep(Duration::from_secs(2)).await
         }
     }
 
@@ -118,7 +107,8 @@ impl WorkloadExecutor {
         }
 
         loop {
-            if let Ok(is_revealed) = rpc::is_public_key_revealed(client, &faucet_address).await {
+            if let Ok(is_revealed) = is_pk_revealed(&self.sdk, &faucet_alias, retry_config()).await
+            {
                 if is_revealed {
                     break;
                 }
@@ -196,13 +186,20 @@ impl WorkloadExecutor {
         let mut heights = vec![];
         let mut fees = HashMap::new();
 
+        let start_height = self.fetch_current_block_height().await;
+
         for task in tasks {
             tracing::info!("Executing {task}...");
             let now = Instant::now();
             let execution_height = match task.execute(&self.sdk).await {
                 Ok(height) => height,
                 Err(e) => {
-                    task.aggregate_fees(&mut fees);
+                    match e {
+                        // aggreate fees when the tx has been executed
+                        TaskError::Execution(_) => task.aggregate_fees(&mut fees),
+                        TaskError::Broadcast(_) => self.wait_block_settlement(start_height).await,
+                        _ => {}
+                    }
                     return (Err(e), fees);
                 }
             };
@@ -216,19 +213,7 @@ impl WorkloadExecutor {
 
         let execution_height = heights.into_iter().max().unwrap_or_default();
         // wait for the execution block settling
-        loop {
-            let current_height = self.fetch_current_block_height().await;
-            if current_height > execution_height {
-                break;
-            } else {
-                tracing::info!(
-                    "Waiting for block height: {}, currently at: {}",
-                    execution_height,
-                    current_height
-                );
-            }
-            sleep(Duration::from_secs(2)).await
-        }
+        self.wait_block_settlement(execution_height).await;
 
         (Ok(execution_height), fees)
     }

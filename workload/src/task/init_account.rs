@@ -8,7 +8,7 @@ use namada_sdk::Namada;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -36,20 +36,20 @@ impl TaskContext for InitAccount {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let wallet = sdk.namada.wallet.read().await;
 
         let mut public_keys = vec![];
         for source in &self.sources {
             let source_pk = wallet
                 .find_public_key(&source.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             public_keys.push(source_pk);
         }
 
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
 
         let mut init_account_builder = sdk
             .namada
@@ -65,7 +65,7 @@ impl TaskContext for InitAccount {
         for signer in &self.settings.signers {
             let public_key = wallet
                 .find_public_key(&signer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             signing_keys.push(public_key)
         }
         init_account_builder = init_account_builder.signing_keys(signing_keys);
@@ -74,7 +74,7 @@ impl TaskContext for InitAccount {
         let (init_account_tx, signing_data) = init_account_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((init_account_tx, vec![signing_data], init_account_builder.tx))
     }
@@ -83,7 +83,7 @@ impl TaskContext for InitAccount {
         &self,
         _sdk: &Sdk,
         _retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         Ok(vec![Check::AccountExist(
             check::account_exist::AccountExist::builder()
                 .target(self.target.clone())

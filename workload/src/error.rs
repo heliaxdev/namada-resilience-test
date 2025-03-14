@@ -18,8 +18,6 @@ pub enum StepError {
     Wallet(String),
     #[error("Building task failed: `{0}`")]
     BuildTask(String),
-    #[error("Namada RPC request failed `{0}`")]
-    Rpc(namada_sdk::error::Error),
     #[error("Query failed: `{0}`")]
     Query(QueryError),
 }

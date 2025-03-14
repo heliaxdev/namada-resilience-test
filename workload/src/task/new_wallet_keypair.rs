@@ -4,7 +4,7 @@ use namada_sdk::tx::Tx;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -35,11 +35,11 @@ impl TaskContext for NewWalletKeyPair {
         None
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let wallet = sdk.namada.wallet.read().await;
         let public_key = wallet
             .find_public_key(&self.source.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
         drop(wallet);
 
         build_reveal_pk(sdk, public_key).await
@@ -49,7 +49,7 @@ impl TaskContext for NewWalletKeyPair {
         &self,
         _sdk: &Sdk,
         _retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         Ok(vec![Check::RevealPk(
             check::reveal_pk::RevealPk::builder()
                 .target(self.source.clone())

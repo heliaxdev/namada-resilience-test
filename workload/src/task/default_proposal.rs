@@ -10,7 +10,7 @@ use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
 use crate::constants::PROPOSAL_DEPOSIT;
-use crate::executor::StepError;
+use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
@@ -39,14 +39,14 @@ impl TaskContext for DefaultProposal {
         Some(&self.settings)
     }
 
-    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), StepError> {
+    async fn build_tx(&self, sdk: &Sdk) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
         let wallet = sdk.namada.wallet.read().await;
         let source_address = wallet
             .find_address(&self.source.name)
-            .ok_or_else(|| StepError::Wallet(format!("No source address: {}", self.source.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?;
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
-            .map_err(|e| StepError::Wallet(e.to_string()))?;
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
 
         let default_proposal = Proposal {
             proposal: OnChainProposal {
@@ -76,7 +76,7 @@ impl TaskContext for DefaultProposal {
         for signer in &self.settings.signers {
             let public_key = wallet
                 .find_public_key(&signer.name)
-                .map_err(|e| StepError::Wallet(e.to_string()))?;
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
             signing_keys.push(public_key)
         }
         default_proposal_tx_builder = default_proposal_tx_builder.signing_keys(signing_keys);
@@ -85,7 +85,7 @@ impl TaskContext for DefaultProposal {
         let (default_proposal, signing_data) = default_proposal_tx_builder
             .build(&sdk.namada)
             .await
-            .map_err(|e| StepError::BuildTx(e.to_string()))?;
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
 
         Ok((
             default_proposal,
@@ -98,7 +98,7 @@ impl TaskContext for DefaultProposal {
         &self,
         sdk: &Sdk,
         retry_config: RetryConfig,
-    ) -> Result<Vec<Check>, StepError> {
+    ) -> Result<Vec<Check>, TaskError> {
         let (_, pre_balance) = get_balance(sdk, &self.source, retry_config).await?;
 
         Ok(vec![Check::BalanceSource(

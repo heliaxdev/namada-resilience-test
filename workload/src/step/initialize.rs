@@ -1,5 +1,4 @@
 use antithesis_sdk::random::AntithesisRng;
-use namada_sdk::rpc;
 use rand::seq::IteratorRandom;
 use serde_json::json;
 
@@ -11,6 +10,7 @@ use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
+use crate::utils::{get_epoch, get_validator_addresses, retry_config};
 use crate::{assert_always_step, assert_unrechable_step};
 
 use super::utils;
@@ -99,19 +99,14 @@ impl StepContext for Initialize {
         ));
 
         // bond
+        let current_epoch = get_epoch(sdk, retry_config()).await?;
+        let validators = get_validator_addresses(sdk, retry_config()).await?;
         let mut batch_tasks = vec![];
-        let client = &sdk.namada.client;
         for alias in implicit_aliases {
             let amount = utils::random_between(1, FAUCET_AMOUNT);
 
-            let current_epoch = rpc::query_epoch(client).await.map_err(StepError::Rpc)?;
-            let validators = rpc::get_all_consensus_validators(client, current_epoch)
-                .await
-                .map_err(StepError::Rpc)?;
-
             let validator = validators
-                .into_iter()
-                .map(|v| v.address)
+                .iter()
                 .choose(&mut AntithesisRng)
                 .expect("There is always at least a validator");
 
@@ -122,7 +117,7 @@ impl StepContext for Initialize {
                     .source(alias)
                     .validator(validator.to_string())
                     .amount(amount)
-                    .epoch(current_epoch.into())
+                    .epoch(current_epoch)
                     .settings(task_settings.clone())
                     .build(),
             ));

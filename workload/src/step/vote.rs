@@ -1,4 +1,3 @@
-use namada_sdk::rpc;
 use serde_json::json;
 
 use crate::code::Code;
@@ -8,6 +7,7 @@ use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::ProposalVote;
+use crate::utils::{get_epoch, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
 
 use super::utils;
@@ -21,21 +21,17 @@ impl StepContext for Vote {
     }
 
     async fn is_valid(&self, sdk: &Sdk, state: &State) -> Result<bool, StepError> {
-        let current_epoch = rpc::query_epoch(&sdk.namada.client)
-            .await
-            .map_err(StepError::Rpc)?;
-        Ok(state.any_bond() && state.any_votable_proposal(current_epoch.into()))
+        let current_epoch = get_epoch(sdk, retry_config()).await?;
+        Ok(state.any_bond() && state.any_votable_proposal(current_epoch))
     }
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let source_bond = state.random_bond();
         let source_account = state.get_account_by_alias(&source_bond.alias);
 
-        let current_epoch = rpc::query_epoch(&sdk.namada.client)
-            .await
-            .map_err(StepError::Rpc)?;
+        let current_epoch = get_epoch(sdk, retry_config()).await?;
 
-        let proposal_id = state.random_votable_proposal(current_epoch.0);
+        let proposal_id = state.random_votable_proposal(current_epoch);
 
         let vote = if utils::coin_flip(0.5) {
             ProposalVote::Yay

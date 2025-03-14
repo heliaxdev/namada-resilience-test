@@ -102,6 +102,21 @@ pub async fn get_validator_state(
     Ok((target_address, state))
 }
 
+pub async fn get_validator_addresses(
+    sdk: &Sdk,
+    retry_config: RetryConfig,
+) -> Result<Vec<Address>, QueryError> {
+    let current_epoch = get_epoch(sdk, retry_config).await?;
+    let validators = rpc::get_all_consensus_validators(&sdk.namada.client, current_epoch.into())
+        .await
+        .map_err(QueryError::Rpc)?
+        .into_iter()
+        .map(|v| v.address)
+        .collect();
+
+    Ok(validators)
+}
+
 pub async fn is_pk_revealed(
     sdk: &Sdk,
     target: &Alias,
