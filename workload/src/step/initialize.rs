@@ -3,7 +3,9 @@ use rand::seq::IteratorRandom;
 use serde_json::json;
 
 use crate::code::Code;
-use crate::constants::{FAUCET_AMOUNT, INIT_ESTABLISHED_ADDR_NUM, INIT_IMPLICIT_ADDR_NUM};
+use crate::constants::{
+    FAUCET_AMOUNT, INIT_ESTABLISHED_ADDR_NUM, INIT_IMPLICIT_ADDR_NUM, MAX_BATCH_TX_NUM,
+};
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -103,7 +105,8 @@ impl StepContext for Initialize {
         let validators = get_validator_addresses(sdk, retry_config()).await?;
         let mut batch_tasks = vec![];
         for alias in implicit_aliases {
-            let amount = utils::random_between(1, FAUCET_AMOUNT);
+            // limit the amount to avoid the insufficent balance for the batch fee
+            let amount = utils::random_between(1, FAUCET_AMOUNT / MAX_BATCH_TX_NUM);
 
             let validator = validators
                 .iter()

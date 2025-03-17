@@ -196,7 +196,7 @@ impl WorkloadExecutor {
                 Err(e) => {
                     match e {
                         // aggreate fees when the tx has been executed
-                        TaskError::Execution(_) => task.aggregate_fees(&mut fees),
+                        TaskError::Execution(_) => task.aggregate_fees(&mut fees, false),
                         TaskError::Broadcast(_) => self.wait_block_settlement(start_height).await,
                         _ => {}
                     }
@@ -207,7 +207,7 @@ impl WorkloadExecutor {
             total_time += now.elapsed().as_secs();
             heights.push(execution_height);
 
-            task.aggregate_fees(&mut fees);
+            task.aggregate_fees(&mut fees, true);
         }
         tracing::info!("Execution took {total_time}s...");
 
