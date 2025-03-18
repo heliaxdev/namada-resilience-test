@@ -182,16 +182,17 @@ impl WorkloadExecutor {
         &self,
         tasks: &[Task],
     ) -> (Result<Height, TaskError>, HashMap<Alias, Fee>) {
-        let mut total_time = 0;
-        let mut heights = vec![];
         let mut fees = HashMap::new();
+        let mut execution_height = 0;
 
         let start_height = self.fetch_current_block_height().await;
 
+        // Execute transactions sequentially.
+        // But other workloads could execute transactions at the same block.
         for task in tasks {
             tracing::info!("Executing {task}...");
             let now = Instant::now();
-            let execution_height = match task.execute(&self.sdk).await {
+            execution_height = match task.execute(&self.sdk).await {
                 Ok(height) => height,
                 Err(e) => {
                     match e {
@@ -203,17 +204,13 @@ impl WorkloadExecutor {
                     return (Err(e), fees);
                 }
             };
-
-            total_time += now.elapsed().as_secs();
-            heights.push(execution_height);
+            tracing::info!("Execution took {}s...", now.elapsed().as_secs());
 
             task.aggregate_fees(&mut fees, true);
-        }
-        tracing::info!("Execution took {total_time}s...");
 
-        let execution_height = heights.into_iter().max().unwrap_or_default();
-        // wait for the execution block settling
-        self.wait_block_settlement(execution_height).await;
+            // wait for the execution block settlement
+            self.wait_block_settlement(execution_height).await;
+        }
 
         (Ok(execution_height), fees)
     }
