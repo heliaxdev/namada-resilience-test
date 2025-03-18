@@ -123,16 +123,13 @@ async fn build_batch(
         .into_iter()
         .filter(|task| {
             let shielded_source = match task {
-                Task::ShieldedTransfer(inner) => Some(inner.source()),
-                Task::Unshielding(inner) => Some(inner.source()),
-                _ => None,
-            };
-            let Some(source) = shielded_source else {
-                return true;
+                Task::ShieldedTransfer(inner) => inner.source(),
+                Task::Unshielding(inner) => inner.source(),
+                _ => return true,
             };
             // if the shielded source has been already used,
             // remove the task to avoid spending the same masp note
-            shielded_sources.insert(source.clone())
+            shielded_sources.insert(shielded_source.clone())
         })
         .collect();
 
