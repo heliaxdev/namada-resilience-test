@@ -26,6 +26,12 @@ pub struct ShieldedTransfer {
     settings: TaskSettings,
 }
 
+impl ShieldedTransfer {
+    pub fn source(&self) -> &Alias {
+        &self.source
+    }
+}
+
 impl TaskContext for ShieldedTransfer {
     fn name(&self) -> String {
         "shielded-transfer".to_string()

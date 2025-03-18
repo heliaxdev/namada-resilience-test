@@ -45,6 +45,8 @@ fn get_tx_errors(
                 .join(", ");
 
             return Some(errors);
+        } else {
+            return Some(result.info.clone());
         }
     }
     None
@@ -195,24 +197,29 @@ pub(crate) async fn execute_tx(
         Err(e) => return Err(TaskError::Broadcast(e)),
     };
 
-    let height = if let ProcessTxResponse::Applied(TxResponse {
-        height, gas_used, ..
-    }) = tx_response
-    {
-        tracing::info!("Used gas: {gas_used}");
-        height
-    } else {
-        return Err(TaskError::Execution(format!(
-            "Unexpected tx response type: {tx_response:?}"
-        )));
-    };
+    let (height, gas_used) =
+        if let ProcessTxResponse::Applied(TxResponse {
+            height, gas_used, ..
+        }) = tx_response
+        {
+            tracing::info!("Used gas: {gas_used}");
+            (height, gas_used)
+        } else {
+            return Err(TaskError::Execution(format!(
+                "Unexpected tx response type: {tx_response:?}"
+            )));
+        };
 
     if tx_response
         .is_applied_and_valid(wrapper_hash.as_ref(), &first_cmt)
         .is_none()
     {
         let errors = get_tx_errors(cmts, wrapper_hash, &tx_response).unwrap_or_default();
-        return Err(TaskError::Execution(errors));
+        if u64::from(gas_used) != 0 {
+            return Err(TaskError::Execution(errors));
+        } else {
+            return Err(TaskError::InsufficientGas(errors));
+        }
     }
 
     Ok(height.0)

@@ -34,6 +34,8 @@ pub enum TaskError {
     Broadcast(namada_sdk::error::Error),
     #[error("Executing tx failed: `{0}`")]
     Execution(String),
+    #[error("Executing tx failed due to the gas: `{0}`")]
+    InsufficientGas(String),
     #[error("Query failed: `{0}`")]
     Query(QueryError),
 }
