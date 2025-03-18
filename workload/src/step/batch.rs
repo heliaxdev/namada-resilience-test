@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use antithesis_sdk::random::AntithesisRng;
 use rand::seq::SliceRandom;
 use serde_json::json;
@@ -115,6 +117,21 @@ async fn build_batch(
             batch_tasks.extend(tasks);
         }
     }
+
+    let mut shielded_sources = HashSet::new();
+    let batch_tasks: Vec<Task> = batch_tasks
+        .into_iter()
+        .filter(|task| {
+            let shielded_source = match task {
+                Task::ShieldedTransfer(inner) => inner.source(),
+                Task::Unshielding(inner) => inner.source(),
+                _ => return true,
+            };
+            // if the shielded source has been already used,
+            // remove the task to avoid spending the same masp note
+            shielded_sources.insert(shielded_source.clone())
+        })
+        .collect();
 
     if batch_tasks.is_empty() {
         return Err(StepError::EmptyBatch);

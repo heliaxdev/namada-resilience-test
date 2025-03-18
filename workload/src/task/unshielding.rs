@@ -26,6 +26,12 @@ pub struct Unshielding {
     settings: TaskSettings,
 }
 
+impl Unshielding {
+    pub fn source(&self) -> &Alias {
+        &self.source
+    }
+}
+
 impl TaskContext for Unshielding {
     fn name(&self) -> String {
         "unshielding".to_string()
