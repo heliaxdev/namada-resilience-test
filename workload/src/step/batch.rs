@@ -108,17 +108,28 @@ async fn build_batch(
     }
 
     let mut shielded_sources = HashSet::new();
+    let mut redelegated_sources = HashSet::new();
     let batch_tasks: Vec<Task> = batch_tasks
         .into_iter()
         .filter(|task| {
-            let shielded_source = match task {
-                Task::ShieldedTransfer(inner) => inner.source(),
-                Task::Unshielding(inner) => inner.source(),
-                _ => return true,
-            };
-            // if the shielded source has been already used,
-            // remove the task to avoid spending the same masp note
-            shielded_sources.insert(shielded_source.clone())
+            match task {
+                // if the shielded source has been already used,
+                // remove the task to avoid spending the same masp note
+                Task::ShieldedTransfer(inner) => shielded_sources.insert(inner.source().clone()),
+                Task::Unshielding(inner) => shielded_sources.insert(inner.source().clone()),
+                // if the redelegated target validator has been already used as a source,
+                // remove the task to avoid cyclic redelegation
+                Task::Redelegate(inner) => {
+                    let (from, to) = (inner.from_validator(), inner.to_validator());
+                    if redelegated_sources.contains(to) {
+                        false
+                    } else {
+                        redelegated_sources.insert(from.clone());
+                        true
+                    }
+                }
+                _ => true,
+            }
         })
         .collect();
 
