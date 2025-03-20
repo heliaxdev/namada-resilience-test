@@ -2,19 +2,16 @@ use std::collections::HashSet;
 
 use antithesis_sdk::random::AntithesisRng;
 use rand::seq::SliceRandom;
-use serde_json::json;
 
-use crate::assert_always_step;
-use crate::assert_sometimes_step;
-use crate::assert_unrechable_step;
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::constants::MAX_BATCH_TX_NUM;
 use crate::constants::MIN_TRANSFER_BALANCE;
-use crate::error::StepError;
+use crate::error::{StepError, TaskError};
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 #[derive(Clone, Debug, Default)]
 pub struct BatchBond;
@@ -39,17 +36,11 @@ impl StepContext for BatchBond {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal BatchBond", details)
-        } else if is_successful {
-            assert_always_step!("Done BatchBond", details)
-        } else {
-            assert_sometimes_step!("Failed Code BatchBond ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done BatchBond", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal BatchBond", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped BatchBond", code),
+            CodeType::Failed => assert_unreachable_step!("Failed BatchBond", code),
         }
     }
 }
@@ -76,7 +67,6 @@ impl StepContext for BatchRandom {
                 StepType::Unbond(Default::default()),
                 StepType::Shielding(Default::default()),
                 StepType::Unshielding(Default::default()),
-                // StepType::ClaimRewards, introducing this would fail every balance check :(
             ],
             MAX_BATCH_TX_NUM,
             state,
@@ -85,17 +75,16 @@ impl StepContext for BatchRandom {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal BatchRandom", details)
-        } else if is_successful {
-            assert_always_step!("Done BatchRandom", details)
-        } else {
-            assert_sometimes_step!("Failed Code BatchRandom ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done BatchRandom", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal BatchRandom", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped BatchRandom", code),
+            CodeType::Failed
+                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+            {
+                assert_sometimes_step!("Invalid BatchRandom including shielded actions", code)
+            }
+            _ => assert_unreachable_step!("Failed BatchRandom", code),
         }
     }
 }
@@ -134,7 +123,7 @@ async fn build_batch(
         .collect();
 
     if batch_tasks.is_empty() {
-        return Err(StepError::EmptyBatch);
+        return Ok(vec![]);
     }
 
     let settings = TaskSettings::faucet_batch(batch_tasks.len());

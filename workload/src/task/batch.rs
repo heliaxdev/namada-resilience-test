@@ -8,8 +8,11 @@ use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{Task, TaskContext, TaskSettings};
-use crate::types::Alias;
-use crate::utils::{get_balance, get_bond, get_shielded_balance, merge_tx, RetryConfig};
+use crate::types::{Alias, Height};
+use crate::utils::{
+    execute_shielded_tx, execute_tx, get_balance, get_bond, get_epoch, get_shielded_balance,
+    merge_tx, retry_config, RetryConfig,
+};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct Batch {
@@ -52,6 +55,21 @@ impl TaskContext for Batch {
         }
 
         merge_tx(sdk, txs, &self.settings).await
+    }
+
+    async fn execute(&self, sdk: &Sdk) -> Result<Height, TaskError> {
+        let start_epoch = get_epoch(sdk, retry_config()).await?;
+        let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
+        if self.tasks.iter().any(|task| {
+            matches!(
+                task,
+                Task::Shielding(_) | Task::ShieldedTransfer(_) | Task::Unshielding(_)
+            )
+        }) {
+            execute_shielded_tx(sdk, tx, signing_data, &tx_args, start_epoch).await
+        } else {
+            execute_tx(sdk, tx, signing_data, &tx_args).await
+        }
     }
 
     async fn build_checks(

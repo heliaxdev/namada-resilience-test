@@ -1,12 +1,10 @@
-use serde_json::json;
-
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -48,17 +46,11 @@ impl StepContext for ChangeMetadata {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal ChangeMetadata", details)
-        } else if is_successful {
-            assert_always_step!("Done ChangeMetadata", details)
-        } else {
-            assert_sometimes_step!("Unknown ChangeMetadata ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done ChangeMetadata", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal ChangeMetadata", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped ChangeMetadata", code),
+            CodeType::Failed => assert_unreachable_step!("Failed ChangeMetadata", code),
         }
     }
 }

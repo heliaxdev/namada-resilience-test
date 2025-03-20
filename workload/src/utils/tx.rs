@@ -19,7 +19,8 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::task::TaskSettings;
-use crate::types::{Alias, Height};
+use crate::types::{Alias, Epoch, Height};
+use crate::utils::{get_epoch, retry_config};
 
 fn get_tx_errors(
     cmts: HashSet<TxCommitments>,
@@ -159,6 +160,25 @@ pub async fn merge_tx(
     let tx_args = tx_args.wrapper_fee_payer(gas_payer_pk);
 
     Ok((tx, signing_datas, tx_args))
+}
+
+pub async fn execute_shielded_tx(
+    sdk: &Sdk,
+    tx: Tx,
+    signing_data: Vec<SigningTxData>,
+    tx_args: &args::Tx,
+    start_epoch: Epoch,
+) -> Result<Height, TaskError> {
+    let result = execute_tx(sdk, tx, signing_data, tx_args).await;
+
+    let epoch = get_epoch(sdk, retry_config()).await?;
+    result.map_err(|err| {
+        if epoch == start_epoch {
+            err
+        } else {
+            TaskError::InvalidShielded(err.to_string())
+        }
+    })
 }
 
 pub(crate) async fn execute_tx(

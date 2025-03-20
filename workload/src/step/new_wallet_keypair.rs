@@ -3,16 +3,15 @@ use namada_sdk::masp::find_valid_diversifier;
 use namada_sdk::masp_primitives::zip32;
 use namada_sdk::PaymentAddress;
 use rand::rngs::OsRng;
-use serde_json::json;
 
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task};
 use crate::utils::{get_block_height, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -95,17 +94,11 @@ impl StepContext for NewWalletKeyPair {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal NewWalletKeyPair", details)
-        } else if is_successful {
-            assert_always_step!("Done NewWalletKeyPair", details)
-        } else {
-            assert_sometimes_step!("Failed NewWalletKeyPair ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done NewWalletKeyPair", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal NewWalletKeyPair", code),
+            CodeType::Skip => assert_unreachable_step!("Skipped NewWalletKeyPair", code),
+            CodeType::Failed => assert_unreachable_step!("Failed NewWalletKeyPair", code),
         }
     }
 }

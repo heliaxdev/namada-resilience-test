@@ -4,28 +4,34 @@ use crate::step::{StepContext, StepType};
 
 pub enum Code {
     Success(StepType),
+    // Fatal failures
     Fatal(StepType, CheckError),
+    StateFatal(StateError),
+    InitFatal(StepError),
+    // No execution
+    Skip(StepType),
+    NoTask(StepType),
+    // Other failures
     StepFailure(StepType, StepError),
     TaskFailure(StepType, TaskError),
     CheckFailure(StepType, CheckError),
-    InvalidStep(StepType),
-    NoTask(StepType),
-    StateFatal(StateError),
-    InitFatal(StepError),
+}
+
+pub enum CodeType {
+    Success,
+    Fatal,
+    Skip,
+    Failed,
 }
 
 impl Code {
     pub fn code(&self) -> i32 {
         match self {
-            Code::Success(_) => 0,
             Code::Fatal(_, _) => 1,
-            Code::StepFailure(_, _) => 2,
-            Code::TaskFailure(_, _) => 4,
-            Code::CheckFailure(_, _) => 5,
-            Code::NoTask(_) => 6,
-            Code::StateFatal(_) => 8,
-            Code::InitFatal(_) => 9,
-            Code::InvalidStep(_) => 10,
+            Code::StateFatal(_) => 2,
+            Code::InitFatal(_) => 3,
+            // system state is as expected
+            _ => 0,
         }
     }
 
@@ -33,13 +39,13 @@ impl Code {
         match self {
             Code::Success(st) => Some(st),
             Code::Fatal(st, _) => Some(st),
+            Code::StateFatal(_) => None,
+            Code::InitFatal(_) => None,
+            Code::Skip(st) => Some(st),
+            Code::NoTask(st) => Some(st),
             Code::StepFailure(st, _) => Some(st),
             Code::TaskFailure(st, _) => Some(st),
             Code::CheckFailure(st, _) => Some(st),
-            Code::InvalidStep(st) => Some(st),
-            Code::NoTask(st) => Some(st),
-            Code::StateFatal(_) => None,
-            Code::InitFatal(_) => None,
         }
     }
 
@@ -58,7 +64,7 @@ impl Code {
             Code::CheckFailure(step_type, reason) => {
                 tracing::error!("Check failure for {step_type} -> {reason}")
             }
-            Code::InvalidStep(step_type) => {
+            Code::Skip(step_type) => {
                 tracing::warn!("Invalid step for {step_type}, skipping...")
             }
             Code::NoTask(step_type) => tracing::info!("No task for {step_type}, skipping..."),
@@ -71,20 +77,28 @@ impl Code {
         }
     }
 
-    pub fn is_fatal(&self) -> bool {
-        matches!(self, Code::Fatal(_, _) | Code::StateFatal(_))
+    pub fn code_type(&self) -> CodeType {
+        match self {
+            Code::Success(_) => CodeType::Success,
+            Code::Fatal(_, _) | Code::StateFatal(_) | Code::InitFatal(_) => CodeType::Fatal,
+            Code::Skip(_) | Code::NoTask(_) => CodeType::Skip,
+            _ => CodeType::Failed,
+        }
     }
 
-    pub fn is_failed(&self) -> bool {
-        !(self.is_fatal() || self.is_successful())
-    }
-
-    pub fn is_skipped(&self) -> bool {
-        matches!(self, Code::InvalidStep(_))
-    }
-
-    pub fn is_successful(&self) -> bool {
-        matches!(self, Code::Success(_))
+    pub fn details(&self) -> serde_json::Value {
+        let outcome = match self {
+            Code::Success(_) => "Success",
+            Code::Fatal(_, _) => "Fatal failure",
+            Code::StateFatal(_) => "Fatal state failure",
+            Code::InitFatal(_) => "Fatal init failure",
+            Code::Skip(_) => "Skipped step",
+            Code::NoTask(_) => "No task",
+            Code::StepFailure(_, _) => "Step failure",
+            Code::TaskFailure(_, _) => "Task failure",
+            Code::CheckFailure(_, _) => "Check failure",
+        };
+        serde_json::json!({"outcome": outcome})
     }
 
     pub fn assert(&self) {

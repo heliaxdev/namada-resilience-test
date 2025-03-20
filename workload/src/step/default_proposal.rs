@@ -1,7 +1,6 @@
 use namada_sdk::rpc;
-use serde_json::json;
 
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::constants::PROPOSAL_DEPOSIT;
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
@@ -9,7 +8,7 @@ use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::utils::{get_epoch, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -63,17 +62,11 @@ impl StepContext for DefaultProposal {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal DefaultProposal", details)
-        } else if is_successful {
-            assert_always_step!("Done DefaultProposal", details)
-        } else {
-            assert_sometimes_step!("Failed DefaultProposal ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done DefaultProposal", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal DefaultProposal", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped DefaultProposal", code),
+            CodeType::Failed => assert_unreachable_step!("Failed DefaultProposal", code),
         }
     }
 }

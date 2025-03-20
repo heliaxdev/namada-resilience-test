@@ -59,21 +59,21 @@ pub fn get_gas_payer<'a>(candidates: impl IntoIterator<Item = &'a Alias>, state:
 
 #[macro_export]
 macro_rules! assert_always_step {
-    ($msg:literal, $details:expr) => {
-        antithesis_sdk::assert_always_or_unreachable!(true, $msg, &$details)
+    ($msg:literal, $code:expr) => {
+        antithesis_sdk::assert_always_or_unreachable!(true, $msg, &$code.details())
     };
 }
 
 #[macro_export]
 macro_rules! assert_sometimes_step {
-    ($msg:literal, $details:expr) => {
-        antithesis_sdk::assert_always_or_unreachable!(true, $msg, &$details)
+    ($msg:literal, $code:expr) => {
+        antithesis_sdk::assert_always_or_unreachable!(true, $msg, &$code.details())
     };
 }
 
 #[macro_export]
-macro_rules! assert_unrechable_step {
-    ($msg:literal, $details:expr) => {
-        antithesis_sdk::assert_unreachable!($msg, &$details)
+macro_rules! assert_unreachable_step {
+    ($msg:literal, $code:expr) => {
+        antithesis_sdk::assert_unreachable!($msg, &$code.details())
     };
 }

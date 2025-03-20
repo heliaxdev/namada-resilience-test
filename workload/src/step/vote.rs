@@ -1,6 +1,4 @@
-use serde_json::json;
-
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
@@ -8,7 +6,7 @@ use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::ProposalVote;
 use crate::utils::{get_epoch, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -56,17 +54,11 @@ impl StepContext for Vote {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal Vote", details)
-        } else if is_successful {
-            assert_always_step!("Done Vote", details)
-        } else {
-            assert_sometimes_step!("Failed Vote ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done Vote", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal Vote", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped Vote", code),
+            CodeType::Failed => assert_unreachable_step!("Failed Vote", code),
         }
     }
 }
