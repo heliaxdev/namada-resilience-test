@@ -189,7 +189,7 @@ pub(crate) async fn execute_tx(
 ) -> Result<Height, TaskError> {
     let mut tx = tx;
 
-    let is_batch = signing_datas.len() > 1;
+    let is_batch = tx.commitments().len() > 1;
     do_sign_tx(sdk, &mut tx, signing_datas, tx_args).await;
     if is_batch {
         let gas_payer_sk = sdk

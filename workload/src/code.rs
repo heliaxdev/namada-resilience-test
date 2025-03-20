@@ -87,18 +87,21 @@ impl Code {
     }
 
     pub fn details(&self) -> serde_json::Value {
-        let outcome = match self {
-            Code::Success(_) => "Success",
-            Code::Fatal(_, _) => "Fatal failure",
-            Code::StateFatal(_) => "Fatal state failure",
-            Code::InitFatal(_) => "Fatal init failure",
-            Code::Skip(_) => "Skipped step",
-            Code::NoTask(_) => "No task",
-            Code::StepFailure(_, _) => "Step failure",
-            Code::TaskFailure(_, _) => "Task failure",
-            Code::CheckFailure(_, _) => "Check failure",
+        let (outcome, error) = match self {
+            Code::Success(_) => ("Success", Default::default()),
+            Code::Fatal(_, e) => ("Fatal failure", e.to_string()),
+            Code::StateFatal(e) => ("Fatal state failure", e.to_string()),
+            Code::InitFatal(e) => ("Fatal init failure", e.to_string()),
+            Code::Skip(_) => ("Skipped step", Default::default()),
+            Code::NoTask(_) => ("No task", Default::default()),
+            Code::StepFailure(_, e) => ("Step failure", e.to_string()),
+            Code::TaskFailure(_, e) => ("Task failure", e.to_string()),
+            Code::CheckFailure(_, e) => ("Check failure", e.to_string()),
         };
-        serde_json::json!({"outcome": outcome})
+        serde_json::json!({
+            "outcome": outcome,
+            "error": error
+        })
     }
 
     pub fn assert(&self) {

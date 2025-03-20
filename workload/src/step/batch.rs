@@ -100,7 +100,7 @@ async fn build_batch(
         let step = possibilities
             .choose(&mut AntithesisRng)
             .expect("at least one StepType should exist");
-        let tasks = step.build_task(sdk, state).await?;
+        let tasks = step.build_task(sdk, state).await.unwrap_or_default();
         if !tasks.is_empty() {
             tracing::info!("Added {step} to the batch...");
             batch_tasks.extend(tasks);
