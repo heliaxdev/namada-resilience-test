@@ -21,26 +21,6 @@ services:
     restart: on-failure
     volumes:
     - ./container_ready/:/container_ready
-  fullnode:
-    container_name: fullnode
-    entrypoint: /entrypoint.sh
-    environment:
-    - NAMADA_TOKIO_THREADS=4
-    - NAMADA_RAYON_THREADS=4
-    - NAMADA_LOG=info
-    - NAMADA_LOG_FMT=json
-    - CMT_LOG_LEVEL=p2p:none,pex:error
-    - NAMADA_CMT_STDOUT=true
-    - BASE_DIR=/fullnode
-    hostname: fullnode
-    image: ghcr.io/heliaxdev/ant-namada:main
-    networks:
-      namada-net:
-        ipv4_address: 30.0.0.15
-    volumes:
-    - ./fullnode/:/fullnode
-    - ./container_ready/:/container_ready
-    - ./namada.sh:/entrypoint.sh
   genesis:
     container_name: genesis
     environment:
@@ -48,7 +28,7 @@ services:
     - VALIDATOR1_ADDR=30.0.0.13:27657
     - VALIDATOR2_ADDR=30.0.0.14:27657
     hostname: genesis
-    image: ghcr.io/heliaxdev/ant-namada-genesis:main
+    image: ghcr.io/heliaxdev/ant-namada-genesis:v1.1.2
     networks:
       namada-net:
         ipv4_address: 30.0.0.11
@@ -131,7 +111,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-0
     hostname: validator0
-    image: ghcr.io/heliaxdev/ant-namada:main
+    image: ghcr.io/heliaxdev/ant-namada:v1.1.2-inst
     networks:
       namada-net:
         ipv4_address: 30.0.0.12
@@ -151,7 +131,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-1
     hostname: validator1
-    image: ghcr.io/heliaxdev/ant-namada:main
+    image: ghcr.io/heliaxdev/ant-namada:v1.1.2-inst
     networks:
       namada-net:
         ipv4_address: 30.0.0.13
@@ -171,7 +151,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-2
     hostname: validator2
-    image: ghcr.io/heliaxdev/ant-namada:main
+    image: ghcr.io/heliaxdev/ant-namada:v1.1.2-inst
     networks:
       namada-net:
         ipv4_address: 30.0.0.14
