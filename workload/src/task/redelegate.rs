@@ -27,6 +27,16 @@ pub struct Redelegate {
     settings: TaskSettings,
 }
 
+impl Redelegate {
+    pub fn from_validator(&self) -> &ValidatorAddress {
+        &self.from_validator
+    }
+
+    pub fn to_validator(&self) -> &ValidatorAddress {
+        &self.to_validator
+    }
+}
+
 impl TaskContext for Redelegate {
     fn name(&self) -> String {
         "redelegate".to_string()

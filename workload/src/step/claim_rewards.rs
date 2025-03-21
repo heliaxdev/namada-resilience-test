@@ -1,13 +1,11 @@
-use serde_json::json;
-
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::utils::{get_epoch, get_rewards, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -65,17 +63,11 @@ impl StepContext for ClaimRewards {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal ClaimRewards", details)
-        } else if is_successful {
-            assert_always_step!("Done ClaimRewards", details)
-        } else {
-            assert_sometimes_step!("Failed ClaimRewards ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done ClaimRewards", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal ClaimRewards", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped ClaimRewards", code),
+            CodeType::Failed => assert_unreachable_step!("Failed ClaimRewards", code),
         }
     }
 }

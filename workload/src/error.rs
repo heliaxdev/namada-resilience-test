@@ -12,8 +12,6 @@ pub enum Error {
 
 #[derive(Error, Debug)]
 pub enum StepError {
-    #[error("Building an empty batch")]
-    EmptyBatch,
     #[error("Wallet failed: `{0}`")]
     Wallet(String),
     #[error("Building task failed: `{0}`")]
@@ -36,6 +34,8 @@ pub enum TaskError {
     Execution(String),
     #[error("Executing tx failed due to the gas: `{0}`")]
     InsufficientGas(String),
+    #[error("Shielded tx failed due to crossing the epoch boundary: `{0}`")]
+    InvalidShielded(String),
     #[error("Query failed: `{0}`")]
     Query(QueryError),
 }

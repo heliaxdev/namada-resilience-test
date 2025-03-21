@@ -1,12 +1,11 @@
 use namada_sdk::dec::Dec;
-use serde_json::json;
 
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 use super::StepContext;
@@ -36,7 +35,11 @@ impl StepContext for BecomeValidator {
         let eth_hot_key_alias = format!("{}-eth-hot", random_alias.name);
         let protocol_key_alias = format!("{}-protocol", random_alias.name);
 
-        let account = state.random_established_account(vec![], 1).pop().unwrap();
+        let black_list = state.bonds.keys().cloned().collect();
+        let account = state
+            .random_established_account(black_list, 1)
+            .pop()
+            .unwrap();
 
         let gas_payer = utils::get_gas_payer(account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(account.public_keys, gas_payer);
@@ -56,17 +59,11 @@ impl StepContext for BecomeValidator {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal BecomeValidator", details)
-        } else if is_successful {
-            assert_always_step!("Done BecomeValidator", details)
-        } else {
-            assert_sometimes_step!("Failed Code BecomeValidator ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done BecomeValidator", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal BecomeValidator", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped BecomeValidator", code),
+            CodeType::Failed => assert_unreachable_step!("Failed BecomeValidator", code),
         }
     }
 }

@@ -1,13 +1,11 @@
-use serde_json::json;
-
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
-use crate::error::StepError;
+use crate::error::{StepError, TaskError};
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -47,17 +45,16 @@ impl StepContext for Shielding {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal Shielding", details)
-        } else if is_successful {
-            assert_always_step!("Done Shielding", details)
-        } else {
-            assert_sometimes_step!("Failed Shielding ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done Shielding", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal Shielding", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped Shielding", code),
+            CodeType::Failed
+                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+            {
+                assert_sometimes_step!("Invalid Shielding", code)
+            }
+            _ => assert_unreachable_step!("Failed Shielding", code),
         }
     }
 }

@@ -1,13 +1,11 @@
-use serde_json::json;
-
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::constants::FAUCET_AMOUNT;
 use crate::error::StepError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_sometimes_step, assert_unrechable_step};
+use crate::{assert_always_step, assert_unreachable_step};
 
 #[derive(Clone, Debug, Default)]
 pub struct FaucetTransfer;
@@ -38,17 +36,11 @@ impl StepContext for FaucetTransfer {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal FaucetTransfer", details)
-        } else if is_successful {
-            assert_always_step!("Done FaucetTransfer", details)
-        } else {
-            assert_sometimes_step!("Failed Code FaucetTransfer ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done FaucetTransfer", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal FaucetTransfer", code),
+            CodeType::Skip => assert_unreachable_step!("Skipped FaucetTransfer", code),
+            CodeType::Failed => assert_unreachable_step!("Failed FaucetTransfer", code),
         }
     }
 }

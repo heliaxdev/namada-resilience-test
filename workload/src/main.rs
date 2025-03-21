@@ -26,12 +26,7 @@ async fn main() {
 
     code.assert();
 
-    if code.is_fatal() {
-        std::process::exit(code.code());
-    } else {
-        // system state is as expected
-        std::process::exit(0);
-    }
+    std::process::exit(code.code());
 }
 
 async fn inner_main() -> Code {
@@ -118,12 +113,12 @@ async fn inner_main() -> Code {
                 "Invalid step: {next_step} -> {:>?}",
                 workload_executor.state()
             );
-            return Code::InvalidStep(next_step);
+            return Code::Skip(next_step);
         }
     }
 
     tracing::info!("Step is: {next_step}...");
-    let tasks = match workload_executor.build(&next_step).await {
+    let tasks = match workload_executor.build_tasks(&next_step).await {
         Ok(tasks) if tasks.is_empty() => {
             return Code::NoTask(next_step);
         }

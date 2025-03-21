@@ -130,7 +130,7 @@ impl WorkloadExecutor {
         step_type.is_valid(&self.sdk, &self.state).await
     }
 
-    pub async fn build(&self, step_type: &StepType) -> Result<Vec<Task>, StepError> {
+    pub async fn build_tasks(&self, step_type: &StepType) -> Result<Vec<Task>, StepError> {
         step_type.build_task(&self.sdk, &self.state).await
     }
 
@@ -197,7 +197,9 @@ impl WorkloadExecutor {
                 Err(e) => {
                     match e {
                         // aggreate fees when the tx has been executed
-                        TaskError::Execution(_) => task.aggregate_fees(&mut fees, false),
+                        TaskError::Execution(_) | TaskError::InvalidShielded(_) => {
+                            task.aggregate_fees(&mut fees, false)
+                        }
                         TaskError::Broadcast(_) => self.wait_block_settlement(start_height).await,
                         _ => {}
                     }

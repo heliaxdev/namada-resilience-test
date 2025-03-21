@@ -2,19 +2,16 @@ use std::collections::HashSet;
 
 use antithesis_sdk::random::AntithesisRng;
 use rand::seq::SliceRandom;
-use serde_json::json;
 
-use crate::assert_always_step;
-use crate::assert_sometimes_step;
-use crate::assert_unrechable_step;
-use crate::code::Code;
+use crate::code::{Code, CodeType};
 use crate::constants::MAX_BATCH_TX_NUM;
 use crate::constants::MIN_TRANSFER_BALANCE;
-use crate::error::StepError;
+use crate::error::{StepError, TaskError};
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
+use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 #[derive(Clone, Debug, Default)]
 pub struct BatchBond;
@@ -39,17 +36,11 @@ impl StepContext for BatchBond {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal BatchBond", details)
-        } else if is_successful {
-            assert_always_step!("Done BatchBond", details)
-        } else {
-            assert_sometimes_step!("Failed Code BatchBond ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done BatchBond", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal BatchBond", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped BatchBond", code),
+            CodeType::Failed => assert_unreachable_step!("Failed BatchBond", code),
         }
     }
 }
@@ -76,7 +67,6 @@ impl StepContext for BatchRandom {
                 StepType::Unbond(Default::default()),
                 StepType::Shielding(Default::default()),
                 StepType::Unshielding(Default::default()),
-                // StepType::ClaimRewards, introducing this would fail every balance check :(
             ],
             MAX_BATCH_TX_NUM,
             state,
@@ -85,17 +75,16 @@ impl StepContext for BatchRandom {
     }
 
     fn assert(&self, code: &Code) {
-        let is_fatal = code.is_fatal();
-        let is_successful = code.is_successful();
-
-        let details = json!({"outcome": code.code()});
-
-        if is_fatal {
-            assert_unrechable_step!("Fatal BatchRandom", details)
-        } else if is_successful {
-            assert_always_step!("Done BatchRandom", details)
-        } else {
-            assert_sometimes_step!("Failed Code BatchRandom ", details)
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done BatchRandom", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal BatchRandom", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped BatchRandom", code),
+            CodeType::Failed
+                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+            {
+                assert_sometimes_step!("Invalid BatchRandom including shielded actions", code)
+            }
+            _ => assert_unreachable_step!("Failed BatchRandom", code),
         }
     }
 }
@@ -111,7 +100,7 @@ async fn build_batch(
         let step = possibilities
             .choose(&mut AntithesisRng)
             .expect("at least one StepType should exist");
-        let tasks = step.build_task(sdk, state).await?;
+        let tasks = step.build_task(sdk, state).await.unwrap_or_default();
         if !tasks.is_empty() {
             tracing::info!("Added {step} to the batch...");
             batch_tasks.extend(tasks);
@@ -119,22 +108,33 @@ async fn build_batch(
     }
 
     let mut shielded_sources = HashSet::new();
+    let mut redelegated_sources = HashSet::new();
     let batch_tasks: Vec<Task> = batch_tasks
         .into_iter()
         .filter(|task| {
-            let shielded_source = match task {
-                Task::ShieldedTransfer(inner) => inner.source(),
-                Task::Unshielding(inner) => inner.source(),
-                _ => return true,
-            };
-            // if the shielded source has been already used,
-            // remove the task to avoid spending the same masp note
-            shielded_sources.insert(shielded_source.clone())
+            match task {
+                // if the shielded source has been already used,
+                // remove the task to avoid spending the same masp note
+                Task::ShieldedTransfer(inner) => shielded_sources.insert(inner.source().clone()),
+                Task::Unshielding(inner) => shielded_sources.insert(inner.source().clone()),
+                // if the redelegated target validator has been already used as a source,
+                // remove the task to avoid cyclic redelegation
+                Task::Redelegate(inner) => {
+                    let (from, to) = (inner.from_validator(), inner.to_validator());
+                    if redelegated_sources.contains(to) {
+                        false
+                    } else {
+                        redelegated_sources.insert(from.clone());
+                        true
+                    }
+                }
+                _ => true,
+            }
         })
         .collect();
 
     if batch_tasks.is_empty() {
-        return Err(StepError::EmptyBatch);
+        return Ok(vec![]);
     }
 
     let settings = TaskSettings::faucet_batch(batch_tasks.len());
