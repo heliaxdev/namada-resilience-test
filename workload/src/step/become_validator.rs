@@ -36,10 +36,9 @@ impl StepContext for BecomeValidator {
         let protocol_key_alias = format!("{}-protocol", random_alias.name);
 
         let black_list = state.bonds.keys().cloned().collect();
-        let account = state
-            .random_established_account(black_list, 1)
-            .pop()
-            .unwrap();
+        let Some(account) = state.random_established_account(black_list, 1).pop() else {
+            return Ok(vec![]);
+        };
 
         let gas_payer = utils::get_gas_payer(account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(account.public_keys, gas_payer);
