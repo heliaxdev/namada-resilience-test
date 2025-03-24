@@ -65,7 +65,10 @@ impl StepContext for Unshielding {
             CodeType::Fatal => assert_unreachable_step!("Fatal Unshielding", code),
             CodeType::Skip => assert_sometimes_step!("Skipped Unshielding", code),
             CodeType::Failed
-                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+                if matches!(
+                    code,
+                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
+                ) =>
             {
                 assert_sometimes_step!("Invalid Unshielding", code)
             }

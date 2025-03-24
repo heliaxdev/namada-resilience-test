@@ -199,7 +199,7 @@ impl WorkloadExecutor {
                         // aggreate fees when the tx has been executed
                         TaskError::Execution(_) => task.aggregate_fees(&mut fees, false),
                         TaskError::Broadcast(_) => self.wait_block_settlement(start_height).await,
-                        TaskError::InvalidShielded((_, was_fee_paid)) => {
+                        TaskError::InvalidShielded { was_fee_paid, .. } => {
                             if was_fee_paid {
                                 task.aggregate_fees(&mut fees, false)
                             } else {

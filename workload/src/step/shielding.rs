@@ -50,7 +50,10 @@ impl StepContext for Shielding {
             CodeType::Fatal => assert_unreachable_step!("Fatal Shielding", code),
             CodeType::Skip => assert_sometimes_step!("Skipped Shielding", code),
             CodeType::Failed
-                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+                if matches!(
+                    code,
+                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
+                ) =>
             {
                 assert_sometimes_step!("Invalid Shielding", code)
             }
