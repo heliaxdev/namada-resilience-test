@@ -8,7 +8,7 @@ use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::constants::MIN_TRANSFER_BALANCE;
+use crate::constants::{MIN_TRANSFER_BALANCE, PIPELINE_LEN};
 use crate::types::{Alias, Epoch};
 
 #[derive(Error, Debug)]
@@ -71,7 +71,7 @@ pub struct State {
     pub redelegations: HashMap<Alias, HashMap<String, u64>>,
     pub claimed_epochs: HashMap<Alias, Epoch>,
     pub validators: HashMap<Alias, Account>,
-    pub deactivated_validators: HashMap<Alias, Account>,
+    pub deactivated_validators: HashMap<Alias, (Account, Epoch)>,
     pub proposals: HashMap<u64, (u64, u64)>,
     pub id: u64,
     pub base_dir: PathBuf,
@@ -314,15 +314,19 @@ impl State {
     pub fn random_deactivated_validator(
         &self,
         blacklist: Vec<Alias>,
+        current_epoch: Epoch,
         sample_size: usize,
     ) -> Vec<Account> {
         self.deactivated_validators
             .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_established())
+            .filter(|(alias, (account, epoch))| {
+                !blacklist.contains(alias)
+                    && account.is_established()
+                    && current_epoch >= epoch + PIPELINE_LEN
+            })
             .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
-            .map(|(_, account)| account.clone())
+            .map(|(_, (account, _))| account.clone())
             .collect()
     }
 
@@ -534,9 +538,10 @@ impl State {
         self.validators.insert(alias.clone(), account);
     }
 
-    pub fn set_validator_as_deactivated(&mut self, alias: &Alias) {
+    pub fn set_validator_as_deactivated(&mut self, alias: &Alias, epoch: Epoch) {
         let account = self.validators.remove(alias).unwrap();
-        self.deactivated_validators.insert(alias.clone(), account);
+        self.deactivated_validators
+            .insert(alias.clone(), (account, epoch));
     }
 
     pub fn remove_deactivate_validator(&mut self, alias: &Alias) {

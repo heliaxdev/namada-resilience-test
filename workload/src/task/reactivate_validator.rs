@@ -87,5 +87,6 @@ impl TaskContext for ReactivateValidator {
 
     fn update_state(&self, state: &mut State) {
         state.remove_deactivate_validator(&self.target);
+        state.set_established_as_validator(&self.target);
     }
 }
