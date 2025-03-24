@@ -176,7 +176,8 @@ pub async fn execute_shielded_tx(
         if epoch == start_epoch {
             err
         } else {
-            TaskError::InvalidShielded(err.to_string())
+            let was_fee_paid = matches!(err, TaskError::Execution(_));
+            TaskError::InvalidShielded((err.to_string(), was_fee_paid))
         }
     })
 }

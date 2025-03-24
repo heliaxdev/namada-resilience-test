@@ -35,7 +35,7 @@ pub enum TaskError {
     #[error("Executing tx failed due to the gas: `{0}`")]
     InsufficientGas(String),
     #[error("Shielded tx failed due to crossing the epoch boundary: `{0}`")]
-    InvalidShielded(String),
+    InvalidShielded((String, bool)),
     #[error("Query failed: `{0}`")]
     Query(QueryError),
 }
