@@ -11,7 +11,9 @@ use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
 use crate::types::{Alias, Epoch, Fee, Height};
-use crate::utils::{execute_reveal_pk, is_pk_revealed, retry_config};
+use crate::utils::{
+    execute_reveal_pk, get_block_height, is_pk_revealed, retry_config, wait_block_settlement,
+};
 
 pub struct WorkloadExecutor {
     sdk: Sdk,
@@ -29,31 +31,6 @@ impl WorkloadExecutor {
 
     pub fn state(&self) -> &State {
         &self.state
-    }
-
-    async fn fetch_current_block_height(&self) -> Height {
-        loop {
-            if let Ok(Some(latest_block)) = rpc::query_block(&self.sdk.namada.client).await {
-                return latest_block.height.into();
-            }
-            sleep(Duration::from_secs(1)).await
-        }
-    }
-
-    async fn wait_block_settlement(&self, height: Height) {
-        loop {
-            let current_height = self.fetch_current_block_height().await;
-            if current_height > height {
-                break;
-            } else {
-                tracing::info!(
-                    "Waiting for block settlement at height: {}, currently at: {}",
-                    height,
-                    current_height
-                );
-            }
-            sleep(Duration::from_secs(2)).await
-        }
     }
 
     async fn fetch_epoch_at_height(&self, height: Height) -> Epoch {
@@ -159,7 +136,9 @@ impl WorkloadExecutor {
             return Ok(());
         }
 
-        let check_height = self.fetch_current_block_height().await;
+        let check_height = get_block_height(&self.sdk, retry_config)
+            .await
+            .unwrap_or_default();
         for check in checks {
             tracing::info!("Running {check} check...");
             check
@@ -185,7 +164,9 @@ impl WorkloadExecutor {
         let mut fees = HashMap::new();
         let mut execution_height = 0;
 
-        let start_height = self.fetch_current_block_height().await;
+        let start_height = get_block_height(&self.sdk, retry_config())
+            .await
+            .unwrap_or_default();
 
         // Execute transactions sequentially.
         // But other workloads could execute transactions at the same block.
@@ -197,14 +178,17 @@ impl WorkloadExecutor {
                 Err(e) => {
                     match e {
                         // aggreate fees when the tx has been executed
-                        TaskError::Execution(_) => task.aggregate_fees(&mut fees, false),
-                        TaskError::Broadcast(_) => self.wait_block_settlement(start_height).await,
+                        TaskError::Execution { .. } => task.aggregate_fees(&mut fees, false),
+                        TaskError::Broadcast(_) => {
+                            wait_block_settlement(&self.sdk, start_height, retry_config()).await;
+                        }
                         TaskError::InvalidShielded { was_fee_paid, .. } => {
                             if was_fee_paid {
                                 task.aggregate_fees(&mut fees, false)
                             } else {
                                 // Broadcast error
-                                self.wait_block_settlement(start_height).await
+                                wait_block_settlement(&self.sdk, start_height, retry_config())
+                                    .await;
                             }
                         }
                         _ => {}
@@ -217,7 +201,7 @@ impl WorkloadExecutor {
             task.aggregate_fees(&mut fees, true);
 
             // wait for the execution block settlement
-            self.wait_block_settlement(execution_height).await;
+            wait_block_settlement(&self.sdk, execution_height, retry_config()).await;
         }
 
         (Ok(execution_height), fees)
