@@ -30,7 +30,9 @@ impl StepContext for Vote {
         };
         let source_account = state.get_account_by_alias(&source_bond.alias);
 
-        let proposal_id = state.random_votable_proposal(current_epoch);
+        let Some(proposal_id) = state.random_votable_proposal(current_epoch) else {
+            return Ok(vec![]);
+        };
 
         let vote = if utils::coin_flip(0.5) {
             ProposalVote::Yay

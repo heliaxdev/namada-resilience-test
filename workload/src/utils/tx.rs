@@ -20,7 +20,7 @@ use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::task::TaskSettings;
 use crate::types::{Alias, Height, MaspEpoch};
-use crate::utils::{get_masp_epoch, retry_config};
+use crate::utils::{get_masp_epoch, get_masp_epoch_at_height, retry_config, wait_block_settlement};
 
 fn get_tx_errors(
     cmts: HashSet<TxCommitments>,
@@ -171,14 +171,21 @@ pub async fn execute_shielded_tx(
 ) -> Result<Height, TaskError> {
     let result = execute_tx(sdk, tx, signing_data, tx_args).await;
 
-    let epoch = get_masp_epoch(sdk, retry_config()).await?;
+    let epoch = match result {
+        Err(TaskError::Execution { height, .. }) => {
+            wait_block_settlement(sdk, height, retry_config()).await;
+            get_masp_epoch_at_height(sdk, height, retry_config()).await?
+        }
+        _ => get_masp_epoch(sdk, retry_config()).await?,
+    };
+
     result.map_err(|err| {
         if epoch == start_epoch {
             err
         } else {
             TaskError::InvalidShielded {
                 err: err.to_string(),
-                was_fee_paid: matches!(err, TaskError::Execution(_)),
+                was_fee_paid: matches!(err, TaskError::Execution { .. }),
             }
         }
     })
@@ -226,9 +233,9 @@ pub(crate) async fn execute_tx(
         }) = tx_response
         {
             tracing::info!("Used gas: {gas_used}");
-            (height, gas_used)
+            (height.0, gas_used)
         } else {
-            return Err(TaskError::Execution(format!(
+            return Err(TaskError::TxResp(format!(
                 "Unexpected tx response type: {tx_response:?}"
             )));
         };
@@ -239,13 +246,16 @@ pub(crate) async fn execute_tx(
     {
         let errors = get_tx_errors(cmts, wrapper_hash, &tx_response).unwrap_or_default();
         if u64::from(gas_used) != 0 {
-            return Err(TaskError::Execution(errors));
+            return Err(TaskError::Execution {
+                err: errors,
+                height,
+            });
         } else {
             return Err(TaskError::InsufficientGas(errors));
         }
     }
 
-    Ok(height.0)
+    Ok(height)
 }
 
 async fn do_sign_tx(sdk: &Sdk, tx: &mut Tx, signing_datas: Vec<SigningTxData>, tx_args: &args::Tx) {

@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use std::time::{Duration, Instant};
+use std::time::{self, Instant};
 
 use namada_sdk::account::Account;
 use namada_sdk::address::Address;
@@ -14,6 +14,7 @@ use namada_sdk::{rpc, Namada};
 use namada_wallet::DatedKeypair;
 use reqwest::Url;
 use serde_json::json;
+use tokio::time::{sleep, Duration};
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
 use crate::error::QueryError;
@@ -247,6 +248,23 @@ pub async fn get_block_height(sdk: &Sdk, retry_config: RetryConfig) -> Result<He
     Ok(block.height.into())
 }
 
+pub async fn wait_block_settlement(sdk: &Sdk, height: Height, retry_config: RetryConfig) {
+    loop {
+        if let Ok(current_height) = get_block_height(sdk, retry_config).await {
+            if current_height > height {
+                break;
+            } else {
+                tracing::info!(
+                    "Waiting for block settlement at height: {}, currently at: {}",
+                    height,
+                    current_height
+                );
+            }
+        }
+        sleep(Duration::from_secs(2)).await
+    }
+}
+
 pub async fn get_epoch(sdk: &Sdk, retry_config: RetryConfig) -> Result<Epoch, QueryError> {
     tryhard::retry_fn(|| rpc::query_epoch(&sdk.namada.client))
         .with_config(retry_config)
@@ -272,6 +290,39 @@ pub async fn get_masp_epoch(sdk: &Sdk, retry_config: RetryConfig) -> Result<Masp
         })
         .await
         .map_err(QueryError::Rpc)
+}
+
+pub async fn get_masp_epoch_at_height(
+    sdk: &Sdk,
+    height: Height,
+    retry_config: RetryConfig,
+) -> Result<MaspEpoch, QueryError> {
+    let epoch = tryhard::retry_fn(|| rpc::query_epoch_at_height(&sdk.namada.client, height.into()))
+        .with_config(retry_config)
+        .on_retry(|attempt, _, error| {
+            let error = error.to_string();
+            async move {
+                tracing::info!("Retry {} due to {}...", attempt, error);
+            }
+        })
+        .await
+        .map_err(QueryError::Rpc)?
+        .expect("Epoch should exist");
+    let key = namada_sdk::parameters::storage::get_masp_epoch_multiplier_key();
+    let masp_epoch_multiplier =
+        tryhard::retry_fn(|| rpc::query_storage_value(&sdk.namada.client, &key))
+            .with_config(retry_config)
+            .on_retry(|attempt, _, error| {
+                let error = error.to_string();
+                async move {
+                    tracing::info!("Retry {} due to {}...", attempt, error);
+                }
+            })
+            .await
+            .map_err(QueryError::Rpc)?;
+
+    MaspEpoch::try_from_epoch(epoch, masp_epoch_multiplier)
+        .map_err(|e| QueryError::Convert(e.to_string()))
 }
 
 pub async fn get_bond(
@@ -430,7 +481,7 @@ async fn shielded_sync(
 
     let res = if with_indexer {
         let client = reqwest::Client::builder()
-            .connect_timeout(Duration::from_secs(60))
+            .connect_timeout(time::Duration::from_secs(60))
             .build()
             .expect("Client should be built");
         let masp_client = IndexerMaspClient::new(
@@ -455,7 +506,7 @@ async fn shielded_sync(
             .map_err(|e| QueryError::ShieldedSync(e.to_string()))
     } else {
         let masp_client =
-            LedgerMaspClient::new(sdk.namada.clone_client(), 10, Duration::from_secs(1));
+            LedgerMaspClient::new(sdk.namada.clone_client(), 10, time::Duration::from_secs(1));
 
         let config = ShieldedSyncConfig::builder()
             .client(masp_client)

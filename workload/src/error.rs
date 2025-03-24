@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::types::Height;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Step failed: `{0}`")]
@@ -30,8 +32,10 @@ pub enum TaskError {
     BuildCheck(String),
     #[error("Broadcasting tx failed: `{0}`")]
     Broadcast(namada_sdk::error::Error),
-    #[error("Executing tx failed: `{0}`")]
-    Execution(String),
+    #[error("Executing tx failed: `{err}`")]
+    Execution { err: String, height: Height },
+    #[error("Unexpected tx response: `{0}`")]
+    TxResp(String),
     #[error("Executing tx failed due to the gas: `{0}`")]
     InsufficientGas(String),
     #[error("Shielded tx failed due to crossing the epoch boundary: `{err}`")]
@@ -58,6 +62,8 @@ pub enum QueryError {
     ShieldedSync(String),
     #[error("Shielded context failed: `{0}`")]
     ShieldedContext(String),
+    #[error("Conversion failed: `{0}`")]
+    Convert(String),
 }
 
 impl From<QueryError> for StepError {

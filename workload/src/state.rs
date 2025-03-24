@@ -322,7 +322,7 @@ impl State {
             .filter(|(alias, (account, epoch))| {
                 !blacklist.contains(alias)
                     && account.is_established()
-                    && current_epoch >= epoch + PIPELINE_LEN
+                    && current_epoch > epoch + PIPELINE_LEN
             })
             .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
@@ -395,7 +395,7 @@ impl State {
             .unwrap_or_default()
     }
 
-    pub fn random_votable_proposal(&self, current_epoch: u64) -> u64 {
+    pub fn random_votable_proposal(&self, current_epoch: u64) -> Option<u64> {
         self.proposals
             .iter()
             .filter_map(|(proposal_id, (start_epoch, end_epoch))| {
@@ -406,7 +406,6 @@ impl State {
                 }
             })
             .choose(&mut AntithesisRng)
-            .unwrap()
     }
 
     /// UPDATE
