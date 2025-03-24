@@ -24,10 +24,11 @@ impl StepContext for Vote {
     }
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
-        let source_bond = state.random_bond();
-        let source_account = state.get_account_by_alias(&source_bond.alias);
-
         let current_epoch = get_epoch(sdk, retry_config()).await?;
+        let Some(source_bond) = state.random_bond(current_epoch) else {
+            return Ok(vec![]);
+        };
+        let source_account = state.get_account_by_alias(&source_bond.alias);
 
         let proposal_id = state.random_votable_proposal(current_epoch);
 
