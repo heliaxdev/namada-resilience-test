@@ -10,12 +10,13 @@ use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
-use crate::types::{Alias, ValidatorStatus};
+use crate::types::{Alias, Epoch, ValidatorStatus};
 use crate::utils::RetryConfig;
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct DeactivateValidator {
     target: Alias,
+    epoch: Epoch,
     settings: TaskSettings,
 }
 
@@ -86,6 +87,6 @@ impl TaskContext for DeactivateValidator {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.set_validator_as_deactivated(&self.target);
+        state.set_validator_as_deactivated(&self.target, self.epoch);
     }
 }

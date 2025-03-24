@@ -33,7 +33,7 @@ impl StepContext for Unshielding {
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
 
         let target_account = state
-            .random_account(vec![source_account.alias.clone()])
+            .random_account(vec![])
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let amount_account = state.get_shielded_balance_for(&source_account.alias);
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
@@ -65,7 +65,10 @@ impl StepContext for Unshielding {
             CodeType::Fatal => assert_unreachable_step!("Fatal Unshielding", code),
             CodeType::Skip => assert_sometimes_step!("Skipped Unshielding", code),
             CodeType::Failed
-                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+                if matches!(
+                    code,
+                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
+                ) =>
             {
                 assert_sometimes_step!("Invalid Unshielding", code)
             }

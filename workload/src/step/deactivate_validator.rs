@@ -4,6 +4,7 @@ use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
+use crate::utils::{get_epoch, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
@@ -20,8 +21,10 @@ impl StepContext for DeactivateValidator {
         Ok(state.min_n_validators(1))
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let account = state.random_validator(vec![], 1).pop().unwrap();
+
+        let epoch = get_epoch(sdk, retry_config()).await?;
 
         let gas_payer = utils::get_gas_payer(account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(account.public_keys, gas_payer);
@@ -29,6 +32,7 @@ impl StepContext for DeactivateValidator {
         Ok(vec![Task::DeactivateValidator(
             task::deactivate_validator::DeactivateValidator::builder()
                 .target(account.alias)
+                .epoch(epoch)
                 .settings(task_settings)
                 .build(),
         )])

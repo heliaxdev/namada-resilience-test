@@ -110,6 +110,6 @@ impl TaskContext for Bond {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.modify_bond(&self.source, &self.validator, self.amount);
+        state.modify_bond(&self.source, &self.validator, self.amount, self.epoch);
     }
 }

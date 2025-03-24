@@ -63,7 +63,10 @@ impl StepContext for ShieldedTransfer {
             CodeType::Fatal => assert_unreachable_step!("Fatal ShieldedTransfer", code),
             CodeType::Skip => assert_sometimes_step!("Skipped ShieldedTransfer", code),
             CodeType::Failed
-                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+                if matches!(
+                    code,
+                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
+                ) =>
             {
                 assert_sometimes_step!("Invalid ShieldedTransfer", code)
             }

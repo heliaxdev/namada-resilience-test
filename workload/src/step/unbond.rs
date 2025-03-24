@@ -23,11 +23,12 @@ impl StepContext for Unbond {
     }
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
-        let source_bond = state.random_bond();
+        let current_epoch = get_epoch(sdk, retry_config()).await?;
+        let Some(source_bond) = state.random_bond(current_epoch) else {
+            return Ok(vec![]);
+        };
         let source_account = state.get_account_by_alias(&source_bond.alias);
         let amount = utils::random_between(1, source_bond.amount / MAX_BATCH_TX_NUM);
-
-        let current_epoch = get_epoch(sdk, retry_config()).await?;
 
         let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
         let mut task_settings = TaskSettings::new(source_account.public_keys, gas_payer);

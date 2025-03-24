@@ -80,7 +80,10 @@ impl StepContext for BatchRandom {
             CodeType::Fatal => assert_unreachable_step!("Fatal BatchRandom", code),
             CodeType::Skip => assert_sometimes_step!("Skipped BatchRandom", code),
             CodeType::Failed
-                if matches!(code, Code::TaskFailure(_, TaskError::InvalidShielded(_))) =>
+                if matches!(
+                    code,
+                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
+                ) =>
             {
                 assert_sometimes_step!("Invalid BatchRandom including shielded actions", code)
             }

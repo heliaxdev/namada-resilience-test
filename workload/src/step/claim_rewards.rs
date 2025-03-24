@@ -22,12 +22,13 @@ impl StepContext for ClaimRewards {
     }
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
-        let source_bond = state.random_bond();
+        let epoch = get_epoch(sdk, retry_config()).await?;
+        let Some(source_bond) = state.random_bond(epoch) else {
+            return Ok(vec![]);
+        };
         let source_account = state.get_account_by_alias(&source_bond.alias);
 
         // Need the reward amount for the state updating
-        let retry_config = retry_config();
-        let epoch = get_epoch(sdk, retry_config).await?;
         let already_claimed = state
             .get_claimed_epoch(&source_bond.alias)
             .map_or(false, |claimed_epoch| claimed_epoch >= epoch);
@@ -39,7 +40,7 @@ impl StepContext for ClaimRewards {
                 &source_bond.alias,
                 &source_bond.validator,
                 epoch,
-                retry_config,
+                retry_config(),
             )
             .await?;
             rewards

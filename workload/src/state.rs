@@ -8,7 +8,7 @@ use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::constants::MIN_TRANSFER_BALANCE;
+use crate::constants::{MIN_TRANSFER_BALANCE, PIPELINE_LEN};
 use crate::types::{Alias, Epoch};
 
 #[derive(Error, Debug)]
@@ -66,12 +66,12 @@ pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
     pub masp_balances: HashMap<Alias, u64>,
-    pub bonds: HashMap<Alias, HashMap<String, u64>>,
+    pub bonds: HashMap<Alias, HashMap<String, (u64, Epoch)>>,
     pub unbonds: HashMap<Alias, HashMap<String, u64>>,
     pub redelegations: HashMap<Alias, HashMap<String, u64>>,
     pub claimed_epochs: HashMap<Alias, Epoch>,
     pub validators: HashMap<Alias, Account>,
-    pub deactivated_validators: HashMap<Alias, Account>,
+    pub deactivated_validators: HashMap<Alias, (Account, Epoch)>,
     pub proposals: HashMap<u64, (u64, u64)>,
     pub id: u64,
     pub base_dir: PathBuf,
@@ -225,7 +225,7 @@ impl State {
     pub fn min_bonds(&self, sample: usize) -> bool {
         self.bonds
             .values()
-            .filter(|data| data.values().any(|data| *data > 2))
+            .filter(|data| data.values().any(|(amount, _)| *amount > 2))
             .flatten()
             .count()
             >= sample
@@ -241,7 +241,7 @@ impl State {
 
     pub fn any_votable_proposal(&self, current_epoch: u64) -> bool {
         self.proposals.iter().any(|(_, (start_epoch, end_epoch))| {
-            current_epoch > *start_epoch && current_epoch < *end_epoch
+            current_epoch >= *start_epoch && current_epoch < *end_epoch
         })
     }
 
@@ -314,24 +314,28 @@ impl State {
     pub fn random_deactivated_validator(
         &self,
         blacklist: Vec<Alias>,
+        current_epoch: Epoch,
         sample_size: usize,
     ) -> Vec<Account> {
         self.deactivated_validators
             .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_established())
+            .filter(|(alias, (account, epoch))| {
+                !blacklist.contains(alias)
+                    && account.is_established()
+                    && current_epoch >= epoch + PIPELINE_LEN
+            })
             .choose_multiple(&mut AntithesisRng, sample_size)
             .into_iter()
-            .map(|(_, account)| account.clone())
+            .map(|(_, (account, _))| account.clone())
             .collect()
     }
 
-    pub fn random_bond(&self) -> Bond {
+    pub fn random_bond(&self, current_epoch: Epoch) -> Option<Bond> {
         self.bonds
             .iter()
             .flat_map(|(source, bonds)| {
-                bonds.iter().filter_map(|(validator, amount)| {
-                    if *amount > 1 {
+                bonds.iter().filter_map(|(validator, (amount, epoch))| {
+                    if *amount > 0 && current_epoch >= epoch + PIPELINE_LEN {
                         Some(Bond {
                             alias: source.to_owned(),
                             validator: validator.to_owned(),
@@ -343,7 +347,6 @@ impl State {
                 })
             })
             .choose(&mut AntithesisRng)
-            .unwrap()
     }
 
     pub fn random_account_with_min_balance(
@@ -396,7 +399,7 @@ impl State {
         self.proposals
             .iter()
             .filter_map(|(proposal_id, (start_epoch, end_epoch))| {
-                if current_epoch >= *start_epoch && current_epoch <= *end_epoch {
+                if current_epoch >= *start_epoch && current_epoch < *end_epoch - 1 {
                     Some(proposal_id.to_owned())
                 } else {
                     None
@@ -474,17 +477,19 @@ impl State {
         }
     }
 
-    pub fn modify_bond(&mut self, source: &Alias, validator: &str, amount: u64) {
+    pub fn modify_bond(&mut self, source: &Alias, validator: &str, amount: u64, epoch: Epoch) {
         if !source.is_faucet() {
             *self.balances.get_mut(source).unwrap() -= amount;
         }
-        let default = HashMap::from_iter([(validator.to_string(), 0u64)]);
-        *self
+        let default = HashMap::from_iter([(validator.to_string(), (0u64, 0u64))]);
+        let bond = self
             .bonds
             .entry(source.clone())
             .or_insert(default)
             .entry(validator.to_string())
-            .or_insert(0) += amount;
+            .or_insert((0, 0));
+        bond.0 += amount;
+        bond.1 = epoch;
     }
 
     pub fn modify_redelegate(&mut self, source: &Alias, from: &str, to: &str, amount: u64) {
@@ -497,7 +502,7 @@ impl State {
             .or_insert(0) += amount;
         self.bonds
             .entry(source.clone())
-            .and_modify(|bond| *bond.get_mut(from).unwrap() -= amount);
+            .and_modify(|bond| bond.get_mut(from).unwrap().0 -= amount);
     }
 
     pub fn modify_unbond(&mut self, source: &Alias, validator: &str, amount: u64) {
@@ -510,7 +515,7 @@ impl State {
             .or_insert(0) += amount;
         self.bonds
             .entry(source.clone())
-            .and_modify(|bond| *bond.get_mut(validator).unwrap() -= amount);
+            .and_modify(|bond| bond.get_mut(validator).unwrap().0 -= amount);
     }
 
     pub fn modify_shielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
@@ -534,9 +539,10 @@ impl State {
         self.validators.insert(alias.clone(), account);
     }
 
-    pub fn set_validator_as_deactivated(&mut self, alias: &Alias) {
+    pub fn set_validator_as_deactivated(&mut self, alias: &Alias, epoch: Epoch) {
         let account = self.validators.remove(alias).unwrap();
-        self.deactivated_validators.insert(alias.clone(), account);
+        self.deactivated_validators
+            .insert(alias.clone(), (account, epoch));
     }
 
     pub fn remove_deactivate_validator(&mut self, alias: &Alias) {
