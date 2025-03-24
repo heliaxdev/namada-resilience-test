@@ -137,6 +137,7 @@ impl fmt::Display for ValidatorStatus {
 pub type Amount = u64;
 pub type ValidatorAddress = String;
 pub type Epoch = u64;
+pub type MaspEpoch = namada_sdk::token::MaspEpoch;
 pub type Threshold = u64;
 pub type CommissionRate = Dec;
 pub type CommissionChange = Dec;
