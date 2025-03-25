@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::constants::{MIN_TRANSFER_BALANCE, PIPELINE_LEN};
-use crate::types::{Alias, Epoch};
+use crate::types::{Alias, Epoch, ProposalId};
 
 #[derive(Error, Debug)]
 pub enum StateError {
@@ -544,14 +544,13 @@ impl State {
             .insert(alias.clone(), (account, epoch));
     }
 
-    pub fn remove_deactivate_validator(&mut self, alias: &Alias) {
-        self.deactivated_validators.remove(alias).unwrap();
+    pub fn reactivate_validator(&mut self, alias: &Alias) {
+        let (account, _) = self.deactivated_validators.remove(alias).unwrap();
+        self.validators.insert(alias.clone(), account);
     }
 
-    pub fn add_proposal(&mut self, start_epoch: u64, end_epoch: u64) {
-        let latest_proposal_id = self.proposals.keys().max().unwrap_or(&0).to_owned();
-        self.proposals
-            .insert(latest_proposal_id, (start_epoch, end_epoch));
+    pub fn add_proposals(&mut self, new_proposals: HashMap<ProposalId, (Epoch, Epoch)>) {
+        self.proposals.extend(new_proposals);
     }
 
     pub fn set_claimed_epoch(&mut self, source: &Alias, epoch: Epoch) {

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::{self, Instant};
 
@@ -537,6 +538,27 @@ async fn shielded_sync(
     );
 
     res
+}
+
+pub async fn get_proposals(
+    sdk: &Sdk,
+    last_proposal_id: Option<ProposalId>,
+) -> Result<HashMap<ProposalId, (Epoch, Epoch)>, QueryError> {
+    let mut proposals = HashMap::new();
+    let mut proposal_id = last_proposal_id.map(|id| id + 1).unwrap_or_default();
+    while let Some(proposal) = rpc::query_proposal_by_id(&sdk.namada.client, proposal_id)
+        .await
+        .map_err(QueryError::Rpc)?
+    {
+        proposals.insert(
+            proposal_id,
+            (proposal.voting_start_epoch.0, proposal.voting_end_epoch.0),
+        );
+
+        proposal_id += 1;
+    }
+
+    Ok(proposals)
 }
 
 pub async fn get_vote_results(
