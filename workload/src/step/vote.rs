@@ -25,14 +25,20 @@ impl StepContext for Vote {
 
     async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let current_epoch = get_epoch(sdk, retry_config()).await?;
-        let Some(source_bond) = state.random_bond(current_epoch) else {
-            return Ok(vec![]);
-        };
-        let source_account = state.get_account_by_alias(&source_bond.alias);
-
         let Some(proposal_id) = state.random_votable_proposal(current_epoch) else {
             return Ok(vec![]);
         };
+
+        // voter should have bonded at the start epoch
+        let start_epoch = state
+            .proposals
+            .get(&proposal_id)
+            .expect("Proposal should exist")
+            .0;
+        let Some(source_bond) = state.random_bond(start_epoch) else {
+            return Ok(vec![]);
+        };
+        let source_account = state.get_account_by_alias(&source_bond.alias);
 
         let vote = if utils::coin_flip(0.5) {
             ProposalVote::Yay
