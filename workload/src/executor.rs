@@ -12,7 +12,8 @@ use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
 use crate::types::{Alias, Epoch, Fee, Height};
 use crate::utils::{
-    execute_reveal_pk, get_block_height, is_pk_revealed, retry_config, wait_block_settlement,
+    execute_reveal_pk, get_block_height, get_proposals, is_pk_revealed, retry_config,
+    wait_block_settlement,
 };
 
 pub struct WorkloadExecutor {
@@ -241,6 +242,11 @@ impl WorkloadExecutor {
                     wallet
                         .save()
                         .map_err(|e| TaskError::Wallet(e.to_string()))?;
+                }
+                Task::DefaultProposal(_) | Task::Vote(_) => {
+                    let last_proposal_id = self.state.proposals.keys().max().cloned();
+                    let new_proposals = get_proposals(&self.sdk, last_proposal_id).await?;
+                    self.state.add_proposals(new_proposals);
                 }
                 _ => {}
             }
