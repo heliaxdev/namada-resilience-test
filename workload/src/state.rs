@@ -335,7 +335,9 @@ impl State {
             .iter()
             .flat_map(|(source, bonds)| {
                 bonds.iter().filter_map(|(validator, (amount, epoch))| {
-                    if *amount > 0 && current_epoch >= epoch + PIPELINE_LEN {
+                    // the bond was requested at the epoch,
+                    // but the execution could be at the next epoch
+                    if *amount > 0 && current_epoch > epoch + PIPELINE_LEN {
                         Some(Bond {
                             alias: source.to_owned(),
                             validator: validator.to_owned(),
@@ -399,6 +401,8 @@ impl State {
         self.proposals
             .iter()
             .filter_map(|(proposal_id, (start_epoch, end_epoch))| {
+                // the following vote will be request at the current epoch,
+                // but the execution could be at the next epoch
                 if current_epoch >= *start_epoch && current_epoch < *end_epoch - 1 {
                     Some(proposal_id.to_owned())
                 } else {
