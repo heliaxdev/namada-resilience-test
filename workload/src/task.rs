@@ -158,6 +158,39 @@ pub trait TaskContext {
     }
 
     #[allow(async_fn_in_trait)]
+    async fn execute_shielded_tx(&self, sdk: &Sdk) -> Result<Height, TaskError> {
+        let retry_config = utils::retry_config();
+        let start_epoch = utils::get_masp_epoch(sdk, retry_config).await?;
+
+        let result = match self.build_tx(sdk).await {
+            Ok((tx, signing_data, tx_args)) => {
+                utils::execute_tx(sdk, tx, signing_data, &tx_args).await
+            }
+            Err(e) => Err(e),
+        };
+
+        let epoch = match result {
+            Err(TaskError::Execution { height, .. })
+            | Err(TaskError::InsufficientGas { height, .. }) => {
+                utils::wait_block_settlement(sdk, height, retry_config).await;
+                utils::get_masp_epoch_at_height(sdk, height, retry_config).await?
+            }
+            _ => utils::get_masp_epoch(sdk, retry_config).await?,
+        };
+
+        result.map_err(|err| {
+            if epoch == start_epoch {
+                err
+            } else {
+                TaskError::InvalidShielded {
+                    err: err.to_string(),
+                    was_fee_paid: matches!(err, TaskError::Execution { .. }),
+                }
+            }
+        })
+    }
+
+    #[allow(async_fn_in_trait)]
     async fn build_checks(
         &self,
         sdk: &Sdk,

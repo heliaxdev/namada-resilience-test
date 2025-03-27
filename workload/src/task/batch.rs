@@ -10,8 +10,7 @@ use crate::state::State;
 use crate::task::{Task, TaskContext, TaskSettings};
 use crate::types::{Alias, Height};
 use crate::utils::{
-    execute_shielded_tx, execute_tx, get_balance, get_bond, get_masp_epoch, get_shielded_balance,
-    merge_tx, retry_config, RetryConfig,
+    execute_tx, get_balance, get_bond, get_shielded_balance, merge_tx, RetryConfig,
 };
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -58,16 +57,15 @@ impl TaskContext for Batch {
     }
 
     async fn execute(&self, sdk: &Sdk) -> Result<Height, TaskError> {
-        let start_epoch = get_masp_epoch(sdk, retry_config()).await?;
-        let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
         if self.tasks.iter().any(|task| {
             matches!(
                 task,
                 Task::Shielding(_) | Task::ShieldedTransfer(_) | Task::Unshielding(_)
             )
         }) {
-            execute_shielded_tx(sdk, tx, signing_data, &tx_args, start_epoch).await
+            self.execute_shielded_tx(sdk).await
         } else {
+            let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
             execute_tx(sdk, tx, signing_data, &tx_args).await
         }
     }
