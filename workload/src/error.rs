@@ -36,8 +36,8 @@ pub enum TaskError {
     Execution { err: String, height: Height },
     #[error("Unexpected tx response: `{0}`")]
     TxResp(String),
-    #[error("Executing tx failed due to the gas: `{0}`")]
-    InsufficientGas(String),
+    #[error("Executing tx failed due to the gas: `{err}`")]
+    InsufficientGas { err: String, height: Height },
     #[error("Shielded tx failed due to crossing the epoch boundary: `{err}`")]
     InvalidShielded { err: String, was_fee_paid: bool },
     #[error("Query failed: `{0}`")]

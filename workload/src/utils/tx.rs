@@ -19,8 +19,7 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::task::TaskSettings;
-use crate::types::{Alias, Height, MaspEpoch};
-use crate::utils::{get_masp_epoch, get_masp_epoch_at_height, retry_config, wait_block_settlement};
+use crate::types::{Alias, Height};
 
 fn get_tx_errors(
     cmts: HashSet<TxCommitments>,
@@ -162,35 +161,6 @@ pub async fn merge_tx(
     Ok((tx, signing_datas, tx_args))
 }
 
-pub async fn execute_shielded_tx(
-    sdk: &Sdk,
-    tx: Tx,
-    signing_data: Vec<SigningTxData>,
-    tx_args: &args::Tx,
-    start_epoch: MaspEpoch,
-) -> Result<Height, TaskError> {
-    let result = execute_tx(sdk, tx, signing_data, tx_args).await;
-
-    let epoch = match result {
-        Err(TaskError::Execution { height, .. }) => {
-            wait_block_settlement(sdk, height, retry_config()).await;
-            get_masp_epoch_at_height(sdk, height, retry_config()).await?
-        }
-        _ => get_masp_epoch(sdk, retry_config()).await?,
-    };
-
-    result.map_err(|err| {
-        if epoch == start_epoch {
-            err
-        } else {
-            TaskError::InvalidShielded {
-                err: err.to_string(),
-                was_fee_paid: matches!(err, TaskError::Execution { .. }),
-            }
-        }
-    })
-}
-
 pub(crate) async fn execute_tx(
     sdk: &Sdk,
     tx: Tx,
@@ -251,7 +221,10 @@ pub(crate) async fn execute_tx(
                 height,
             });
         } else {
-            return Err(TaskError::InsufficientGas(errors));
+            return Err(TaskError::InsufficientGas {
+                err: errors,
+                height,
+            });
         }
     }
 
