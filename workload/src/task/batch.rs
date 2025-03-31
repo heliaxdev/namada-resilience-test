@@ -63,7 +63,18 @@ impl TaskContext for Batch {
                 Task::Shielding(_) | Task::ShieldedTransfer(_) | Task::Unshielding(_)
             )
         }) {
-            self.execute_shielded_tx(sdk).await
+            let epoch = self
+                .tasks
+                .iter()
+                .filter_map(|task| match task {
+                    Task::Shielding(inner) => Some(inner.epoch()),
+                    Task::ShieldedTransfer(inner) => Some(inner.epoch()),
+                    Task::Unshielding(inner) => Some(inner.epoch()),
+                    _ => None,
+                })
+                .min()
+                .expect("Epoch should be set");
+            self.execute_shielded_tx(sdk, epoch).await
         } else {
             let (tx, signing_data, tx_args) = self.build_tx(sdk).await?;
             execute_tx(sdk, tx, signing_data, &tx_args).await

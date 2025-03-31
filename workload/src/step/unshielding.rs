@@ -8,6 +8,7 @@ use crate::state::State;
 use crate::step::utils::coin_flip;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
+use crate::utils::{get_masp_epoch, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
@@ -27,11 +28,12 @@ impl StepContext for Unshielding {
         )
     }
 
-    async fn build_task(&self, _sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
+    async fn build_task(&self, sdk: &Sdk, state: &State) -> Result<Vec<Task>, StepError> {
         let source_account = state
             .random_masp_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
 
+        let epoch = get_masp_epoch(sdk, retry_config()).await?;
         let target_account = state
             .random_account(vec![])
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
@@ -54,6 +56,7 @@ impl StepContext for Unshielding {
                 .source(source_account.alias.spending_key())
                 .target(target_account.alias)
                 .amount(amount)
+                .epoch(epoch)
                 .settings(task_settings)
                 .build(),
         )])
