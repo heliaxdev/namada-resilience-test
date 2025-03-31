@@ -15,7 +15,7 @@ use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
-use crate::types::{Alias, Amount, Height};
+use crate::types::{Alias, Amount, Height, MaspEpoch};
 use crate::utils::{get_shielded_balance, shielded_sync_with_retry, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -23,7 +23,14 @@ pub struct ShieldedTransfer {
     source: Alias,
     target: Alias,
     amount: Amount,
+    epoch: MaspEpoch,
     settings: TaskSettings,
+}
+
+impl ShieldedTransfer {
+    pub fn epoch(&self) -> MaspEpoch {
+        self.epoch
+    }
 }
 
 impl ShieldedTransfer {
@@ -117,7 +124,7 @@ impl TaskContext for ShieldedTransfer {
     }
 
     async fn execute(&self, sdk: &Sdk) -> Result<Height, TaskError> {
-        self.execute_shielded_tx(sdk).await
+        self.execute_shielded_tx(sdk, self.epoch).await
     }
 
     async fn build_checks(

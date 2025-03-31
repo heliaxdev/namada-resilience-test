@@ -9,7 +9,7 @@ use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::error::TaskError;
 use crate::sdk::namada::Sdk;
 use crate::state::State;
-use crate::types::{Alias, Fee, Height};
+use crate::types::{Alias, Fee, Height, MaspEpoch};
 use crate::utils;
 use crate::utils::RetryConfig;
 
@@ -158,9 +158,12 @@ pub trait TaskContext {
     }
 
     #[allow(async_fn_in_trait)]
-    async fn execute_shielded_tx(&self, sdk: &Sdk) -> Result<Height, TaskError> {
+    async fn execute_shielded_tx(
+        &self,
+        sdk: &Sdk,
+        start_epoch: MaspEpoch,
+    ) -> Result<Height, TaskError> {
         let retry_config = utils::retry_config();
-        let start_epoch = utils::get_masp_epoch(sdk, retry_config).await?;
 
         let result = match self.build_tx(sdk).await {
             Ok((tx, signing_data, tx_args)) => {
