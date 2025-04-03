@@ -251,10 +251,10 @@ async fn retry_tx_status_check(
 
     let tx_query = rpc::TxEventQuery::Applied(tx_hash);
     let deadline = time::Instant::now() + time::Duration::from_secs(300);
-    let event = rpc::query_tx_status(&sdk.namada, tx_query, deadline)
+    let events = rpc::query_tx_status(&sdk.namada, tx_query, deadline)
         .await
         .map_err(TaskError::Broadcast)?;
-    let tx_response = TxResponse::from_event(event);
+    let tx_response = TxResponse::from_events(events);
 
     // add initialized accounts when init-account
     for cmt in cmts {

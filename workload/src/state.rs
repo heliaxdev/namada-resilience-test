@@ -97,7 +97,7 @@ impl State {
         }
     }
 
-    /// File
+    // File
 
     pub fn state_file_path(id: u64) -> PathBuf {
         env::current_dir()
@@ -111,7 +111,7 @@ impl State {
         fs::write(path, state_json).map_err(StateError::File)?;
 
         if let Some(file) = locked_file {
-            file.unlock().map_err(StateError::File)?;
+            fs2::FileExt::unlock(&file).map_err(StateError::File)?;
         }
 
         Ok(())
@@ -152,7 +152,7 @@ impl State {
         Ok(file)
     }
 
-    /// READ
+    // READ
 
     pub fn any_account(&self) -> bool {
         self.at_least_accounts(1)
@@ -245,7 +245,7 @@ impl State {
         })
     }
 
-    /// GET
+    // GET
 
     pub fn random_account(&self, blacklist: Vec<Alias>) -> Option<Account> {
         self.accounts
@@ -412,7 +412,7 @@ impl State {
             .choose(&mut AntithesisRng)
     }
 
-    /// UPDATE
+    // UPDATE
 
     pub fn add_implicit_account(&mut self, alias: &Alias) {
         self.accounts.insert(

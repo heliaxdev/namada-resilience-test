@@ -31,7 +31,7 @@ impl StepContext for ClaimRewards {
         // Need the reward amount for the state updating
         let already_claimed = state
             .get_claimed_epoch(&source_bond.alias)
-            .map_or(false, |claimed_epoch| claimed_epoch >= epoch);
+            .is_some_and(|claimed_epoch| claimed_epoch >= epoch);
         let reward_amount = if already_claimed {
             0u64
         } else {
