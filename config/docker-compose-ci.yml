@@ -151,7 +151,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-2
     hostname: validator2
-    image: ghcr.io/heliaxdev/ant-namada:v1.1.2
+    image: ghcr.io/heliaxdev/ant-namada:main
     networks:
       namada-net:
         ipv4_address: 30.0.0.14
