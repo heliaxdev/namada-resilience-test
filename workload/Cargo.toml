@@ -25,6 +25,7 @@ tendermint-config = "0.40.1"
 tendermint-rpc = {version = "0.40.1", features = ["http-client"]}
 thiserror = "1.0.63"
 tokio = {version = "1.8.2", default-features = false}
+toml = "0.8.20"
 tracing = { version = "0.1.40" }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tryhard = "0.5.1"
