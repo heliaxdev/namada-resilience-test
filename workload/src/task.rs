@@ -165,6 +165,7 @@ pub trait TaskContext {
     ) -> Result<Height, TaskError> {
         let retry_config = utils::retry_config();
 
+        let height = utils::get_block_height(sdk, retry_config).await?;
         let result = match self.build_tx(sdk).await {
             Ok((tx, signing_data, tx_args)) => {
                 utils::execute_tx(sdk, tx, signing_data, &tx_args).await
@@ -173,16 +174,20 @@ pub trait TaskContext {
         };
 
         let epoch = match result {
+            Ok(_) => None,
             Err(TaskError::Execution { height, .. })
             | Err(TaskError::InsufficientGas { height, .. }) => {
                 utils::wait_block_settlement(sdk, height, retry_config).await;
-                utils::get_masp_epoch_at_height(sdk, height, retry_config).await?
+                Some(utils::get_masp_epoch_at_height(sdk, height, retry_config).await?)
             }
-            _ => utils::get_masp_epoch(sdk, retry_config).await?,
+            Err(_) => {
+                utils::wait_block_settlement(sdk, height + 1, retry_config).await;
+                Some(utils::get_masp_epoch(sdk, retry_config).await?)
+            }
         };
 
         result.map_err(|err| {
-            if epoch == start_epoch {
+            if epoch == Some(start_epoch) {
                 err
             } else {
                 TaskError::InvalidShielded {
