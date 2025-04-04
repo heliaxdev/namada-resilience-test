@@ -4005,7 +4005,6 @@ dependencies = [
  "rlimit",
  "serde",
  "serde_json",
- "tendermint-config",
  "tendermint-rpc",
  "thiserror 1.0.69",
  "tokio",
