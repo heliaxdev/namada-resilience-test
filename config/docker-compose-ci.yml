@@ -47,7 +47,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-block-filter
-    image: ghcr.io/heliaxdev/ant-masp-indexer-block-filter:0eee762147fe8d440d82c71089a3c0e7ea02c785
+    image: ghcr.io/heliaxdev/ant-masp-indexer-block-filter:03c0fe13016f00338b844b831c84f8017f63a868
     networks:
       namada-net:
         ipv4_address: 30.0.0.23
@@ -61,7 +61,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-chain
-    image: ghcr.io/heliaxdev/ant-masp-indexer-chain:0eee762147fe8d440d82c71089a3c0e7ea02c785
+    image: ghcr.io/heliaxdev/ant-masp-indexer-chain:03c0fe13016f00338b844b831c84f8017f63a868
     networks:
       namada-net:
         ipv4_address: 30.0.0.22
@@ -73,7 +73,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-webserver
-    image: ghcr.io/heliaxdev/ant-masp-indexer-webserver:0eee762147fe8d440d82c71089a3c0e7ea02c785
+    image: ghcr.io/heliaxdev/ant-masp-indexer-webserver:03c0fe13016f00338b844b831c84f8017f63a868
     networks:
       namada-net:
         ipv4_address: 30.0.0.20
