@@ -21,7 +21,7 @@ jobs:
             genesis: "v1.1.5"
             config: "v1.1.5"
             masp_indexer: "master"
-            workload: "for-namada-stable"
+            workload: "for-stable-namada"
             duration: 8
 
     steps:
