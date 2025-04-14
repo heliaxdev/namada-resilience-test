@@ -37,5 +37,6 @@ jobs:
           email_recipients: |
             gianmarco@heliax.dev,yuji@heliax.dev,heliax-antithesis-aaaammxjv6zgaqxcdury4ktshq@antithesisgroup.slack.com
           additional_parameters: |
+            antithesis.source=${{ matrix.runs.image }}
             custom.duration=${{ matrix.runs.duration }}
             custom.faults=true
