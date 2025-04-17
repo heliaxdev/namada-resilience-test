@@ -251,7 +251,7 @@ async fn retry_tx_status_check(
     tracing::info!("Retrying to check if tx was applied...");
 
     let tx_query = rpc::TxEventQuery::Applied(tx_hash);
-    let deadline = time::Instant::now() + time::Duration::from_secs(300);
+    let deadline = time::Instant::now() + time::Duration::from_secs(600);
     let events = rpc::query_tx_status(&ctx.namada, tx_query, deadline)
         .await
         .map_err(TaskError::Broadcast)?;
