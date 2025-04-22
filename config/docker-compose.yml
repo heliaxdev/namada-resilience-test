@@ -242,6 +242,7 @@ services:
     volumes:
       - ./gaia-0/:/gaia-0
       - ./gaia.sh:/entrypoint.sh
+    user: "0"
   hermes:
     container_name: hermes
     image: ghcr.io/informalsystems/hermes:1.12.0
@@ -258,6 +259,7 @@ services:
       # for import relayer keys
       - ./gaia-0/:/gaia-0
       - ./validator-2/:/validator-2
+    user: "0"
 
 networks:
   namada-net:

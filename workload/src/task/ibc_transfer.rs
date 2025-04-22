@@ -56,21 +56,25 @@ impl TaskContext for IbcTransferSend {
         let source_address = wallet
             .find_address(&self.source.name)
             .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?;
-        let token_address = if is_native_denom(&self.denom) {
-            wallet
+        let token_amount = token::Amount::from_u64(self.amount);
+        let (token_address, denominated_amount) = if is_native_denom(&self.denom) {
+            let address = wallet
                 .find_address(&self.denom)
                 .ok_or_else(|| {
                     TaskError::Wallet(format!("No native token address: {}", self.denom))
                 })?
-                .into_owned()
+                .into_owned();
+            (address, token::DenominatedAmount::native(token_amount))
         } else {
-            ibc_token_address(&self.denom)
+            (
+                ibc_token_address(&self.denom),
+                token::DenominatedAmount::new(token_amount, 0u8.into()),
+            )
         };
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
             .map_err(|e| TaskError::Wallet(e.to_string()))?;
-        let token_amount = token::Amount::from_u64(self.amount);
-        let amount = InputAmount::Unvalidated(token::DenominatedAmount::native(token_amount));
+        let amount = InputAmount::Unvalidated(denominated_amount);
 
         let source = TransferSource::Address(source_address.into_owned());
         let mut tx_builder = ctx.namada.new_ibc_transfer(
