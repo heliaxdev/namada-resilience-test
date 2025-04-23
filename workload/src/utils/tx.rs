@@ -1,25 +1,30 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use namada_sdk::args::{self, DeviceTransport, TxBuilder};
+use namada_sdk::args::{self, DeviceTransport, InputAmount, TxBuilder};
+use namada_sdk::args::{GenIbcShieldingTransfer, IbcShieldingTransferAsset, Query};
 use namada_sdk::collections::HashSet;
 use namada_sdk::control_flow::time;
 use namada_sdk::error::{Error as NamadaError, TxSubmitError};
 use namada_sdk::hash::Hash;
+use namada_sdk::ibc::core::host::types::identifiers::PortId;
 use namada_sdk::key::common;
+use namada_sdk::masp_primitives::transaction::Transaction as MaspTransaction;
 use namada_sdk::rpc::{self, InnerTxResult, TxResponse};
 use namada_sdk::signing::{default_sign, SigningTxData};
+use namada_sdk::token;
 use namada_sdk::tx::data::{compute_inner_tx_hash, GasLimit, TxType};
 use namada_sdk::tx::{
-    self, either, save_initialized_accounts, ProcessTxResponse, Tx, TxCommitments, TX_REVEAL_PK,
+    self, either, gen_ibc_shielding_transfer, save_initialized_accounts, ProcessTxResponse, Tx,
+    TxCommitments, TX_REVEAL_PK,
 };
-use namada_sdk::Namada;
+use namada_sdk::{Namada, PaymentAddress, TransferTarget};
 
 use crate::constants::DEFAULT_GAS_LIMIT;
 use crate::context::Ctx;
 use crate::error::TaskError;
 use crate::task::TaskSettings;
-use crate::types::{Alias, Height};
+use crate::types::{Alias, Amount, Height};
 
 fn get_tx_errors(
     cmts: HashSet<TxCommitments>,
@@ -268,4 +273,34 @@ async fn retry_tx_status_check(
     }
 
     Ok(ProcessTxResponse::Applied(tx_response))
+}
+
+/// Generate a MASP transaction for a transfer from Cosmos to Namada
+pub async fn gen_shielding_tx(
+    ctx: &Ctx,
+    target: PaymentAddress,
+    denom: &str,
+    amount: Amount,
+) -> Result<MaspTransaction, TaskError> {
+    let args = GenIbcShieldingTransfer {
+        query: Query {
+            ledger_address: "http://127.0.0.1:27657".parse().expect("dummy address"),
+        },
+        output_folder: None,
+        target: TransferTarget::PaymentAddress(target),
+        asset: IbcShieldingTransferAsset::LookupNamadaAddress {
+            token: denom.to_string(),
+            port_id: PortId::transfer(),
+            channel_id: ctx.cosmos_channel_id.clone(),
+        },
+        amount: InputAmount::Validated(token::DenominatedAmount::new(
+            token::Amount::from_u64(amount),
+            0u8.into(),
+        )),
+        expiration: args::TxExpiration::NoExpiration,
+    };
+    Ok(gen_ibc_shielding_transfer(&ctx.namada, args)
+        .await
+        .map_err(|e| TaskError::BuildTx(e.to_string()))?
+        .expect("MASP tx should be generated"))
 }

@@ -79,6 +79,7 @@ pub enum Task {
     TransparentTransfer(transparent_transfer::TransparentTransfer),
     IbcTransferSend(ibc_transfer::IbcTransferSend),
     IbcTransferRecv(ibc_transfer::IbcTransferRecv),
+    IbcShieldingTransfer(ibc_transfer::IbcShieldingTransfer),
     Bond(bond::Bond),
     Unbond(unbond::Unbond),
     Redelegate(redelegate::Redelegate),

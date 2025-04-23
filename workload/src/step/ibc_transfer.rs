@@ -123,3 +123,57 @@ impl StepContext for IbcTransferRecv {
         }
     }
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct IbcShieldingTransfer;
+
+impl StepContext for IbcShieldingTransfer {
+    fn name(&self) -> String {
+        "ibc-shielding-transfer".to_string()
+    }
+
+    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
+        Ok(state.any_account())
+    }
+
+    async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
+        let source = ctx.cosmos.account.to_string().into();
+        let target_account = state
+            .random_payment_address(vec![])
+            .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
+        let foreign_balance = state.get_foreign_balance_for(&source);
+        let (denom, max_amount) = if foreign_balance > 0 && utils::coin_flip(0.5) {
+            (
+                ibc_denom(&ctx.cosmos_channel_id, &Alias::nam().name),
+                foreign_balance / MAX_BATCH_TX_NUM,
+            )
+        } else {
+            (COSMOS_TOKEN.to_string(), MAX_COSMOS_TRANSFER_AMOUNT)
+        };
+        let amount = utils::random_between(1, max_amount);
+
+        // task settings is not used, but required
+        let task_settings = TaskSettings::faucet();
+
+        Ok(vec![Task::IbcShieldingTransfer(
+            task::ibc_transfer::IbcShieldingTransfer::builder()
+                .sender(source)
+                .target(target_account.alias.payment_address())
+                .amount(amount)
+                .denom(denom)
+                .src_channel_id(ctx.cosmos_channel_id.clone())
+                .dest_channel_id(ctx.namada_channel_id.clone())
+                .settings(task_settings)
+                .build(),
+        )])
+    }
+
+    fn assert(&self, code: &Code) {
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done IbcShieldingTransfer", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal IbcShieldingTransfer", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped IbcShieldingTransfer", code),
+            CodeType::Failed => assert_unreachable_step!("Failed IbcShieldingTransfer", code),
+        }
+    }
+}

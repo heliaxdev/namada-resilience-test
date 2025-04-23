@@ -8,7 +8,7 @@ use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::constants::{MIN_TRANSFER_BALANCE, PIPELINE_LEN};
+use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE, PIPELINE_LEN};
 use crate::types::{Alias, Epoch, ProposalId};
 
 #[derive(Error, Debug)]
@@ -67,6 +67,7 @@ pub struct State {
     pub balances: HashMap<Alias, u64>,
     pub masp_balances: HashMap<Alias, u64>,
     pub ibc_balances: HashMap<Alias, HashMap<String, u64>>,
+    pub ibc_masp_balances: HashMap<Alias, HashMap<String, u64>>,
     pub foreign_balances: HashMap<Alias, u64>,
     pub bonds: HashMap<Alias, HashMap<String, (u64, Epoch)>>,
     pub unbonds: HashMap<Alias, HashMap<String, u64>>,
@@ -86,6 +87,7 @@ impl State {
             balances: HashMap::default(),
             masp_balances: HashMap::default(),
             ibc_balances: HashMap::default(),
+            ibc_masp_balances: HashMap::default(),
             foreign_balances: HashMap::default(),
             bonds: HashMap::default(),
             unbonds: HashMap::default(),
@@ -276,7 +278,7 @@ impl State {
             .filter(|(alias, _)| {
                 self.ibc_balances
                     .get(alias)
-                    .is_some_and(|balances| balances.iter().any(|(_, b)| *b > 0))
+                    .is_some_and(|balances| balances.iter().any(|(_, b)| *b > MAX_BATCH_TX_NUM))
             })
             .map(|(_, account)| account.clone())
             .choose(&mut AntithesisRng)
@@ -494,17 +496,30 @@ impl State {
         *self.balances.get_mut(target).unwrap() += amount;
     }
 
+    pub fn increase_masp_balance(&mut self, target: &Alias, amount: u64) {
+        *self.masp_balances.get_mut(&target.base()).unwrap() += amount;
+    }
+
     pub fn increase_ibc_balance(&mut self, target: &Alias, denom: &str, amount: u64) {
         if target.is_faucet() {
             return;
         }
         let default = HashMap::from_iter([(denom.to_string(), 0)]);
-        *self
-            .ibc_balances
-            .entry(target.clone())
-            .or_insert(default)
-            .entry(denom.to_string())
-            .or_insert(0) += amount;
+        if target.is_spending_key() || target.is_payment_address() {
+            *self
+                .ibc_masp_balances
+                .entry(target.base())
+                .or_insert(default)
+                .entry(denom.to_string())
+                .or_insert(0) += amount;
+        } else {
+            *self
+                .ibc_balances
+                .entry(target.clone())
+                .or_insert(default)
+                .entry(denom.to_string())
+                .or_insert(0) += amount;
+        }
     }
 
     pub fn increase_foreign_balance(&mut self, target: &Alias, amount: u64) {
@@ -522,9 +537,15 @@ impl State {
         if target.is_faucet() {
             return;
         }
-        self.ibc_balances
-            .entry(target.clone())
-            .and_modify(|balance| *balance.get_mut(denom).unwrap() -= amount);
+        if target.is_spending_key() || target.is_payment_address() {
+            self.ibc_masp_balances
+                .entry(target.base())
+                .and_modify(|balance| *balance.get_mut(denom).unwrap() -= amount);
+        } else {
+            self.ibc_balances
+                .entry(target.clone())
+                .and_modify(|balance| *balance.get_mut(denom).unwrap() -= amount);
+        }
     }
 
     pub fn decrease_foreign_balance(&mut self, target: &Alias, amount: u64) {

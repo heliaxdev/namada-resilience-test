@@ -36,6 +36,12 @@ impl Alias {
         Self { name: "nam".into() }
     }
 
+    pub fn masp() -> Self {
+        Self {
+            name: "masp".into(),
+        }
+    }
+
     pub fn is_faucet(&self) -> bool {
         self.eq(&Self::faucet())
     }
@@ -77,6 +83,10 @@ impl Alias {
 
     pub fn is_spending_key(&self) -> bool {
         self.name.ends_with("-spending-key")
+    }
+
+    pub fn is_payment_address(&self) -> bool {
+        self.name.ends_with("-payment-address")
     }
 }
 

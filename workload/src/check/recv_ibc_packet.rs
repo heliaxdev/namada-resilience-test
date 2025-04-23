@@ -40,7 +40,7 @@ impl CheckContext for RecvIbcPacket {
             retry_config,
         )
         .await?;
-        let is_successful = is_recv_packet(
+        let (is_successful, _) = is_recv_packet(
             ctx,
             &self.src_channel_id,
             &self.dest_channel_id,

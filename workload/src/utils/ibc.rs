@@ -229,7 +229,7 @@ pub async fn is_recv_packet(
     dest_channel_id: &ChannelId,
     sequence: Sequence,
     retry_config: RetryConfig,
-) -> Result<bool, QueryError> {
+) -> Result<(bool, Height), QueryError> {
     let event = get_ibc_event(
         ctx,
         "write_acknowledgement",
@@ -239,13 +239,18 @@ pub async fn is_recv_packet(
         retry_config,
     )
     .await?;
+    let height = event
+        .read_attribute::<HeightAttr>()
+        .expect("Height should exist");
     let ack = event
         .read_attribute::<PacketAckAttr>()
         .expect("Ack should exist");
 
     let success = Acknowledgement::from(AcknowledgementStatus::success(ack_success_b64()));
+    let is_successful =
+        ack == std::str::from_utf8(success.as_bytes()).expect("Decoding shouldn't fail");
 
-    Ok(ack == std::str::from_utf8(success.as_bytes()).expect("Decoding shouldn't fail"))
+    Ok((is_successful, height.into()))
 }
 
 async fn get_ibc_event(
@@ -262,7 +267,7 @@ async fn get_ibc_event(
 
     // Look for recv_packet event with the sequence
     let mut height = get_block_height(ctx, retry_config).await?;
-    let timeout_height = height + 100;
+    let timeout_height = height + 20;
     while height < timeout_height {
         match shell
             .ibc_packet(
