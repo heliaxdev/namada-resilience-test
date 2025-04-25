@@ -284,6 +284,19 @@ impl State {
             .choose(&mut AntithesisRng)
     }
 
+    pub fn random_masp_account_with_ibc_balance(&self, blacklist: Vec<Alias>) -> Option<Account> {
+        self.accounts
+            .iter()
+            .filter(|(alias, _)| !blacklist.contains(alias))
+            .filter(|(alias, _)| {
+                self.ibc_masp_balances
+                    .get(alias)
+                    .is_some_and(|balances| balances.iter().any(|(_, b)| *b > MAX_BATCH_TX_NUM))
+            })
+            .map(|(_, account)| account.clone())
+            .choose(&mut AntithesisRng)
+    }
+
     pub fn random_payment_address(&self, blacklist: Vec<Alias>) -> Option<Account> {
         self.random_implicit_accounts(blacklist, 1).first().cloned()
     }
@@ -414,6 +427,13 @@ impl State {
         balances.get(denom).cloned().unwrap_or_default()
     }
 
+    pub fn get_shielded_ibc_balance_for(&self, alias: &Alias, denom: &str) -> u64 {
+        let Some(balances) = self.ibc_masp_balances.get(alias) else {
+            return 0;
+        };
+        balances.get(denom).cloned().unwrap_or_default()
+    }
+
     pub fn get_foreign_balance_for(&self, alias: &Alias) -> u64 {
         self.foreign_balances
             .get(alias)
@@ -531,6 +551,10 @@ impl State {
             return;
         }
         *self.balances.get_mut(target).unwrap() -= amount;
+    }
+
+    pub fn decrease_masp_balance(&mut self, target: &Alias, amount: u64) {
+        *self.masp_balances.get_mut(&target.base()).unwrap() -= amount;
     }
 
     pub fn decrease_ibc_balance(&mut self, target: &Alias, denom: &str, amount: u64) {

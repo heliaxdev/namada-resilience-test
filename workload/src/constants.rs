@@ -28,3 +28,5 @@ pub const COSMOS_FEE_TOKEN: &str = "stake";
 pub const MAX_COSMOS_TRANSFER_AMOUNT: u64 = 100;
 pub const COSMOS_FEE_AMOUNT: u64 = 200_000;
 pub const COSMOS_GAS_LIMIT: u64 = 200_000;
+
+pub const IBC_TIMEOUT_HEIGHT_OFFSET: u64 = 20;

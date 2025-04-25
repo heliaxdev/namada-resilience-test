@@ -80,6 +80,7 @@ pub enum Task {
     IbcTransferSend(ibc_transfer::IbcTransferSend),
     IbcTransferRecv(ibc_transfer::IbcTransferRecv),
     IbcShieldingTransfer(ibc_transfer::IbcShieldingTransfer),
+    IbcUnshieldingTransfer(ibc_transfer::IbcUnshieldingTransfer),
     Bond(bond::Bond),
     Unbond(unbond::Unbond),
     Redelegate(redelegate::Redelegate),

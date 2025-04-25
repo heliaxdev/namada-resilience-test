@@ -1,8 +1,10 @@
 use cosmrs::Any;
 use namada_sdk::args::{self, InputAmount, TxBuilder};
 use namada_sdk::ibc::convert_masp_tx_to_ibc_memo;
-use namada_sdk::ibc::core::host::types::identifiers::{ChannelId, PortId};
+use namada_sdk::ibc::core::host::types::identifiers::ChannelId;
+use namada_sdk::masp_primitives;
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
+use namada_sdk::masp_primitives::zip32::PseudoExtendedKey;
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
 use namada_sdk::tx::Tx;
@@ -12,15 +14,17 @@ use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
+use crate::constants::IBC_TIMEOUT_HEIGHT_OFFSET;
 use crate::context::Ctx;
 use crate::error::TaskError;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
-use crate::types::{Alias, Amount, Height};
+use crate::types::{Alias, Amount, Height, MaspEpoch};
 use crate::utils::{
     base_denom, build_cosmos_ibc_transfer, cosmos_denom_hash, gen_shielding_tx, get_balance,
-    get_ibc_packet_sequence, get_masp_epoch, get_shielded_balance, ibc_denom, ibc_token_address,
-    is_native_denom, is_recv_packet, retry_config, RetryConfig,
+    get_block_height, get_ibc_packet_sequence, get_masp_epoch, get_shielded_balance, ibc_denom,
+    ibc_token_address, is_native_denom, is_recv_packet, retry_config, shielded_sync_with_retry,
+    RetryConfig,
 };
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -197,13 +201,17 @@ impl TaskContext for IbcTransferRecv {
             cosmos_denom_hash(&denom)
         };
         drop(wallet);
+
+        let namada_timeout_height =
+            get_block_height(ctx, retry_config()).await? + IBC_TIMEOUT_HEIGHT_OFFSET;
+
         let any_msg = build_cosmos_ibc_transfer(
             &self.sender.name,
             &target_address.to_string(),
             &denom,
             self.amount,
-            &PortId::transfer(),
             &self.src_channel_id,
+            namada_timeout_height,
             None,
         );
 
@@ -371,13 +379,16 @@ impl TaskContext for IbcShieldingTransfer {
             gen_shielding_tx(ctx, target_payment_address, &ibc_denom, self.amount).await?;
         let memo = convert_masp_tx_to_ibc_memo(&shielding_tx);
 
+        let namada_timeout_height =
+            get_block_height(ctx, retry_config()).await? + IBC_TIMEOUT_HEIGHT_OFFSET;
+
         let any_msg = build_cosmos_ibc_transfer(
             &self.sender.name,
             &masp_address.to_string(),
             &denom_on_cosmos,
             self.amount,
-            &PortId::transfer(),
             &self.src_channel_id,
+            namada_timeout_height,
             Some(&memo),
         );
 
@@ -419,6 +430,146 @@ impl TaskContext for IbcShieldingTransfer {
         } else {
             let ibc_denom = ibc_denom(&self.dest_channel_id, &self.denom);
             state.increase_ibc_balance(&self.target, &ibc_denom, self.amount);
+        }
+    }
+}
+
+#[derive(Clone, Debug, TypedBuilder)]
+pub struct IbcUnshieldingTransfer {
+    source: Alias,
+    receiver: Alias,
+    denom: String,
+    amount: Amount,
+    src_channel_id: ChannelId,
+    dest_channel_id: ChannelId,
+    epoch: MaspEpoch,
+    settings: TaskSettings,
+}
+
+impl TaskContext for IbcUnshieldingTransfer {
+    fn name(&self) -> String {
+        "ibc-unshielding-transfer".to_string()
+    }
+
+    fn summary(&self) -> String {
+        format!(
+            "ibc-unshielding-transfer/{}/{}/'{}'/{}",
+            self.source.name, self.receiver.name, self.denom, self.amount
+        )
+    }
+
+    fn task_settings(&self) -> Option<&TaskSettings> {
+        Some(&self.settings)
+    }
+
+    async fn build_tx(&self, ctx: &Ctx) -> Result<(Tx, Vec<SigningTxData>, args::Tx), TaskError> {
+        let mut bparams = RngBuildParams::new(OsRng);
+
+        let mut wallet = ctx.namada.wallet.write().await;
+
+        let source_spending_key = wallet
+            .find_spending_key(&self.source.name, None)
+            .map_err(|e| TaskError::Wallet(e.to_string()))?;
+        let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(source_spending_key);
+        let pseudo_spending_key_from_spending_key = PseudoExtendedKey::from(tmp);
+        let token_amount = token::Amount::from_u64(self.amount);
+        let (token_address, denominated_amount) = if is_native_denom(&self.denom) {
+            let address = wallet
+                .find_address(&self.denom)
+                .ok_or_else(|| {
+                    TaskError::Wallet(format!("No native token address: {}", self.denom))
+                })?
+                .into_owned();
+            (address, token::DenominatedAmount::native(token_amount))
+        } else {
+            (
+                ibc_token_address(&self.denom),
+                token::DenominatedAmount::new(token_amount, 0u8.into()),
+            )
+        };
+        let amount = InputAmount::Unvalidated(denominated_amount);
+
+        let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
+        let gas_spending_key = if disposable_gas_payer {
+            let spending_key = wallet
+                .find_spending_key(&self.settings.gas_payer.name, None)
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
+            let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(spending_key);
+            Some(PseudoExtendedKey::from(tmp))
+        } else {
+            None
+        };
+
+        let source = TransferSource::ExtendedKey(pseudo_spending_key_from_spending_key);
+        let mut tx_builder = ctx.namada.new_ibc_transfer(
+            source,
+            self.receiver.name.clone(),
+            token_address,
+            amount,
+            self.src_channel_id.clone(),
+            disposable_gas_payer,
+        );
+        tx_builder.gas_spending_key = gas_spending_key;
+        tx_builder = tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
+        if !disposable_gas_payer {
+            let fee_payer = wallet
+                .find_public_key(&self.settings.gas_payer.name)
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
+            tx_builder = tx_builder.wrapper_fee_payer(fee_payer);
+        }
+        drop(wallet);
+
+        // signing key isn't needed for unshielding transfer
+
+        let (transfer_tx, signing_data, _) = tx_builder
+            .build(&ctx.namada, &mut bparams)
+            .await
+            .map_err(|e| TaskError::BuildTx(e.to_string()))?;
+
+        Ok((transfer_tx, vec![signing_data], tx_builder.tx))
+    }
+
+    async fn execute(&self, ctx: &Ctx) -> Result<Height, TaskError> {
+        self.execute_shielded_tx(ctx, self.epoch).await
+    }
+
+    async fn build_checks(
+        &self,
+        ctx: &Ctx,
+        retry_config: RetryConfig,
+    ) -> Result<Vec<Check>, TaskError> {
+        shielded_sync_with_retry(ctx, &self.source, None, false, retry_config).await?;
+
+        let pre_balance = get_shielded_balance(ctx, &self.source, &self.denom, retry_config)
+            .await?
+            .unwrap_or_default();
+        let source_check = Check::BalanceShieldedSource(
+            check::balance_shielded_source::BalanceShieldedSource::builder()
+                .target(self.source.clone())
+                .pre_balance(pre_balance)
+                .denom(self.denom.clone())
+                .amount(self.amount)
+                .build(),
+        );
+
+        let ibc_ack = Check::AckIbcTransfer(
+            check::ack_ibc_transfer::AckIbcTransfer::builder()
+                .source(Alias::masp())
+                .receiver(self.receiver.clone())
+                .src_channel_id(self.src_channel_id.clone())
+                .dest_channel_id(self.dest_channel_id.clone())
+                .build(),
+        );
+
+        Ok(vec![source_check, ibc_ack])
+    }
+
+    fn update_state(&self, state: &mut State) {
+        if is_native_denom(&self.denom) {
+            state.decrease_masp_balance(&self.source, self.amount);
+            state.increase_foreign_balance(&self.receiver, self.amount);
+        } else {
+            state.decrease_ibc_balance(&self.source, &self.denom, self.amount);
         }
     }
 }

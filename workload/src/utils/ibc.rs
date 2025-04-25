@@ -18,6 +18,7 @@ use namada_sdk::tx::Tx;
 use namada_sdk::io::Client;
 use sha2::{Digest, Sha256};
 
+use crate::constants::IBC_TIMEOUT_HEIGHT_OFFSET;
 use crate::context::Ctx;
 use crate::error::QueryError;
 use crate::types::{Alias, Height};
@@ -267,7 +268,7 @@ async fn get_ibc_event(
 
     // Look for recv_packet event with the sequence
     let mut height = get_block_height(ctx, retry_config).await?;
-    let timeout_height = height + 20;
+    let timeout_height = height + IBC_TIMEOUT_HEIGHT_OFFSET;
     while height < timeout_height {
         match shell
             .ibc_packet(

@@ -291,9 +291,9 @@ pub async fn gen_shielding_tx(
         asset: IbcShieldingTransferAsset::LookupNamadaAddress {
             token: denom.to_string(),
             port_id: PortId::transfer(),
-            channel_id: ctx.cosmos_channel_id.clone(),
+            channel_id: ctx.namada_channel_id.clone(),
         },
-        amount: InputAmount::Validated(token::DenominatedAmount::new(
+        amount: InputAmount::Unvalidated(token::DenominatedAmount::new(
             token::Amount::from_u64(amount),
             0u8.into(),
         )),

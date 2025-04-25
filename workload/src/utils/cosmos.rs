@@ -21,8 +21,8 @@ pub fn build_cosmos_ibc_transfer(
     receiver: &str,
     denom: &str,
     amount: Amount,
-    src_port_id: &PortId,
     src_channel_id: &ChannelId,
+    timeout_height: Height,
     memo: Option<&str>,
 ) -> Any {
     let token = Coin {
@@ -32,10 +32,10 @@ pub fn build_cosmos_ibc_transfer(
 
     let height_offset = ibc_proto::ibc::core::client::v1::Height {
         revision_number: 0,
-        revision_height: 1000,
+        revision_height: timeout_height,
     };
     let msg = MsgTransfer {
-        source_port: src_port_id.to_string(),
+        source_port: PortId::transfer().to_string(),
         source_channel: src_channel_id.to_string(),
         token: Some(token),
         sender: sender.to_string(),

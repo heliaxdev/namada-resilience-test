@@ -1,4 +1,7 @@
+use std::collections::BTreeSet;
+
 use crate::code::{Code, CodeType};
+use crate::constants::DEFAULT_FEE;
 use crate::constants::{
     COSMOS_TOKEN, MAX_BATCH_TX_NUM, MAX_COSMOS_TRANSFER_AMOUNT, MIN_TRANSFER_BALANCE,
 };
@@ -8,7 +11,7 @@ use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
-use crate::utils::{ibc_denom, is_native_denom};
+use crate::utils::{get_masp_epoch, ibc_denom, is_native_denom, retry_config};
 use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
@@ -174,6 +177,75 @@ impl StepContext for IbcShieldingTransfer {
             CodeType::Fatal => assert_unreachable_step!("Fatal IbcShieldingTransfer", code),
             CodeType::Skip => assert_sometimes_step!("Skipped IbcShieldingTransfer", code),
             CodeType::Failed => assert_unreachable_step!("Failed IbcShieldingTransfer", code),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct IbcUnshieldingTransfer;
+
+impl StepContext for IbcUnshieldingTransfer {
+    fn name(&self) -> String {
+        "ibc-unshielding-transfer".to_string()
+    }
+
+    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
+        Ok(state.any_account_can_make_transfer())
+    }
+
+    async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
+        let (source_account, denom) = state
+            .random_masp_account_with_ibc_balance(vec![])
+            .filter(|_| utils::coin_flip(0.5))
+            .map(|account| (account, ibc_denom(&ctx.namada_channel_id, COSMOS_TOKEN)))
+            .or_else(|| {
+                state
+                    .random_masp_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
+                    .map(|account| (account, Alias::nam().name))
+            })
+            .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
+        let target_account = ctx.cosmos.account.to_string();
+        let amount_account = if is_native_denom(&denom) {
+            state.get_shielded_balance_for(&source_account.alias)
+        } else {
+            state.get_shielded_ibc_balance_for(&source_account.alias, &denom)
+        };
+        let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
+
+        let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
+        let disposable_gas_payer =
+            transparent_source_balance < DEFAULT_FEE || utils::coin_flip(0.5);
+        let task_settings = TaskSettings::new(
+            BTreeSet::from([source_account.alias.base()]),
+            if disposable_gas_payer {
+                source_account.alias.spending_key()
+            } else {
+                source_account.alias.base()
+            },
+        );
+
+        let epoch = get_masp_epoch(ctx, retry_config()).await?;
+
+        Ok(vec![Task::IbcUnshieldingTransfer(
+            task::ibc_transfer::IbcUnshieldingTransfer::builder()
+                .source(source_account.alias.spending_key())
+                .receiver(target_account.into())
+                .amount(amount)
+                .denom(denom)
+                .src_channel_id(ctx.namada_channel_id.clone())
+                .dest_channel_id(ctx.cosmos_channel_id.clone())
+                .epoch(epoch)
+                .settings(task_settings)
+                .build(),
+        )])
+    }
+
+    fn assert(&self, code: &Code) {
+        match code.code_type() {
+            CodeType::Success => assert_always_step!("Done IbcUnshieldingTransfer", code),
+            CodeType::Fatal => assert_unreachable_step!("Fatal IbcUnshieldingTransfer", code),
+            CodeType::Skip => assert_sometimes_step!("Skipped IbcUnshieldingTransfer", code),
+            CodeType::Failed => assert_unreachable_step!("Failed IbcUnshieldingTransfer", code),
         }
     }
 }
