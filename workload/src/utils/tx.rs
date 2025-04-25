@@ -25,6 +25,7 @@ use crate::context::Ctx;
 use crate::error::TaskError;
 use crate::task::TaskSettings;
 use crate::types::{Alias, Amount, Height};
+use crate::utils::is_native_denom;
 
 fn get_tx_errors(
     cmts: HashSet<TxCommitments>,
@@ -282,6 +283,13 @@ pub async fn gen_shielding_tx(
     denom: &str,
     amount: Amount,
 ) -> Result<MaspTransaction, TaskError> {
+    let denominated_amount = if is_native_denom(denom) {
+        // cosmos token
+        token::DenominatedAmount::new(token::Amount::from_u64(amount), 0u8.into())
+    } else {
+        // receiving NAM
+        token::DenominatedAmount::new(token::Amount::from_u64(amount), 6u8.into())
+    };
     let args = GenIbcShieldingTransfer {
         query: Query {
             ledger_address: "http://127.0.0.1:27657".parse().expect("dummy address"),
@@ -293,10 +301,7 @@ pub async fn gen_shielding_tx(
             port_id: PortId::transfer(),
             channel_id: ctx.namada_channel_id.clone(),
         },
-        amount: InputAmount::Unvalidated(token::DenominatedAmount::new(
-            token::Amount::from_u64(amount),
-            0u8.into(),
-        )),
+        amount: InputAmount::Validated(denominated_amount),
         expiration: args::TxExpiration::NoExpiration,
     };
     Ok(gen_ibc_shielding_transfer(&ctx.namada, args)

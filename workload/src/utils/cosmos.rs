@@ -30,7 +30,7 @@ pub fn build_cosmos_ibc_transfer(
         amount: amount.to_string(),
     };
 
-    let height_offset = ibc_proto::ibc::core::client::v1::Height {
+    let timeout_height = ibc_proto::ibc::core::client::v1::Height {
         revision_number: 0,
         revision_height: timeout_height,
     };
@@ -40,7 +40,7 @@ pub fn build_cosmos_ibc_transfer(
         token: Some(token),
         sender: sender.to_string(),
         receiver: receiver.to_string(),
-        timeout_height: Some(height_offset),
+        timeout_height: Some(timeout_height),
         timeout_timestamp: 0,
         memo: memo.unwrap_or_default().to_string(),
     };

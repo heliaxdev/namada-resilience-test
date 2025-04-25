@@ -9,7 +9,7 @@ use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
 use namada_sdk::tx::Tx;
 use namada_sdk::Namada;
-use namada_sdk::{token, TransferSource};
+use namada_sdk::{token, TransferSource, TransferTarget};
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
@@ -510,6 +510,17 @@ impl TaskContext for IbcUnshieldingTransfer {
             disposable_gas_payer,
         );
         tx_builder.gas_spending_key = gas_spending_key;
+        let refund_target = wallet
+            .find_address(self.source.base().name)
+            .ok_or_else(|| {
+                TaskError::Wallet(format!(
+                    "No transparent source address: {}",
+                    self.source.base().name
+                ))
+            })?
+            .into_owned();
+        // use the original transparent address for testing
+        tx_builder.refund_target = Some(TransferTarget::Address(refund_target));
         tx_builder = tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
         if !disposable_gas_payer {
             let fee_payer = wallet
@@ -554,7 +565,7 @@ impl TaskContext for IbcUnshieldingTransfer {
 
         let ibc_ack = Check::AckIbcTransfer(
             check::ack_ibc_transfer::AckIbcTransfer::builder()
-                .source(Alias::masp())
+                .source(self.source.base())
                 .receiver(self.receiver.clone())
                 .src_channel_id(self.src_channel_id.clone())
                 .dest_channel_id(self.dest_channel_id.clone())
