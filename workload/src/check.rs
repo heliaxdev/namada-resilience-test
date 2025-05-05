@@ -91,9 +91,12 @@ impl Check {
                 (matched, details)
             }
             Check::BalanceShieldedSource(bss) => {
-                let expected_pre_balance =
-                    Balance::from_u64(state.get_shielded_balance_for(bss.target()));
-                let matched = bss.pre_balance() == expected_pre_balance;
+                let expected_pre_balance = if is_native_denom(bss.denom()) {
+                    state.get_shielded_balance_for(bss.target())
+                } else {
+                    state.get_ibc_balance_for(bss.target(), bss.denom())
+                };
+                let matched = bss.pre_balance() == Balance::from_u64(expected_pre_balance);
                 let details = json!({
                     "source_alias": bss.target(),
                     "expected_pre_balance": expected_pre_balance,
@@ -107,9 +110,12 @@ impl Check {
                 (matched, details)
             }
             Check::BalanceShieldedTarget(bst) => {
-                let expected_pre_balance =
-                    Balance::from_u64(state.get_shielded_balance_for(bst.target()));
-                let matched = bst.pre_balance() == expected_pre_balance;
+                let expected_pre_balance = if is_native_denom(bst.denom()) {
+                    state.get_shielded_balance_for(bst.target())
+                } else {
+                    state.get_ibc_balance_for(bst.target(), bst.denom())
+                };
+                let matched = bst.pre_balance() == Balance::from_u64(expected_pre_balance);
                 let details = json!({
                     "target_alias": bst.target(),
                     "expected_pre_balance": expected_pre_balance,

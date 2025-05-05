@@ -208,13 +208,19 @@ impl StepContext for IbcUnshieldingTransfer {
         let amount_account = if is_native_denom(&denom) {
             state.get_shielded_balance_for(&source_account.alias)
         } else {
-            state.get_shielded_ibc_balance_for(&source_account.alias, &denom)
+            state.get_ibc_balance_for(&source_account.alias.spending_key(), &denom)
         };
         let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
 
         let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
-        let disposable_gas_payer =
-            transparent_source_balance < DEFAULT_FEE || utils::coin_flip(0.5);
+        let shielded_source_balance =
+            state.get_shielded_balance_for(&source_account.alias.spending_key());
+        if transparent_source_balance < DEFAULT_FEE && shielded_source_balance < DEFAULT_FEE {
+            // Insufficient balance for the fee
+            return Ok(vec![]);
+        }
+        let disposable_gas_payer = transparent_source_balance < DEFAULT_FEE
+            || (shielded_source_balance >= DEFAULT_FEE && utils::coin_flip(0.5));
         let task_settings = TaskSettings::new(
             BTreeSet::from([source_account.alias.base()]),
             if disposable_gas_payer {

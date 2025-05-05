@@ -159,12 +159,39 @@ else
     exit 1
 fi
 
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_shielding_transfer.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done ibc-shielding-transfer"
+retries=1
+while [ $retries -le $MAX_RETRY_COUNT ]; do
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_shielding_transfer.sh | tee /dev/stderr)
+    if echo "$output" | grep -q "Done ibc-shielding-transfer"
+    then
+        echo "<OK> IBC shielding transfer"
+        break
+    else
+        retries=$((retries + 1))
+        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> IBC shielding transfer"
+    fi
+done
+if [ $retries -gt $MAX_RETRY_COUNT ]
 then
-    echo "<OK> IBC shielding transfer"
-else
     echo "<ERROR> IBC shielding transfer"
+    exit 1
+fi
+
+retries=1
+while [ $retries -le $MAX_RETRY_COUNT ]; do
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_unshielding_transfer.sh | tee /dev/stderr)
+    if echo "$output" | grep -q "Done ibc-unshielding-transfer"
+    then
+        echo "<OK> IBC unshielding transfer"
+        break
+    else
+        retries=$((retries + 1))
+        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> IBC unshielding transfer"
+    fi
+done
+if [ $retries -gt $MAX_RETRY_COUNT ]
+then
+    echo "<ERROR> IBC unshielding transfer"
     exit 1
 fi
 

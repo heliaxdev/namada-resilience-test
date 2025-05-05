@@ -421,14 +421,12 @@ impl State {
     }
 
     pub fn get_ibc_balance_for(&self, alias: &Alias, denom: &str) -> u64 {
-        let Some(balances) = self.ibc_balances.get(alias) else {
-            return 0;
+        let balances = if alias.is_spending_key() || alias.is_payment_address() {
+            self.ibc_masp_balances.get(&alias.base())
+        } else {
+            self.ibc_balances.get(alias)
         };
-        balances.get(denom).cloned().unwrap_or_default()
-    }
-
-    pub fn get_shielded_ibc_balance_for(&self, alias: &Alias, denom: &str) -> u64 {
-        let Some(balances) = self.ibc_masp_balances.get(alias) else {
+        let Some(balances) = balances else {
             return 0;
         };
         balances.get(denom).cloned().unwrap_or_default()

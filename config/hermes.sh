@@ -73,6 +73,7 @@ key_name = 'relayer'
 store_prefix = 'ibc'
 gas_price = { price = 1.0, denom = 'stake' }
 gas_multiplier = 1.3
+max_gas = 500000
 "
 
 echo "${HERMES_CONFIG_TEMPLATE}" \
