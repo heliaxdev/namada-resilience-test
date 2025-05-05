@@ -13,7 +13,7 @@ jobs:
         runs:
           - image: "main-inst"
             genesis: "main"
-            masp_indexer: "v1.3.0"
+            masp_indexer: "master"
             workload: "master"
             duration: 14
             config: "main"
