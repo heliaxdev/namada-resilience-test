@@ -13,8 +13,8 @@ clap = { version = "4.4.2", features = ["derive", "env"] }
 enum_dispatch = "0.3.13"
 fs2 = "0.4.3"
 futures = "0.3.30"
-namada_sdk = { git = "https://github.com/anoma/namada", rev = "4573d99010dcf8bb47052a3a0a0f2c7e64314d02", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_wallet = { git = "https://github.com/anoma/namada", rev = "4573d99010dcf8bb47052a3a0a0f2c7e64314d02", default-features = false, features = ["std"] }
+namada_sdk = { version = "0.149.1", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_wallet = { version = "0.149.1", default-features = false, features = ["std"] }
 rand = {version = "0.8.5", default-features = false}
 rand_chacha = { version = "0.3.1", features = ["serde1"] }
 reqwest = "0.12.12"

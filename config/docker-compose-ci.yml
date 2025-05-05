@@ -28,7 +28,7 @@ services:
     - VALIDATOR1_ADDR=30.0.0.13:27657
     - VALIDATOR2_ADDR=30.0.0.14:27657
     hostname: genesis
-    image: ghcr.io/heliaxdev/ant-namada-genesis:main
+    image: ghcr.io/heliaxdev/ant-namada-genesis:v101.0.0
     networks:
       namada-net:
         ipv4_address: 30.0.0.11
@@ -47,7 +47,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-block-filter
-    image: ghcr.io/heliaxdev/ant-masp-indexer-block-filter:03c0fe13016f00338b844b831c84f8017f63a868
+    image: ghcr.io/heliaxdev/ant-masp-indexer-block-filter:v1.3.0
     networks:
       namada-net:
         ipv4_address: 30.0.0.23
@@ -61,7 +61,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-chain
-    image: ghcr.io/heliaxdev/ant-masp-indexer-chain:03c0fe13016f00338b844b831c84f8017f63a868
+    image: ghcr.io/heliaxdev/ant-masp-indexer-chain:v1.3.0
     networks:
       namada-net:
         ipv4_address: 30.0.0.22
@@ -73,7 +73,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-webserver
-    image: ghcr.io/heliaxdev/ant-masp-indexer-webserver:03c0fe13016f00338b844b831c84f8017f63a868
+    image: ghcr.io/heliaxdev/ant-masp-indexer-webserver:v1.3.0
     networks:
       namada-net:
         ipv4_address: 30.0.0.20
@@ -111,7 +111,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-0
     hostname: validator0
-    image: ghcr.io/heliaxdev/ant-namada:main
+    image: ghcr.io/heliaxdev/ant-namada:v101.0.0
     networks:
       namada-net:
         ipv4_address: 30.0.0.12
@@ -131,7 +131,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-1
     hostname: validator1
-    image: ghcr.io/heliaxdev/ant-namada:main
+    image: ghcr.io/heliaxdev/ant-namada:v101.0.0
     networks:
       namada-net:
         ipv4_address: 30.0.0.13
@@ -151,7 +151,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-2
     hostname: validator2
-    image: ghcr.io/heliaxdev/ant-namada:main
+    image: ghcr.io/heliaxdev/ant-namada:v101.0.0
     networks:
       namada-net:
         ipv4_address: 30.0.0.14
