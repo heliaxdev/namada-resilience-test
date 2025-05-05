@@ -13,14 +13,14 @@ jobs:
         runs:
           - image: "main-inst"
             genesis: "main"
-            masp_indexer: "03c0fe13016f00338b844b831c84f8017f63a868"
+            masp_indexer: "v1.3.0"
             workload: "master"
             duration: 14
             config: "main"
-          - image: "v1.1.5-inst"
-            genesis: "v1.1.5"
-            config: "v1.1.5"
-            masp_indexer: "master"
+          - image: "v101.0.0-inst"
+            genesis: "v101.0.0"
+            config: "v101.0.0"
+            masp_indexer: "v1.3.0"
             workload: "for-stable-namada"
             duration: 2
 
