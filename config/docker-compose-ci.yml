@@ -28,7 +28,7 @@ services:
     - VALIDATOR1_ADDR=30.0.0.13:27657
     - VALIDATOR2_ADDR=30.0.0.14:27657
     hostname: genesis
-    image: ghcr.io/heliaxdev/ant-namada-genesis:v101.0.0
+    image: ghcr.io/heliaxdev/ant-namada-genesis:main
     networks:
       namada-net:
         ipv4_address: 30.0.0.11
@@ -47,7 +47,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-block-filter
-    image: ghcr.io/heliaxdev/ant-masp-indexer-block-filter:v1.3.0
+    image: ghcr.io/heliaxdev/ant-masp-indexer-block-filter:master
     networks:
       namada-net:
         ipv4_address: 30.0.0.23
@@ -61,7 +61,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-chain
-    image: ghcr.io/heliaxdev/ant-masp-indexer-chain:v1.3.0
+    image: ghcr.io/heliaxdev/ant-masp-indexer-chain:master
     networks:
       namada-net:
         ipv4_address: 30.0.0.22
@@ -73,7 +73,7 @@ services:
     - COMETBFT_URL=http://30.0.0.12:27658
     - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     hostname: masp-webserver
-    image: ghcr.io/heliaxdev/ant-masp-indexer-webserver:v1.3.0
+    image: ghcr.io/heliaxdev/ant-masp-indexer-webserver:master
     networks:
       namada-net:
         ipv4_address: 30.0.0.20
@@ -140,7 +140,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-0
     hostname: validator0
-    image: ghcr.io/heliaxdev/ant-namada:v101.0.0
+    image: ghcr.io/heliaxdev/ant-namada:main
     networks:
       namada-net:
         ipv4_address: 30.0.0.12
@@ -160,7 +160,7 @@ services:
     - NAMADA_CMT_STDOUT=true
     - BASE_DIR=/validator-1
     hostname: validator1
-    image: ghcr.io/heliaxdev/ant-namada:v101.0.0
+    image: ghcr.io/heliaxdev/ant-namada:main
     networks:
       namada-net:
         ipv4_address: 30.0.0.13
@@ -181,7 +181,7 @@ services:
     - BASE_DIR=/validator-2
     - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
     hostname: validator2
-    image: ghcr.io/heliaxdev/ant-namada:v101.0.0
+    image: ghcr.io/heliaxdev/ant-namada:main
     networks:
       namada-net:
         ipv4_address: 30.0.0.14
