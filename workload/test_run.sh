@@ -54,27 +54,9 @@ fi
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_transparent_transfer.sh | tee /dev/stderr)
 if echo "$output" | grep -q "Done transparent-transfer"
 then
-    echo "<OK> transparent transfer" 
+    echo "<OK> transparent transfer"
 else
     echo "<ERROR> transparent transfer"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done redelegate"
-then
-    echo "<OK> redelegate" 
-else
-    echo "<ERROR> redelegate"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_unbond.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done unbond"
-then
-    echo "<OK> unbond" 
-else
-    echo "<ERROR> unbond"
     exit 1
 fi
 
@@ -228,6 +210,24 @@ then
     echo "<OK> change consensus keys" 
 else
     echo "<ERROR> change consensus keys"
+    exit 1
+fi
+
+output=$(/opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh | tee /dev/stderr)
+if echo "$output" | grep -q "Done redelegate"
+then
+    echo "<OK> redelegate" 
+else
+    echo "<ERROR> redelegate"
+    exit 1
+fi
+
+output=$(/opt/antithesis/test/v1/namada/parallel_driver_unbond.sh | tee /dev/stderr)
+if echo "$output" | grep -q "Done unbond"
+then
+    echo "<OK> unbond" 
+else
+    echo "<ERROR> unbond"
     exit 1
 fi
 
