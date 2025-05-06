@@ -245,7 +245,7 @@ services:
     user: "0"
   hermes:
     container_name: hermes
-    image: ghcr.io/informalsystems/hermes:1.12.0
+    image: ghcr.io/heliaxdev/hermes:1.13.0
     entrypoint: /entrypoint.sh
     environment:
       - RPC_ADDRESS=30.0.0.14:27658
