@@ -54,27 +54,9 @@ fi
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_transparent_transfer.sh | tee /dev/stderr)
 if echo "$output" | grep -q "Done transparent-transfer"
 then
-    echo "<OK> transparent transfer" 
+    echo "<OK> transparent transfer"
 else
     echo "<ERROR> transparent transfer"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done redelegate"
-then
-    echo "<OK> redelegate" 
-else
-    echo "<ERROR> redelegate"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_unbond.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done unbond"
-then
-    echo "<OK> unbond" 
-else
-    echo "<ERROR> unbond"
     exit 1
 fi
 
@@ -141,6 +123,60 @@ then
     exit 1
 fi
 
+output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_transfer_send.sh | tee /dev/stderr)
+if echo "$output" | grep -q "Done ibc-transfer-send"
+then
+    echo "<OK> IBC transfer send"
+else
+    echo "<ERROR> IBC transfer send"
+    exit 1
+fi
+
+output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_transfer_recv.sh | tee /dev/stderr)
+if echo "$output" | grep -q "Done ibc-transfer-recv"
+then
+    echo "<OK> IBC transfer recv"
+else
+    echo "<ERROR> IBC transfer recv"
+    exit 1
+fi
+
+retries=1
+while [ $retries -le $MAX_RETRY_COUNT ]; do
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_shielding_transfer.sh | tee /dev/stderr)
+    if echo "$output" | grep -q "Done ibc-shielding-transfer"
+    then
+        echo "<OK> IBC shielding transfer"
+        break
+    else
+        retries=$((retries + 1))
+        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> IBC shielding transfer"
+    fi
+done
+if [ $retries -gt $MAX_RETRY_COUNT ]
+then
+    echo "<ERROR> IBC shielding transfer"
+    exit 1
+fi
+
+retries=1
+while [ $retries -le $MAX_RETRY_COUNT ]; do
+    output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_unshielding_transfer.sh | tee /dev/stderr)
+    if echo "$output" | grep -q "Done ibc-unshielding-transfer"
+    then
+        echo "<OK> IBC unshielding transfer"
+        break
+    else
+        retries=$((retries + 1))
+        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> IBC unshielding transfer"
+    fi
+done
+if [ $retries -gt $MAX_RETRY_COUNT ]
+then
+    echo "<ERROR> IBC unshielding transfer"
+    exit 1
+fi
+
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_claim_rewards.sh | tee /dev/stderr)
 if echo "$output" | grep -q "Done claim-rewards"
 then
@@ -174,6 +210,24 @@ then
     echo "<OK> change consensus keys" 
 else
     echo "<ERROR> change consensus keys"
+    exit 1
+fi
+
+output=$(/opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh | tee /dev/stderr)
+if echo "$output" | grep -q "Done redelegate"
+then
+    echo "<OK> redelegate" 
+else
+    echo "<ERROR> redelegate"
+    exit 1
+fi
+
+output=$(/opt/antithesis/test/v1/namada/parallel_driver_unbond.sh | tee /dev/stderr)
+if echo "$output" | grep -q "Done unbond"
+then
+    echo "<OK> unbond" 
+else
+    echo "<ERROR> unbond"
     exit 1
 fi
 

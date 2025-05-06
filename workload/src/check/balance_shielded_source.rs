@@ -8,12 +8,13 @@ use crate::check::{CheckContext, CheckInfo};
 use crate::context::Ctx;
 use crate::error::CheckError;
 use crate::types::{Alias, Amount, Balance, Fee};
-use crate::utils::{get_shielded_balance, shielded_sync_with_retry, RetryConfig};
+use crate::utils::{get_shielded_balance, is_native_denom, shielded_sync_with_retry, RetryConfig};
 
 #[derive(TypedBuilder)]
 pub struct BalanceShieldedSource {
     target: Alias,
     pre_balance: Balance,
+    denom: String,
     amount: Amount,
 }
 
@@ -24,6 +25,10 @@ impl BalanceShieldedSource {
 
     pub fn pre_balance(&self) -> Balance {
         self.pre_balance
+    }
+
+    pub fn denom(&self) -> &str {
+        &self.denom
     }
 
     pub fn amount(&self) -> Amount {
@@ -52,7 +57,7 @@ impl CheckContext for BalanceShieldedSource {
         )
         .await?;
 
-        let post_balance = get_shielded_balance(ctx, &self.target, retry_config)
+        let post_balance = get_shielded_balance(ctx, &self.target, &self.denom, retry_config)
             .await?
             .ok_or_else(|| {
                 antithesis_sdk::assert_unreachable!(
@@ -71,7 +76,13 @@ impl CheckContext for BalanceShieldedSource {
                 ))
             })?;
 
-        let fee = fees.get(&self.target).cloned().unwrap_or_default();
+        let fee = if is_native_denom(&self.denom) {
+            fees.get(&self.target.spending_key())
+                .cloned()
+                .unwrap_or_default()
+        } else {
+            0u64
+        };
 
         let check_balance = self
             .pre_balance
