@@ -14,14 +14,18 @@ NAMADA_CHAIN_ID=$(basename $NAMADA_CHAIN_ID)
 
 # Wait for the RPC server starts
 json_rpc_ready=0
-while [ "$json_rpc_ready" != 200 ]
-do
-    echo "Checking node rpc ${RPC_ADDRESS}/status ..."
+latest_height=0
+while [ "$json_rpc_ready" != 200 ] || [ "$latest_height" -lt 2 ]; do
+    echo "Checking node RPC at ${RPC_ADDRESS}/status ..."
     json_rpc_ready=$(wget --server-response --spider "${RPC_ADDRESS}/status" 2>&1 | awk '/^  HTTP/{print $2}')
-    echo "Node rpc query result: $json_rpc_ready"
+    echo "RPC status code: $json_rpc_ready"
+
+    if [ "$json_rpc_ready" = 200 ]; then
+        latest_height=$(wget -qO - "${RPC_ADDRESS}/status" | grep -o '"latest_block_height":[[:space:]]*"[0-9]\+"' | grep -o '[0-9]\+')
+        echo "Latest block height: $latest_height"
+    fi
     sleep 2
 done
-
 
 HERMES_CONFIG_TEMPLATE="
 [global]
