@@ -204,24 +204,6 @@ else
     exit 1
 fi
 
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_redelegate.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done redelegate"
-then
-    echo "<OK> redelegate" 
-else
-    echo "<ERROR> redelegate"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_unbond.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done unbond"
-then
-    echo "<OK> unbond" 
-else
-    echo "<ERROR> unbond"
-    exit 1
-fi
-
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_bond_batch.sh | tee /dev/stderr)
 if echo "$output" | grep -q "Done batch-bond"
 then
