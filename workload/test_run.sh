@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MAX_RETRY_COUNT=5
+MAX_RETRY_COUNT=15
 
 touch state-$WORKLOAD_ID.json
 echo "" > state-$WORKLOAD_ID.json
