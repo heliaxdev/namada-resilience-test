@@ -424,7 +424,7 @@ impl TaskContext for IbcShieldingTransfer {
         ctx: &Ctx,
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, TaskError> {
-        // packet receipt has been already checked
+        shielded_sync_with_retry(ctx, &self.target, None, false, retry_config).await?;
 
         let recv_denom = if is_native_denom(&self.denom) {
             ibc_denom(&self.dest_channel_id, &self.denom)
