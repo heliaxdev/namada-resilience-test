@@ -185,15 +185,9 @@ impl TaskContext for IbcTransferRecv {
         let height = self.execute_cosmos_tx(ctx).await?;
 
         // Check the packet receiving on Namada
-        let sequence = get_ibc_packet_sequence(
-            ctx,
-            &self.sender,
-            &Alias::masp(),
-            height,
-            false,
-            retry_config,
-        )
-        .await?;
+        let sequence =
+            get_ibc_packet_sequence(ctx, &self.sender, &self.target, height, false, retry_config)
+                .await?;
         let (is_successful, recv_height) = is_recv_packet(
             ctx,
             &self.src_channel_id,
