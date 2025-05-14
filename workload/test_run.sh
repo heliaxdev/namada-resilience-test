@@ -177,25 +177,6 @@ then
     exit 1
 fi
 
-retries=1
-while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_claim_rewards.sh | tee /dev/stderr)
-    if echo "$output" | grep -q "Done claim-rewards"
-    then
-        echo "<OK> claim rewards" 
-        break
-    else
-        retries=$((retries + 1))
-        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> claim rewards"
-        sleep 10
-    fi
-done
-if [ $retries -gt $MAX_RETRY_COUNT ]
-then
-    echo "<ERROR> claim rewards"
-    exit 1
-fi
-
 output=$(/opt/antithesis/test/v1/namada/parallel_driver_become_validator.sh | tee /dev/stderr)
 if echo "$output" | grep -q "Done become-validator"
 then
