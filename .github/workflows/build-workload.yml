@@ -68,6 +68,8 @@ jobs:
           context: workload
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha,scope=workload-image
+          cache-to: type=gha,scope=workload-image,mode=max
           labels: ${{ steps.meta.outputs.labels }}
       - name: Build and push (workflow_dispatch)
         if: ${{ github.event_name == 'workflow_dispatch' }}
