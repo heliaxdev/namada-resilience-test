@@ -171,16 +171,7 @@ impl TaskContext for IbcTransferSend {
                 .build(),
         );
 
-        let ibc_ack = Check::AckIbcTransfer(
-            check::ack_ibc_transfer::AckIbcTransfer::builder()
-                .source(self.source.clone())
-                .receiver(self.receiver.clone())
-                .src_channel_id(self.src_channel_id.clone())
-                .dest_channel_id(self.dest_channel_id.clone())
-                .build(),
-        );
-
-        Ok(vec![source_check, ibc_ack])
+        Ok(vec![source_check])
     }
 
     fn update_state(&self, state: &mut State) {
@@ -604,7 +595,35 @@ impl TaskContext for IbcUnshieldingTransfer {
     }
 
     async fn execute(&self, ctx: &Ctx) -> Result<Height, TaskError> {
-        self.execute_shielded_tx(ctx, self.epoch).await
+        let height = self.execute_shielded_tx(ctx, self.epoch).await?;
+
+        // Wait for the IBC transfer completion
+        let sequence = get_ibc_packet_sequence(
+            ctx,
+            &self.source.base(),
+            &self.receiver,
+            height,
+            true,
+            retry_config(),
+        )
+        .await?;
+        if is_ibc_transfer_successful(
+            ctx,
+            &self.src_channel_id,
+            &self.dest_channel_id,
+            sequence.into(),
+            retry_config(),
+        )
+        .await?
+        {
+            Ok(height)
+        } else {
+            let err = format!(
+                "Sending token failed: {} {} from {} to {}",
+                self.amount, self.denom, self.source.name, self.receiver.name
+            );
+            Err(TaskError::Execution { err, height })
+        }
     }
 
     async fn build_checks(
@@ -626,16 +645,7 @@ impl TaskContext for IbcUnshieldingTransfer {
                 .build(),
         );
 
-        let ibc_ack = Check::AckIbcTransfer(
-            check::ack_ibc_transfer::AckIbcTransfer::builder()
-                .source(self.source.base())
-                .receiver(self.receiver.clone())
-                .src_channel_id(self.src_channel_id.clone())
-                .dest_channel_id(self.dest_channel_id.clone())
-                .build(),
-        );
-
-        Ok(vec![source_check, ibc_ack])
+        Ok(vec![source_check])
     }
 
     fn update_state(&self, state: &mut State) {
