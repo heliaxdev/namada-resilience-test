@@ -67,3 +67,8 @@ COPY --from=builder /root/.masp-params/* /root/.masp-params/
 COPY --from=builder /namada/target/release/namada* /usr/local/bin/
 COPY --from=builder /usr/local/bin/cometbft /usr/local/bin/cometbft
 COPY --from=builder /usr/lib/libvoidstar.so /usr/lib/libvoidstar.so
+
+RUN mkdir -p /symbols && \
+    for cmd in namada namadac namadaw namadan; do \
+        ln -sf /usr/local/bin/$cmd /symbols/$cmd; \
+    done
