@@ -90,18 +90,21 @@ echo "${HERMES_CONFIG_TEMPLATE}" \
 hermes --config config.toml keys add --chain $NAMADA_CHAIN_ID --key-file /$TARGET_VALIDATOR/$NAMADA_CHAIN_ID/wallet.toml --overwrite
 hermes --config config.toml keys add --chain $GAIA_CHAIN_ID --key-file /gaia-0/relayer_seed.json --overwrite
 
-result=$(hermes --config config.toml \
-  create channel --a-chain $NAMADA_CHAIN_ID \
-  --b-chain $GAIA_CHAIN_ID \
-  --a-port transfer \
-  --b-port transfer \
-  --new-client-connection --yes)
+if [ ! -e /container_ready/ibc_channels ]
+then
+    result=$(hermes --config config.toml \
+      create channel --a-chain $NAMADA_CHAIN_ID \
+      --b-chain $GAIA_CHAIN_ID \
+      --a-port transfer \
+      --b-port transfer \
+      --new-client-connection --yes)
 
-# not used for now
-namada_channel_id=$(echo $result | sed -n 's/.*a_side:.*channel_id: Some( ChannelId( "\([^"]*\)".*/\1/p')
-gaia_channel_id=$(echo $result | sed -n 's/.*b_side:.*channel_id: Some( ChannelId( "\([^"]*\)".*/\1/p')
+    # not used for now
+    namada_channel_id=$(echo $result | sed -n 's/.*a_side:.*channel_id: Some( ChannelId( "\([^"]*\)".*/\1/p')
+    gaia_channel_id=$(echo $result | sed -n 's/.*b_side:.*channel_id: Some( ChannelId( "\([^"]*\)".*/\1/p')
 
-echo "namada->cosmos ${namada_channel_id}" > /container_ready/ibc_channels
-echo "cosmos->namada ${gaia_channel_id}" >> /container_ready/ibc_channels
+    echo "namada->cosmos ${namada_channel_id}" > /container_ready/ibc_channels
+    echo "cosmos->namada ${gaia_channel_id}" >> /container_ready/ibc_channels
+fi
 
 hermes --config config.toml start
