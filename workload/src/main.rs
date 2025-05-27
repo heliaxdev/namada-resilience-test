@@ -28,6 +28,7 @@ async fn main() {
         .compact()
         .without_time()
         .with_ansi(false)
+        .with_thread_ids(true)
         .init();
 
     rlimit::increase_nofile_limit(10240).unwrap();
@@ -57,8 +58,8 @@ async fn main() {
         let ctx = loop {
             match Ctx::new(&config).await {
                 Ok(ctx) => break ctx,
-                Err(_) => {
-                    tracing::info!("Setup Context failed, retrying...");
+                Err(e) => {
+                    tracing::info!("Setup Context failed: {e}, retrying...");
                     sleep(Duration::from_secs(2)).await;
                 }
             }
@@ -78,11 +79,12 @@ async fn main() {
                 .expect("Failed to build Tokio runtime");
 
             rt.block_on(async move {
+                tracing::info!("Initializing accounts for {:?}...", thread::current().id());
                 // Initialize accounts
                 let code = try_step(
                     &mut executor,
                     StepType::Initialize(Default::default()),
-                    false,
+                    true,
                 )
                 .await;
                 if !matches!(code, Code::Success(_)) {
@@ -99,6 +101,10 @@ async fn main() {
                     stats.update(step_id, &code);
                     return stats;
                 }
+                tracing::info!(
+                    "Initialization for {:?} has been completed",
+                    thread::current().id()
+                );
 
                 while end_time > SystemTime::now() {
                     step_id += 1;
@@ -117,16 +123,9 @@ async fn main() {
     }
 
     for h in handles {
+        let thread_id = h.thread().id();
         let stats = h.join().expect("No error should happen");
-        if !stats.fatal.is_empty() {
-            tracing::error!("Fatal failures happened!");
-        }
-        if !stats.failed.is_empty() {
-            tracing::error!("Non-fatal failures happened!");
-        }
-        if !stats.failure_logs.is_empty() {
-            tracing::error!("{:#?}", stats.failure_logs)
-        }
+        stats.report(thread_id);
     }
 }
 

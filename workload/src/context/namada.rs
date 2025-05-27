@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use crate::config::AppConfig;
 use namada_sdk::tendermint_rpc::{HttpClient, Url};
 use namada_sdk::{
     address::{Address, ImplicitAddress},
@@ -13,6 +12,9 @@ use namada_sdk::{
 };
 use namada_wallet::fs::FsWalletUtils;
 
+use crate::config::AppConfig;
+use crate::utils::thread_id;
+
 pub type NamadaCtx = NamadaImpl<HttpClient, FsWalletUtils, FsShieldedUtils, NullIo>;
 
 pub async fn namada_ctx(config: &AppConfig) -> Result<NamadaCtx, String> {
@@ -22,7 +24,8 @@ pub async fn namada_ctx(config: &AppConfig) -> Result<NamadaCtx, String> {
     let http_client = HttpClient::new(url).unwrap();
 
     // Setup wallet storage
-    let wallet_path = base_dir.join(format!("wallet-{:?}", std::thread::current().id()));
+    let wallet_path = base_dir.join(format!("wallet-{}", thread_id()));
+    std::fs::create_dir_all(&wallet_path).expect("Create wallet directory failed");
     let mut wallet = FsWalletUtils::new(wallet_path.clone());
     if wallet_path.join("wallet.toml").exists() {
         wallet.load().expect("Should be able to load the wallet");
@@ -45,7 +48,8 @@ pub async fn namada_ctx(config: &AppConfig) -> Result<NamadaCtx, String> {
     }
 
     // Setup shielded context storage
-    let shielded_ctx_path = base_dir.join(format!("masp-{:?}", std::thread::current().id()));
+    let shielded_ctx_path = base_dir.join(format!("masp-{}", thread_id()));
+    std::fs::create_dir_all(&shielded_ctx_path).expect("Create masp directory failed");
     let mut shielded_ctx = ShieldedContext::new(FsShieldedUtils::new(shielded_ctx_path.clone()));
     if shielded_ctx_path.join("shielded.dat").exists() {
         shielded_ctx

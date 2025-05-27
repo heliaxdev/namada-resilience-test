@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread_local;
 use std::time::Duration;
 
@@ -25,8 +26,11 @@ pub fn base_dir() -> PathBuf {
 }
 
 pub static GLOBAL_SEED: OnceCell<u64> = OnceCell::new();
+static THREAD_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 thread_local! {
+    static THREAD_ID: RefCell<usize> = RefCell::new(THREAD_COUNTER.fetch_add(1, Ordering::SeqCst));
+
     static THREAD_RNG: RefCell<SmallRng> = {
         // u64 ? [u8; 32] ???
         let seed = GLOBAL_SEED.get().expect("Seed must be initialized first");
@@ -42,6 +46,10 @@ where
     F: FnOnce(&mut SmallRng) -> R,
 {
     THREAD_RNG.with(|rng| f(&mut rng.borrow_mut()))
+}
+
+pub fn thread_id() -> usize {
+    THREAD_ID.with(|id| *id.borrow())
 }
 
 pub type RetryConfig = RetryFutureConfig<ExponentialBackoff, NoOnRetry>;

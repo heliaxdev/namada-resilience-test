@@ -1,6 +1,5 @@
 use rand::seq::IteratorRandom;
 
-use crate::code::{Code, CodeType};
 use crate::constants::{
     FAUCET_AMOUNT, INIT_ESTABLISHED_ADDR_NUM, INIT_IMPLICIT_ADDR_NUM, MAX_BATCH_TX_NUM,
 };
@@ -11,7 +10,6 @@ use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
 use crate::utils::{get_epoch, get_validator_addresses, retry_config, with_rng};
-use crate::{assert_always_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -136,14 +134,5 @@ impl StepContext for Initialize {
         ));
 
         Ok(tasks)
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done Initialize", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal Initialize", code),
-            CodeType::Skip => assert_unreachable_step!("Skipped Initialize", code),
-            CodeType::Failed => assert_unreachable_step!("Failed Initialize", code),
-        }
     }
 }

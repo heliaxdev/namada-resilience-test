@@ -73,7 +73,7 @@ impl Code {
         }
     }
 
-    pub fn details(&self) -> serde_json::Value {
+    pub fn details(&self) -> String {
         let (step_type, outcome, error) = match self {
             Code::Success(step_type) => (step_type, "Success", Default::default()),
             Code::Fatal(step_type, e) => (step_type, "Fatal failure", e.to_string()),
@@ -83,10 +83,11 @@ impl Code {
             Code::TaskFailure(step_type, e) => (step_type, "Task failure", e.to_string()),
             Code::CheckFailure(step_type, e) => (step_type, "Check failure", e.to_string()),
         };
-        serde_json::json!({
+        let details = serde_json::json!({
             "step_type": step_type.name(),
             "outcome": outcome,
             "error": error
-        })
+        });
+        serde_json::to_string_pretty(&details).expect("Details should be convertible")
     }
 }

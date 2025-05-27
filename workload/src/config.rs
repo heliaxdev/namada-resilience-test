@@ -10,9 +10,6 @@ pub struct Args {
     #[arg(required = true)]
     pub config: PathBuf,
     #[clap(long, env)]
-    #[clap(default_value_t = false)]
-    pub no_check: bool,
-    #[clap(long, env)]
     #[arg(required = true)]
     pub seed: u64,
     #[clap(long, env)]
@@ -21,6 +18,9 @@ pub struct Args {
     #[clap(long, env)]
     #[arg(required = true)]
     pub test_time_sec: u64,
+    #[clap(long, env)]
+    #[clap(default_value_t = false)]
+    pub no_check: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]

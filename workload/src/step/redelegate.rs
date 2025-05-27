@@ -1,6 +1,5 @@
 use rand::seq::IteratorRandom;
 
-use crate::code::{Code, CodeType};
 use crate::constants::MAX_BATCH_TX_NUM;
 use crate::context::Ctx;
 use crate::error::StepError;
@@ -8,7 +7,6 @@ use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::utils::{get_epoch, get_validator_addresses, retry_config, with_rng};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -64,14 +62,5 @@ impl StepContext for Redelegate {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done Redelegate", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal Redelegate", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped Redelegate", code),
-            CodeType::Failed => assert_unreachable_step!("Failed Redelegate", code),
-        }
     }
 }

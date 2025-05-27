@@ -4,14 +4,12 @@ use namada_sdk::masp_primitives::zip32;
 use namada_sdk::PaymentAddress;
 use rand::rngs::OsRng;
 
-use crate::code::{Code, CodeType};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task};
 use crate::utils::{get_block_height, retry_config};
-use crate::{assert_always_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -91,14 +89,5 @@ impl StepContext for NewWalletKeyPair {
                 .source(alias)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done NewWalletKeyPair", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal NewWalletKeyPair", code),
-            CodeType::Skip => assert_unreachable_step!("Skipped NewWalletKeyPair", code),
-            CodeType::Failed => assert_unreachable_step!("Failed NewWalletKeyPair", code),
-        }
     }
 }

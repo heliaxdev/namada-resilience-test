@@ -2,16 +2,14 @@ use std::collections::HashSet;
 
 use rand::seq::SliceRandom;
 
-use crate::code::{Code, CodeType};
 use crate::constants::MAX_BATCH_TX_NUM;
 use crate::constants::MIN_TRANSFER_BALANCE;
 use crate::context::Ctx;
-use crate::error::{StepError, TaskError};
+use crate::error::StepError;
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
 use crate::utils::with_rng;
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BatchBond;
@@ -33,15 +31,6 @@ impl StepContext for BatchBond {
             state,
         ))
         .await
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done BatchBond", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal BatchBond", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped BatchBond", code),
-            CodeType::Failed => assert_unreachable_step!("Failed BatchBond", code),
-        }
     }
 }
 
@@ -72,23 +61,6 @@ impl StepContext for BatchRandom {
             state,
         ))
         .await
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done BatchRandom", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal BatchRandom", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped BatchRandom", code),
-            CodeType::Failed
-                if matches!(
-                    code,
-                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
-                ) =>
-            {
-                assert_sometimes_step!("Invalid BatchRandom including shielded actions", code)
-            }
-            _ => assert_unreachable_step!("Failed BatchRandom", code),
-        }
     }
 }
 

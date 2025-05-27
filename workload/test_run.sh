@@ -1,234 +1,57 @@
 #!/bin/bash
 
-MAX_RETRY_COUNT=15
-
-touch state-$WORKLOAD_ID.json
-echo "" > state-$WORKLOAD_ID.json
-touch /opt/antithesis/test/v1/namada/state-$WORKLOAD_ID.json
-echo "" > /opt/antithesis/test/v1/namada/state-$WORKLOAD_ID.json
-
-mkdir -p base/wallet-$WORKLOAD_ID
-mkdir -p base/masp-$WORKLOAD_ID
-
-mkdir -p /opt/antithesis/test/v1/namada/wallet-$WORKLOAD_ID
-mkdir -p /opt/antithesis/test/v1/namada/masp-$WORKLOAD_ID
-
-source /opt/antithesis/test/v1/namada/init_script.sh
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_create_wallet.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done new-wallet-keypair"
-then
-    echo "<OK> create wallet"
-else
-    echo "<ERROR> create wallet"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_faucet_transfer.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done faucet-transfer"
-then
-    echo "<OK> faucet transfer"
-else
-    echo "<ERROR> faucet transfer"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_bond.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done bond"
-then
-    echo "<OK> bond"
-else
-    echo "<ERROR> bond"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_init_account.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done init-account"
-then
-    echo "<OK> init account"
-else
-    echo "<ERROR> init account"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_transparent_transfer.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done transparent-transfer"
-then
-    echo "<OK> transparent transfer"
-else
-    echo "<ERROR> transparent transfer"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_update_account.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done update-account"
-then
-    echo "<OK> update account" 
-else
-    echo "<ERROR> update account"
-    exit 1
-fi
-
-retries=1
-while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_shielding.sh | tee /dev/stderr)
-    if echo "$output" | grep -q "Done shielding"
-    then
-        echo "<OK> shielding" 
-        break
-    else
-        retries=$((retries + 1))
-        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> shielding"
-    fi
+# Wait for the JSON RPC to come up for validator 2
+json_rpc_ready=0
+while [ $json_rpc_ready != 200 ]
+do
+    echo "Checking node rpc ${RPC}/status ..."
+    json_rpc_ready=$(curl -s -o /dev/null -w "%{http_code}" "http://${RPC}/status")
+    echo "Node rpc query result: $json_rpc_ready"
+    sleep 2
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]
-then
-    echo "<ERROR> shielding"
-    exit 1
-fi
 
-retries=1
-while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_shielded.sh | tee /dev/stderr)
-    if echo "$output" | grep -q "Done shielded-transfer"
-    then
-        echo "<OK> shielded transfer" 
-        break
-    else
-        retries=$((retries + 1))
-        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> shielded transfer"
-    fi
+# Finding the CHAIN ID from the common volume mount directory
+CHAIN_ID=$(find /container_ready -type f -name "devnet*")
+while [[ -z $CHAIN_ID ]]
+do
+    echo Waiting for the chain ID
+    CHAIN_ID=$(find /container_ready -type f -name "devnet*")
+    sleep 2
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]
-then
-    echo "<ERROR> shielded transfer"
-    exit 1
-fi
 
-retries=1
-while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_unshielding.sh | tee /dev/stderr)
-    if echo "$output" | grep -q "Done unshielding"
-    then
-        echo "<OK> unshielding" 
-        break
-    else
-        retries=$((retries + 1))
-        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> unshielding"
-    fi
+CHAIN_ID=$(basename $CHAIN_ID)
+
+# Wait for the JSON RPC to come up for masp indexer
+json_rpc_ready=0
+while [ $json_rpc_ready != 200 ]
+do
+    echo "Checking masp indexer ${MASP_INDEXER_URL}/health ..."
+    json_rpc_ready=$(curl -s -o /dev/null -w "%{http_code}" "${MASP_INDEXER_URL}/health")
+    echo "Masp indexer query result: $json_rpc_ready"
+    sleep 2
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]
-then
-    echo "<ERROR> unshielding"
-    exit 1
-fi
 
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_transfer_send.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done ibc-transfer-send"
-then
-    echo "<OK> IBC transfer send"
-else
-    echo "<ERROR> IBC transfer send"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_transfer_recv.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done ibc-transfer-recv"
-then
-    echo "<OK> IBC transfer recv"
-else
-    echo "<ERROR> IBC transfer recv"
-    exit 1
-fi
-
-retries=1
-while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_shielding_transfer.sh | tee /dev/stderr)
-    if echo "$output" | grep -q "Done ibc-shielding-transfer"
-    then
-        echo "<OK> IBC shielding transfer"
-        break
-    else
-        retries=$((retries + 1))
-        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> IBC shielding transfer"
-    fi
+# Wait for IBC channel
+while [ ! -f /container_ready/ibc_channels ]
+do
+    echo "Waiting for IBC channels to be created..."
+    sleep 5
 done
-if [ $retries -gt $MAX_RETRY_COUNT ]
-then
-    echo "<ERROR> IBC shielding transfer"
-    exit 1
-fi
 
-retries=1
-while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_ibc_unshielding_transfer.sh | tee /dev/stderr)
-    if echo "$output" | grep -q "Done ibc-unshielding-transfer"
-    then
-        echo "<OK> IBC unshielding transfer"
-        break
-    else
-        retries=$((retries + 1))
-        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> IBC unshielding transfer"
-    fi
-done
-if [ $retries -gt $MAX_RETRY_COUNT ]
-then
-    echo "<ERROR> IBC unshielding transfer"
-    exit 1
-fi
+namada_channel_id=$(grep "namada->cosmos" /container_ready/ibc_channels | grep -o "channel-[0-9]\+")
+cosmos_channel_id=$(grep "cosmos->namada" /container_ready/ibc_channels | grep -o "channel-[0-9]\+")
 
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_become_validator.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done become-validator"
-then
-    echo "<OK> become validator" 
-else
-    echo "<ERROR> become validator"
-    exit 1
-fi
+echo "Creating config.toml..."
+cat <<EOF > config.toml
+chain_id = "${CHAIN_ID}"
+rpc = "http://${RPC}"
+masp_indexer_url = "${MASP_INDEXER_URL}"
+faucet_sk = "${FAUCET_SK}"
+cosmos_rpc = "http://${COSMOS_RPC}"
+cosmos_grpc = "http://${COSMOS_GRPC}"
+cosmos_base_dir = "${COSMOS_DIR}"
+namada_channel_id = "${namada_channel_id}"
+cosmos_channel_id = "${cosmos_channel_id}"
+EOF
 
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_change_metadata.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done change-metadata"
-then
-    echo "<OK> change metadata" 
-else
-    echo "<ERROR> change metadata"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_change_consensus_keys.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done change-consensus-key"
-then
-    echo "<OK> change consensus keys" 
-else
-    echo "<ERROR> change consensus keys"
-    exit 1
-fi
-
-output=$(/opt/antithesis/test/v1/namada/parallel_driver_bond_batch.sh | tee /dev/stderr)
-if echo "$output" | grep -q "Done batch-bond"
-then
-    echo "<OK> bond batch" 
-else
-    echo "<ERROR> bond batch"
-    exit 1
-fi
-
-retries=1
-while [ $retries -le $MAX_RETRY_COUNT ]; do
-    output=$(/opt/antithesis/test/v1/namada/parallel_driver_random_batch.sh | tee /dev/stderr)
-    if echo "$output" | grep -q "Done batch-random"
-    then
-        echo "<OK> random batch" 
-        break
-    else
-        retries=$((retries + 1))
-        echo "<RETRY ${retries}/$MAX_RETRY_COUNT> random batch"
-    fi
-done
-if [ $retries -gt $MAX_RETRY_COUNT ]
-then
-    echo "<ERROR> random batch"
-    exit 1
-fi
-
-echo "Test was completed successfully"
+/app/namada-chain-workload --config config.toml --seed 123 --concurrency ${WORKLOAD_NUM} --test-time-sec ${TEST_TIME_SEC}

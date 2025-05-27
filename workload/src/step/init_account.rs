@@ -1,13 +1,11 @@
 use std::collections::BTreeSet;
 
-use crate::code::{Code, CodeType};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
-use crate::{assert_always_step, assert_unreachable_step};
 
 use super::utils;
 
@@ -46,14 +44,5 @@ impl StepContext for InitAccount {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done InitAccount", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal InitAccount", code),
-            CodeType::Skip => assert_unreachable_step!("Skipped InitAccount", code),
-            CodeType::Failed => assert_unreachable_step!("Failed InitAccount", code),
-        }
     }
 }

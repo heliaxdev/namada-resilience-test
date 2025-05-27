@@ -6,7 +6,6 @@ use rand::prelude::IteratorRandom;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::code::Code;
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
@@ -139,6 +138,4 @@ pub trait StepContext {
 
     #[allow(async_fn_in_trait)]
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError>;
-
-    fn assert(&self, code: &Code);
 }
