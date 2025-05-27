@@ -243,12 +243,4 @@ pub trait TaskContext {
     ) -> Result<Vec<Check>, TaskError>;
 
     fn update_state(&self, state: &mut State);
-
-    fn update_stats(&self, state: &mut State) {
-        state
-            .stats
-            .entry(self.name())
-            .and_modify(|counter| *counter += 1)
-            .or_insert(1);
-    }
 }

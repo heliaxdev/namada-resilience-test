@@ -9,6 +9,7 @@ use namada_chain_workload::context::Ctx;
 use namada_chain_workload::error::CheckError;
 use namada_chain_workload::executor::WorkloadExecutor;
 use namada_chain_workload::state::State;
+use namada_chain_workload::stats::Stats;
 use namada_chain_workload::step::StepType;
 use tokio::runtime::Builder;
 use tokio::time::sleep;
@@ -36,9 +37,8 @@ async fn main() {
     let config = match AppConfig::load(args.config) {
         Ok(config) => config,
         Err(e) => {
-            let code = Code::ConfigFatal(e.to_string());
-            code.output_logs();
-            std::process::exit(code.code());
+            tracing::error!("Loading the config failed: {e}");
+            std::process::exit(4);
         }
     };
     let config = Arc::new(config);
@@ -52,6 +52,7 @@ async fn main() {
     let mut handles = Vec::new();
     for _ in 0..args.concurrency {
         let state = State::new();
+        let mut stats = Stats::default();
 
         let ctx = loop {
             match Ctx::new(&config).await {
@@ -70,6 +71,7 @@ async fn main() {
             .expect("Executor initialization failed");
 
         let handle = thread::spawn(move || {
+            let mut step_id = 0;
             let rt = Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -77,31 +79,54 @@ async fn main() {
 
             rt.block_on(async move {
                 // Initialize accounts
-                try_step(
+                let code = try_step(
                     &mut executor,
                     StepType::Initialize(Default::default()),
                     false,
                 )
                 .await;
+                if !matches!(code, Code::Success(_)) {
+                    stats.update(step_id, &code);
+                    return stats;
+                }
                 try_step(
                     &mut executor,
                     StepType::FundAll(Default::default()),
                     args.no_check,
                 )
                 .await;
+                if !matches!(code, Code::Success(_)) {
+                    stats.update(step_id, &code);
+                    return stats;
+                }
 
                 while end_time > SystemTime::now() {
+                    step_id += 1;
                     let next_step = StepType::random_step_type();
-                    try_step(&mut executor, next_step, args.no_check).await;
+                    let code = try_step(&mut executor, next_step, args.no_check).await;
+
+                    stats.update(step_id, &code);
+                    code.output_logs();
                 }
-            });
+
+                stats
+            })
         });
 
         handles.push(handle);
     }
 
     for h in handles {
-        h.join().unwrap();
+        let stats = h.join().expect("No error should happen");
+        if !stats.fatal.is_empty() {
+            tracing::error!("Fatal failures happened!");
+        }
+        if !stats.failed.is_empty() {
+            tracing::error!("Non-fatal failures happened!");
+        }
+        if !stats.failure_logs.is_empty() {
+            tracing::error!("{:#?}", stats.failure_logs)
+        }
     }
 }
 
@@ -151,13 +176,9 @@ async fn try_step(executor: &mut WorkloadExecutor, next_step: StepType, no_check
         return Code::TaskFailure(next_step, e);
     }
 
-    let exit_code = match executor.checks(checks, execution_height, &fees).await {
+    match executor.checks(checks, execution_height, &fees).await {
         Ok(_) => Code::Success(next_step),
         Err(e) if matches!(e, CheckError::State(_)) => Code::Fatal(next_step, e),
         Err(e) => Code::CheckFailure(next_step, e),
-    };
-
-    tracing::info!("Statistics: {:>?}", executor.state().stats);
-
-    exit_code
+    }
 }

@@ -144,6 +144,7 @@ impl fmt::Display for ValidatorStatus {
     }
 }
 
+pub type StepId = u64;
 pub type Amount = u64;
 pub type ValidatorAddress = String;
 pub type Epoch = u64;

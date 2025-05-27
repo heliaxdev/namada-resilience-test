@@ -73,7 +73,6 @@ pub struct State {
     pub validators: HashMap<Alias, Account>,
     pub deactivated_validators: HashMap<Alias, (Account, Epoch)>,
     pub proposals: HashMap<u64, (u64, u64)>,
-    pub stats: HashMap<String, u64>,
 }
 
 impl State {
@@ -92,7 +91,6 @@ impl State {
             validators: HashMap::default(),
             deactivated_validators: HashMap::default(),
             proposals: HashMap::default(),
-            stats: HashMap::default(),
         }
     }
 

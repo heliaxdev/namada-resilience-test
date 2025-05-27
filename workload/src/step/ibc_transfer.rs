@@ -16,7 +16,7 @@ use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcTransferSend;
 
 impl StepContext for IbcTransferSend {
@@ -76,7 +76,7 @@ impl StepContext for IbcTransferSend {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcTransferRecv;
 
 impl StepContext for IbcTransferRecv {
@@ -133,7 +133,7 @@ impl StepContext for IbcTransferRecv {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcShieldingTransfer;
 
 impl StepContext for IbcShieldingTransfer {
@@ -198,7 +198,7 @@ impl StepContext for IbcShieldingTransfer {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcUnshieldingTransfer;
 
 impl StepContext for IbcUnshieldingTransfer {

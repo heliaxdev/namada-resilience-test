@@ -7,7 +7,7 @@ use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::{assert_always_step, assert_unreachable_step};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaucetTransfer;
 
 impl StepContext for FaucetTransfer {

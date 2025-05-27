@@ -13,7 +13,7 @@ use crate::task::{self, Task, TaskSettings};
 use crate::utils::with_rng;
 use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BatchBond;
 
 impl StepContext for BatchBond {
@@ -45,7 +45,7 @@ impl StepContext for BatchBond {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BatchRandom;
 
 impl StepContext for BatchRandom {

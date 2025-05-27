@@ -39,7 +39,7 @@ mod utils;
 mod vote;
 
 #[enum_dispatch]
-#[derive(Clone, Debug, EnumIter, PartialEq)]
+#[derive(Clone, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum StepType {
     Initialize(initialize::Initialize),
     FundAll(fund_all::FundAll),

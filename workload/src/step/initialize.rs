@@ -16,7 +16,7 @@ use crate::{assert_always_step, assert_unreachable_step};
 use super::utils;
 
 /// Initialize accounts. Use this with `--no-check`.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Initialize;
 
 impl StepContext for Initialize {
@@ -25,7 +25,7 @@ impl StepContext for Initialize {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.stats.is_empty())
+        Ok(state.accounts.is_empty())
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
