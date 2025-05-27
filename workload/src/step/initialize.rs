@@ -1,4 +1,3 @@
-use antithesis_sdk::random::AntithesisRng;
 use rand::seq::IteratorRandom;
 
 use crate::code::{Code, CodeType};
@@ -11,13 +10,13 @@ use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
-use crate::utils::{get_epoch, get_validator_addresses, retry_config};
+use crate::utils::{get_epoch, get_validator_addresses, retry_config, with_rng};
 use crate::{assert_always_step, assert_unreachable_step};
 
 use super::utils;
 
 /// Initialize accounts. Use this with `--no-check`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Initialize;
 
 impl StepContext for Initialize {
@@ -61,12 +60,14 @@ impl StepContext for Initialize {
 
             let total_signers = utils::random_between(1, 4);
             let required_signers = utils::random_between(1, total_signers);
-            let source_aliases = implicit_aliases
-                .clone()
-                .into_iter()
-                .choose_multiple(&mut AntithesisRng, total_signers as usize)
-                .into_iter()
-                .collect();
+            let source_aliases = with_rng(|rng| {
+                implicit_aliases
+                    .clone()
+                    .into_iter()
+                    .choose_multiple(rng, total_signers as usize)
+                    .into_iter()
+                    .collect()
+            });
             // avoid batching them to save accounts to the wallet
             tasks.push(Task::InitAccount(
                 task::init_account::InitAccount::builder()
@@ -107,10 +108,12 @@ impl StepContext for Initialize {
             // limit the amount to avoid the insufficent balance for the batch fee
             let amount = utils::random_between(1, FAUCET_AMOUNT / MAX_BATCH_TX_NUM);
 
-            let validator = validators
-                .iter()
-                .choose(&mut AntithesisRng)
-                .expect("There is always at least a validator");
+            let validator = with_rng(|rng| {
+                validators
+                    .iter()
+                    .choose(rng)
+                    .expect("There is always at least a validator")
+            });
 
             let task_settings = TaskSettings::new([alias.clone()].into(), Alias::faucet());
 

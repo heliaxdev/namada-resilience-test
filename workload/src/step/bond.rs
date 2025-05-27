@@ -1,4 +1,3 @@
-use antithesis_sdk::random::AntithesisRng;
 use rand::seq::IteratorRandom;
 
 use crate::code::{Code, CodeType};
@@ -8,12 +7,12 @@ use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::utils::{get_epoch, get_validator_addresses, retry_config};
+use crate::utils::{get_epoch, get_validator_addresses, retry_config, with_rng};
 use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Bond;
 
 impl StepContext for Bond {
@@ -35,10 +34,12 @@ impl StepContext for Bond {
         let current_epoch = get_epoch(ctx, retry_config()).await?;
         let validators = get_validator_addresses(ctx, retry_config()).await?;
 
-        let validator = validators
-            .iter()
-            .choose(&mut AntithesisRng)
-            .expect("There is always at least a validator");
+        let validator = with_rng(|rng| {
+            validators
+                .iter()
+                .choose(rng)
+                .expect("There is always at least a validator")
+        });
 
         let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(source_account.public_keys, gas_payer);

@@ -15,7 +15,7 @@ use crate::{assert_always_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct NewWalletKeyPair;
 
 impl StepContext for NewWalletKeyPair {

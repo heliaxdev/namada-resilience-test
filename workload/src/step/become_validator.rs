@@ -10,7 +10,7 @@ use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 use super::utils;
 use super::StepContext;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BecomeValidator;
 
 impl StepContext for BecomeValidator {

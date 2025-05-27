@@ -1,15 +1,12 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::path::PathBuf;
-use std::{env, fs};
 
-use antithesis_sdk::random::AntithesisRng;
-use fs2::FileExt;
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE, PIPELINE_LEN};
 use crate::types::{Alias, Epoch, ProposalId};
+use crate::utils::with_rng;
 
 #[derive(Error, Debug)]
 pub enum StateError {
@@ -61,7 +58,7 @@ pub struct Bond {
     pub amount: u64,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
@@ -76,12 +73,11 @@ pub struct State {
     pub validators: HashMap<Alias, Account>,
     pub deactivated_validators: HashMap<Alias, (Account, Epoch)>,
     pub proposals: HashMap<u64, (u64, u64)>,
-    pub id: u64,
     pub stats: HashMap<String, u64>,
 }
 
 impl State {
-    pub fn new(id: u64) -> Self {
+    pub fn new() -> Self {
         Self {
             accounts: HashMap::default(),
             balances: HashMap::default(),
@@ -96,64 +92,8 @@ impl State {
             validators: HashMap::default(),
             deactivated_validators: HashMap::default(),
             proposals: HashMap::default(),
-            id,
             stats: HashMap::default(),
         }
-    }
-
-    // File
-
-    pub fn state_file_path(id: u64) -> PathBuf {
-        env::current_dir()
-            .expect("current directory")
-            .join(format!("state-{id}.json"))
-    }
-
-    pub fn save(&self, locked_file: Option<fs::File>) -> Result<(), StateError> {
-        let path = Self::state_file_path(self.id);
-        let state_json = serde_json::to_string_pretty(&self).map_err(StateError::Serde)?;
-        fs::write(path, state_json).map_err(StateError::File)?;
-
-        if let Some(file) = locked_file {
-            fs2::FileExt::unlock(&file).map_err(StateError::File)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn create_new(id: u64) -> Result<(Self, fs::File), StateError> {
-        // Lock the state file before writing the new
-        let file = Self::lock_state_file(id)?;
-
-        let state = Self::new(id);
-        state.save(None)?;
-
-        Ok((state, file))
-    }
-
-    pub fn load(id: u64) -> Result<(Self, fs::File), StateError> {
-        let path = Self::state_file_path(id);
-
-        // Lock the state file before loading
-        let file = Self::lock_state_file(id)?;
-
-        let data = fs::read_to_string(path).map_err(StateError::File)?;
-        if data.trim().is_empty() {
-            return Err(StateError::EmptyFile);
-        }
-        let state = serde_json::from_str(&data).map_err(StateError::Serde)?;
-
-        // Returns the file to be unlocked later
-        Ok((state, file))
-    }
-
-    fn lock_state_file(id: u64) -> Result<fs::File, StateError> {
-        let path = Self::state_file_path(id);
-
-        let file = fs::File::open(&path).map_err(StateError::File)?;
-        file.lock_exclusive().map_err(StateError::File)?;
-
-        Ok(file)
     }
 
     // READ
@@ -252,11 +192,13 @@ impl State {
     // GET
 
     pub fn random_account(&self, blacklist: Vec<Alias>) -> Option<Account> {
-        self.accounts
-            .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .choose(&mut AntithesisRng)
-            .map(|(_, account)| account.clone())
+        with_rng(|rng| {
+            self.accounts
+                .iter()
+                .filter(|(alias, _)| !blacklist.contains(alias))
+                .choose(rng)
+                .map(|(_, account)| account.clone())
+        })
     }
 
     pub fn random_masp_account_with_min_balance(
@@ -264,37 +206,43 @@ impl State {
         blacklist: Vec<Alias>,
         min_value: u64,
     ) -> Option<Account> {
-        self.masp_balances
-            .iter()
-            .filter(|(alias, balance)| !blacklist.contains(alias) && **balance >= min_value)
-            .filter_map(|(alias, _)| self.accounts.get(alias).cloned())
-            .choose(&mut AntithesisRng)
+        with_rng(|rng| {
+            self.masp_balances
+                .iter()
+                .filter(|(alias, balance)| !blacklist.contains(alias) && **balance >= min_value)
+                .filter_map(|(alias, _)| self.accounts.get(alias).cloned())
+                .choose(rng)
+        })
     }
 
     pub fn random_account_with_ibc_balance(&self, blacklist: Vec<Alias>) -> Option<Account> {
-        self.accounts
-            .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(alias, _)| {
-                self.ibc_balances
-                    .get(alias)
-                    .is_some_and(|balances| balances.iter().any(|(_, b)| *b > MAX_BATCH_TX_NUM))
-            })
-            .map(|(_, account)| account.clone())
-            .choose(&mut AntithesisRng)
+        with_rng(|rng| {
+            self.accounts
+                .iter()
+                .filter(|(alias, _)| !blacklist.contains(alias))
+                .filter(|(alias, _)| {
+                    self.ibc_balances
+                        .get(alias)
+                        .is_some_and(|balances| balances.iter().any(|(_, b)| *b > MAX_BATCH_TX_NUM))
+                })
+                .map(|(_, account)| account.clone())
+                .choose(rng)
+        })
     }
 
     pub fn random_masp_account_with_ibc_balance(&self, blacklist: Vec<Alias>) -> Option<Account> {
-        self.accounts
-            .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(alias, _)| {
-                self.ibc_masp_balances
-                    .get(alias)
-                    .is_some_and(|balances| balances.iter().any(|(_, b)| *b > MAX_BATCH_TX_NUM))
-            })
-            .map(|(_, account)| account.clone())
-            .choose(&mut AntithesisRng)
+        with_rng(|rng| {
+            self.accounts
+                .iter()
+                .filter(|(alias, _)| !blacklist.contains(alias))
+                .filter(|(alias, _)| {
+                    self.ibc_masp_balances
+                        .get(alias)
+                        .is_some_and(|balances| balances.iter().any(|(_, b)| *b > MAX_BATCH_TX_NUM))
+                })
+                .map(|(_, account)| account.clone())
+                .choose(rng)
+        })
     }
 
     pub fn random_payment_address(&self, blacklist: Vec<Alias>) -> Option<Account> {
@@ -306,13 +254,15 @@ impl State {
         blacklist: Vec<Alias>,
         sample_size: usize,
     ) -> Vec<Account> {
-        self.accounts
-            .iter()
-            .filter(|(alias, account)| account.is_implicit() && !blacklist.contains(alias))
-            .choose_multiple(&mut AntithesisRng, sample_size)
-            .into_iter()
-            .map(|(_, account)| account.clone())
-            .collect()
+        with_rng(|rng| {
+            self.accounts
+                .iter()
+                .filter(|(alias, account)| account.is_implicit() && !blacklist.contains(alias))
+                .choose_multiple(rng, sample_size)
+                .into_iter()
+                .map(|(_, account)| account.clone())
+                .collect()
+        })
     }
 
     pub fn random_established_account(
@@ -320,25 +270,29 @@ impl State {
         blacklist: Vec<Alias>,
         sample_size: usize,
     ) -> Vec<Account> {
-        self.accounts
-            .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_established())
-            .choose_multiple(&mut AntithesisRng, sample_size)
-            .into_iter()
-            .map(|(_, account)| account.clone())
-            .collect()
+        with_rng(|rng| {
+            self.accounts
+                .iter()
+                .filter(|(alias, _)| !blacklist.contains(alias))
+                .filter(|(_, account)| account.is_established())
+                .choose_multiple(rng, sample_size)
+                .into_iter()
+                .map(|(_, account)| account.clone())
+                .collect()
+        })
     }
 
     pub fn random_validator(&self, blacklist: Vec<Alias>, sample_size: usize) -> Vec<Account> {
-        self.validators
-            .iter()
-            .filter(|(alias, _)| !blacklist.contains(alias))
-            .filter(|(_, account)| account.is_established())
-            .choose_multiple(&mut AntithesisRng, sample_size)
-            .into_iter()
-            .map(|(_, account)| account.clone())
-            .collect()
+        with_rng(|rng| {
+            self.validators
+                .iter()
+                .filter(|(alias, _)| !blacklist.contains(alias))
+                .filter(|(_, account)| account.is_established())
+                .choose_multiple(rng, sample_size)
+                .into_iter()
+                .map(|(_, account)| account.clone())
+                .collect()
+        })
     }
 
     pub fn random_deactivated_validator(
@@ -347,38 +301,42 @@ impl State {
         current_epoch: Epoch,
         sample_size: usize,
     ) -> Vec<Account> {
-        self.deactivated_validators
-            .iter()
-            .filter(|(alias, (account, epoch))| {
-                !blacklist.contains(alias)
-                    && account.is_established()
-                    && current_epoch > epoch + PIPELINE_LEN
-            })
-            .choose_multiple(&mut AntithesisRng, sample_size)
-            .into_iter()
-            .map(|(_, (account, _))| account.clone())
-            .collect()
+        with_rng(|rng| {
+            self.deactivated_validators
+                .iter()
+                .filter(|(alias, (account, epoch))| {
+                    !blacklist.contains(alias)
+                        && account.is_established()
+                        && current_epoch > epoch + PIPELINE_LEN
+                })
+                .choose_multiple(rng, sample_size)
+                .into_iter()
+                .map(|(_, (account, _))| account.clone())
+                .collect()
+        })
     }
 
     pub fn random_bond(&self, current_epoch: Epoch) -> Option<Bond> {
-        self.bonds
-            .iter()
-            .flat_map(|(source, bonds)| {
-                bonds.iter().filter_map(|(validator, (amount, epoch))| {
-                    // the bond was requested at the epoch,
-                    // but the execution could be at the next epoch
-                    if *amount > 0 && current_epoch > epoch + PIPELINE_LEN {
-                        Some(Bond {
-                            alias: source.to_owned(),
-                            validator: validator.to_owned(),
-                            amount: *amount,
-                        })
-                    } else {
-                        None
-                    }
+        with_rng(|rng| {
+            self.bonds
+                .iter()
+                .flat_map(|(source, bonds)| {
+                    bonds.iter().filter_map(|(validator, (amount, epoch))| {
+                        // the bond was requested at the epoch,
+                        // but the execution could be at the next epoch
+                        if *amount > 0 && current_epoch > epoch + PIPELINE_LEN {
+                            Some(Bond {
+                                alias: source.to_owned(),
+                                validator: validator.to_owned(),
+                                amount: *amount,
+                            })
+                        } else {
+                            None
+                        }
+                    })
                 })
-            })
-            .choose(&mut AntithesisRng)
+                .choose(rng)
+        })
     }
 
     pub fn random_account_with_min_balance(
@@ -386,19 +344,21 @@ impl State {
         blacklist: Vec<Alias>,
         min_balance: u64,
     ) -> Option<Account> {
-        self.balances
-            .iter()
-            .filter_map(|(alias, balance)| {
-                if blacklist.contains(alias) {
-                    return None;
-                }
-                if balance >= &min_balance {
-                    Some(self.accounts.get(alias).unwrap().clone())
-                } else {
-                    None
-                }
-            })
-            .choose(&mut AntithesisRng)
+        with_rng(|rng| {
+            self.balances
+                .iter()
+                .filter_map(|(alias, balance)| {
+                    if blacklist.contains(alias) {
+                        return None;
+                    }
+                    if balance >= &min_balance {
+                        Some(self.accounts.get(alias).unwrap().clone())
+                    } else {
+                        None
+                    }
+                })
+                .choose(rng)
+        })
     }
 
     pub fn get_account_by_alias(&self, alias: &Alias) -> Account {
@@ -447,18 +407,20 @@ impl State {
     }
 
     pub fn random_votable_proposal(&self, current_epoch: u64) -> Option<u64> {
-        self.proposals
-            .iter()
-            .filter_map(|(proposal_id, (start_epoch, end_epoch))| {
-                // the following vote will be request at the current epoch,
-                // but the execution could be at the next epoch
-                if current_epoch >= *start_epoch && current_epoch < *end_epoch - 1 {
-                    Some(proposal_id.to_owned())
-                } else {
-                    None
-                }
-            })
-            .choose(&mut AntithesisRng)
+        with_rng(|rng| {
+            self.proposals
+                .iter()
+                .filter_map(|(proposal_id, (start_epoch, end_epoch))| {
+                    // the following vote will be request at the current epoch,
+                    // but the execution could be at the next epoch
+                    if current_epoch >= *start_epoch && current_epoch < *end_epoch - 1 {
+                        Some(proposal_id.to_owned())
+                    } else {
+                        None
+                    }
+                })
+                .choose(rng)
+        })
     }
 
     // UPDATE

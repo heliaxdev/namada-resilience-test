@@ -7,7 +7,7 @@ use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::{assert_always_step, assert_unreachable_step};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct FundAll;
 
 impl StepContext for FundAll {

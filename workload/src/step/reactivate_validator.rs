@@ -9,7 +9,7 @@ use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ReactivateValidator;
 
 impl StepContext for ReactivateValidator {

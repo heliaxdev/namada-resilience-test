@@ -22,7 +22,7 @@ pub async fn namada_ctx(config: &AppConfig) -> Result<NamadaCtx, String> {
     let http_client = HttpClient::new(url).unwrap();
 
     // Setup wallet storage
-    let wallet_path = base_dir.join(format!("wallet-{}", config.id));
+    let wallet_path = base_dir.join(format!("wallet-{:?}", std::thread::current().id()));
     let mut wallet = FsWalletUtils::new(wallet_path.clone());
     if wallet_path.join("wallet.toml").exists() {
         wallet.load().expect("Should be able to load the wallet");
@@ -45,7 +45,7 @@ pub async fn namada_ctx(config: &AppConfig) -> Result<NamadaCtx, String> {
     }
 
     // Setup shielded context storage
-    let shielded_ctx_path = base_dir.join(format!("masp-{}", config.id));
+    let shielded_ctx_path = base_dir.join(format!("masp-{:?}", std::thread::current().id()));
     let mut shielded_ctx = ShieldedContext::new(FsShieldedUtils::new(shielded_ctx_path.clone()));
     if shielded_ctx_path.join("shielded.dat").exists() {
         shielded_ctx

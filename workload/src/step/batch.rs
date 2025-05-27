@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use antithesis_sdk::random::AntithesisRng;
 use rand::seq::SliceRandom;
 
 use crate::code::{Code, CodeType};
@@ -11,9 +10,10 @@ use crate::error::{StepError, TaskError};
 use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
+use crate::utils::with_rng;
 use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BatchBond;
 
 impl StepContext for BatchBond {
@@ -45,7 +45,7 @@ impl StepContext for BatchBond {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BatchRandom;
 
 impl StepContext for BatchRandom {
@@ -100,9 +100,11 @@ async fn build_batch(
 ) -> Result<Vec<Task>, StepError> {
     let mut batch_tasks = vec![];
     for _ in 0..max_size {
-        let step = possibilities
-            .choose(&mut AntithesisRng)
-            .expect("at least one StepType should exist");
+        let step = with_rng(|rng| {
+            possibilities
+                .choose(rng)
+                .expect("at least one StepType should exist")
+        });
         let tasks = step.build_task(ctx, state).await.unwrap_or_default();
         if !tasks.is_empty() {
             tracing::info!("Added {step} to the batch...");

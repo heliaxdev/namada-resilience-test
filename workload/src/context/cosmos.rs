@@ -21,7 +21,7 @@ impl CosmosCtx {
         let client = HttpClient::new(&*config.cosmos_rpc).expect("invalid RPC");
         let wallet_path = config
             .cosmos_base_dir
-            .join(format!("user_{}_seed.json", config.id));
+            .join(format!("user_{:?}_seed.json", std::thread::current().id()));
         let (account, signing_key) = load_key(&wallet_path)?;
         Ok(Self {
             client,
