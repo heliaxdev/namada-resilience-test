@@ -54,4 +54,4 @@ namada_channel_id = "${namada_channel_id}"
 cosmos_channel_id = "${cosmos_channel_id}"
 EOF
 
-/app/namada-chain-workload --config config.toml --seed 123 --concurrency ${WORKLOAD_NUM} --test-time-sec ${TEST_TIME_SEC}
+/app/namada-chain-workload --config config.toml --seed ${TEST_SEED} --concurrency ${WORKLOAD_NUM} --test-time-sec ${TEST_TIME_SEC}

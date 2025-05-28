@@ -72,8 +72,51 @@ impl Stats {
         } else {
             "Done successfully"
         };
-        tracing::info!("==== {thread_id:?} Result: {result} ====");
+        println!("==== {thread_id:?} Result: {result} ====");
 
-        tracing::info!("{self:#?}")
+        println!("{self}")
+    }
+}
+
+impl std::fmt::Display for Stats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "==== Stats ====")?;
+        writeln!(f, "-- Success --")?;
+        for (step_type, count) in self.success.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Fatal --")?;
+        for (step_type, count) in self.fatal.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Skip --")?;
+        for (step_type, count) in self.skip.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Acceptable Failure --")?;
+        for (step_type, count) in self.acceptable_failures.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Unexpected Failure --")?;
+        for (step_type, count) in self.unexpected_failures.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+
+        writeln!(f, "----------------")?;
+
+        writeln!(f, "-- Fatal Failure Logs --")?;
+        for (id, details) in self.fatal_failure_logs.iter() {
+            writeln!(f, "  - {id}: {details}")?;
+        }
+        writeln!(f, "-- Acceptable Failure Logs --")?;
+        for (id, details) in self.acceptable_failure_logs.iter() {
+            writeln!(f, "  - {id}: {details}")?;
+        }
+        writeln!(f, "-- Unexpected Failure Logs --")?;
+        for (id, details) in self.unexpected_failure_logs.iter() {
+            writeln!(f, "  - {id}: {details}")?;
+        }
+
+        Ok(())
     }
 }

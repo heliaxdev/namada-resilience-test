@@ -371,6 +371,7 @@ impl TaskContext for IbcShieldingTransfer {
         )
         .await?;
         if is_successful {
+            wait_block_settlement(ctx, recv_height, retry_config).await;
             // Returns Namada height where the packet was received
             Ok(recv_height)
         } else {

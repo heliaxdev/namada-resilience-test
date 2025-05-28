@@ -25,7 +25,7 @@ COPY --from=cacher /app/target target
 RUN cargo build --release --locked
 
 FROM docker.io/debian:bookworm-slim
-ARG TEST_SCRIPT="docker_run.sh"
+ARG TEST_SCRIPT="test_run.sh"
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --assume-yes \
     ca-certificates \
     curl \
@@ -35,9 +35,8 @@ WORKDIR /app
 
 COPY --from=builder /app/target/release/namada-chain-workload /app/namada-chain-workload 
 COPY --from=builder /app/${TEST_SCRIPT} /app/run.sh
-COPY --from=builder /app/scripts/ /opt/antithesis/test/v1/namada/
 
-RUN chmod +x /app/run.sh && chmod -R +x /opt/antithesis/test/v1/namada/
+RUN chmod +x /app/run.sh
 
 RUN curl -o /app/masp-spend.params -L https://github.com/anoma/masp-mpc/releases/download/namada-trusted-setup/masp-spend.params\?raw\=true \
     && curl -o /app/masp-output.params -L https://github.com/anoma/masp-mpc/releases/download/namada-trusted-setup/masp-output.params?raw=true \

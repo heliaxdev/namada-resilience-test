@@ -35,6 +35,7 @@ async fn main() {
     rlimit::increase_nofile_limit(u64::MAX).unwrap();
 
     let args = Args::parse();
+    tracing::info!("Using args: {args:#?}");
     let config = match AppConfig::load(args.config) {
         Ok(config) => config,
         Err(e) => {
