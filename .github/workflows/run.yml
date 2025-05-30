@@ -1,12 +1,8 @@
-name: Run antithesis (triggerable)
+name: Run test (triggerable)
 
 on:
   workflow_dispatch:
     inputs:
-      namada_config_tag:
-        description: 'The docker tag of the namada config docker images'
-        required: true
-        type: string
       namada_genesis_docker_tag:
         description: 'The docker tag of the namada genesis docker images'
         required: true
@@ -21,27 +17,59 @@ on:
         type: string
       workload_tag:
         description: 'The docker tag of the workload docker images'
-        required: true
         type: string
+        default: "master"
+      check_tag:
+        description: 'The docker tag of the check docker images'
+        type: string
+        default: "master"
+      workload_num:
+        description: 'Number of threads in the workload'
+        type: number
+        default: 3
       duration:
-        description: Duration of the experiment
+        description: 'Test duration in seconds'
+        required: true
+        type: number
 
 jobs:
-  antithesis:
-    runs-on: [ubuntu-latest]
-    steps:
-      - uses: antithesishq/antithesis-trigger-action@v0.7
-        with:
-          config_image: namada-config:${{ github.event.inputs.namada_config_tag }}
-          notebook_name: namada2
-          tenant: heliax
-          username: ${{ secrets.ANTITHESIS_USER_NAME }}
-          password: ${{ secrets.ANTITHESIS_PASSWORD }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          images: namada-genesis:${{ github.event.inputs.namada_genesis_docker_tag }},namada:${{ github.event.inputs.namada_docker_tag }},workload:${{ github.event.inputs.workload_tag }},check:latest,masp-indexer-block-filter:${{ github.event.inputs.masp_indexer_docker_tag }},masp-indexer-webserver:${{ github.event.inputs.masp_indexer_docker_tag }},masp-indexer-chain:${{ github.event.inputs.masp_indexer_docker_tag }},ghcr.io/cosmos/gaia:v22.3.1,ghcr.io/heliaxdev/hermes:1.13.0
-          email_recipients: |
-            gianmarco@heliax.dev,yuji@heliax.dev,heliax-antithesis-aaaammxjv6zgaqxcdury4ktshq@antithesisgroup.slack.com
-          additional_parameters: |
-            antithesis.source=${{ github.event.inputs.namada_docker_tag }}
-            custom.duration=${{ github.event.inputs.duration }}
-            custom.faults=true
+  run-test:
+      name: Run workload test
+      runs-on: ubuntu-latest
+      timeout-minutes: 1440
+      env:
+        NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/ant-namada-genesis:${{ github.event.inputs.namada_genesis_docker_tag }}"
+        NAMADA_IMAGE: "ghcr.io/heliaxdev/ant-namada:${{ github.event.inputs.namada_docker_tag }}"
+        MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/heliaxdev/ant-masp-indexer"
+        MASP_INDEXER_IMAGE_TAG: ${{ github.event.inputs.masp_indexer_docker_tag }}
+        WORKLOAD_IMAGE: "ghcr.io/heliaxdev/ant-workload:${{ github.event.inputs.workload_tag }}"
+        CHECK_IMAGE: "ghcr.io/heliaxdev/ant-check:${{ github.event.inputs.check_tag }}"
+        TEST_TIME_SEC: ${{ github.event.inputs.duration }}
+        WORKLOAD_NUM: ${{ github.event.inputs.workload_num }}
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+        - name: Set up QEMU
+          uses: docker/setup-qemu-action@v3
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v3
+        - name: Login to ghcr.io
+          uses: docker/login-action@v3
+          with:
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
+        - name: Cache Docker layers
+          uses: actions/cache@v4
+          with:
+            path: /tmp/.buildx-cache
+            key: ${{ runner.os }}-docker-compose-${{ github.sha }}
+            restore-keys: |
+              ${{ runner.os }}-docker-compose-
+        - name: Docker compose build
+          run:  docker compose -f config/docker-compose.yml build
+        - name: Generate random number for the test seed
+          run: echo "TEST_SEED=$RANDOM" >> $GITHUB_ENV
+        - name: Run test
+          run: ./test.sh

@@ -123,11 +123,13 @@ async fn main() {
         handles.push(handle);
     }
 
-    for h in handles {
+    let is_successful = handles.into_iter().all(|h| {
         let thread_id = h.thread().id();
         let stats = h.join().expect("No error should happen");
-        stats.report(thread_id);
-    }
+        stats.report(thread_id)
+    });
+
+    std::process::exit(if is_successful { 0 } else { 1 });
 }
 
 async fn try_step(executor: &mut WorkloadExecutor, next_step: StepType, no_check: bool) -> Code {

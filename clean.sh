@@ -1,3 +1,5 @@
+#!/bin/bash
+
 rm -rf config/validator-0
 rm -rf config/validator-1
 rm -rf config/validator-2

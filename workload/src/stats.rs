@@ -62,19 +62,21 @@ impl Stats {
         }
     }
 
-    pub fn report(&self, thread_id: ThreadId) {
-        let result = if !self.fatal.is_empty() {
-            "Fatal failures happened"
+    pub fn report(&self, thread_id: ThreadId) -> bool {
+        let (summary, is_successful) = if !self.fatal.is_empty() {
+            ("Fatal failures happened", false)
         } else if !self.unexpected_failures.is_empty() {
-            "Non-fatal failures happened"
+            ("Non-fatal failures happened", false)
         } else if self.success.is_empty() {
-            "No successful transaction"
+            ("No successful transaction", false)
         } else {
-            "Done successfully"
+            ("Done successfully", true)
         };
-        println!("==== {thread_id:?} Result: {result} ====");
+        println!("==== {thread_id:?} Result: {summary} ====");
 
-        println!("{self}")
+        println!("{self}");
+
+        is_successful
     }
 }
 

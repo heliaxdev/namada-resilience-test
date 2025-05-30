@@ -50,10 +50,6 @@ jobs:
             tag: ""
             context: "namada"
             cache_scope: "namada-image"
-          - image: "namada"
-            tag: -inst
-            context: "namada"
-            cache_scope: "namada-inst-image"
 
     steps:
       - name: Checkout repo
