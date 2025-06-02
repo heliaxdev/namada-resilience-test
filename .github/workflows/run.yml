@@ -7,22 +7,27 @@ on:
         description: 'The docker tag of the namada genesis docker images'
         required: true
         type: string
+        default: "main"
       namada_docker_tag:
         description: 'The docker tag of the namada docker images'
         required: true
         type: string
+        default: "main"
       masp_indexer_docker_tag:
         description: 'The docker tag of the masp indexer docker images'
         required: true
         type: string
+        default: "master"
       workload_tag:
         description: 'The docker tag of the workload docker images'
+        required: true
         type: string
         default: "master"
       check_tag:
         description: 'The docker tag of the check docker images'
+        required: true
         type: string
-        default: "master"
+        default: "latest"
       workload_num:
         description: 'Number of threads in the workload'
         type: number

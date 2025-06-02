@@ -123,11 +123,15 @@ async fn main() {
         handles.push(handle);
     }
 
-    let is_successful = handles.into_iter().all(|h| {
-        let thread_id = h.thread().id();
-        let stats = h.join().expect("No error should happen");
-        stats.report(thread_id)
-    });
+    let results: Vec<_> = handles
+        .into_iter()
+        .map(|h| {
+            let thread_id = h.thread().id();
+            let stats = h.join().expect("No error should happen");
+            stats.report(thread_id)
+        })
+        .collect();
+    let is_successful = results.iter().all(|success| *success);
 
     std::process::exit(if is_successful { 0 } else { 1 });
 }
