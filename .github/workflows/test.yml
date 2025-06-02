@@ -37,7 +37,7 @@ jobs:
             restore-keys: |
               ${{ runner.os }}-docker-compose-
         - name: Docker compose build
-          run:  docker compose -f config/docker-compose-ci.yml build
+          run:  docker compose -f config/docker-compose.yml build
         - name: Generate random number for the test seed
           run: echo "TEST_SEED=$RANDOM" >> $GITHUB_ENV
         - name: Run test
