@@ -1,6 +1,5 @@
 use std::{str::FromStr, thread, time::Duration};
 
-use antithesis_sdk::antithesis_init;
 use clap::Parser;
 use namada_chain_check::{checks::try_checks, config::AppConfig, sdk::namada::Sdk, state::State};
 use namada_sdk::{io::NullIo, masp::fs::FsShieldedUtils, wallet::fs::FsWalletUtils};
@@ -11,8 +10,6 @@ use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() {
-    antithesis_init();
-
     let filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env()

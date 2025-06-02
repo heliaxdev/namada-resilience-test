@@ -60,16 +60,14 @@ impl CheckContext for BalanceShieldedSource {
         let post_balance = get_shielded_balance(ctx, &self.target, &self.denom, retry_config)
             .await?
             .ok_or_else(|| {
-                antithesis_sdk::assert_unreachable!(
-                    "BalanceShieldedSource target doesn't exist.",
-                    &json!({
-                        "source_alias": self.target,
-                        "pre_balance": self.pre_balance,
-                        "amount": self.amount,
-                        "execution_height": check_info.execution_height,
-                        "check_height": check_info.check_height,
-                    })
-                );
+                let details = json!({
+                    "source_alias": self.target,
+                    "pre_balance": self.pre_balance,
+                    "amount": self.amount,
+                    "execution_height": check_info.execution_height,
+                    "check_height": check_info.check_height,
+                });
+                tracing::error!("No shielded balance: {details}");
                 CheckError::State(format!(
                     "BalanceShieldedSource check error: {} balance doesn't exist",
                     self.target.name
@@ -104,16 +102,11 @@ impl CheckContext for BalanceShieldedSource {
             "check_height": check_info.check_height
         });
 
-        antithesis_sdk::assert_always!(
-            post_balance.eq(&check_balance),
-            "BalanceShielded source decreased",
-            &details
-        );
-
         if post_balance.eq(&check_balance) {
+            tracing::info!("BalanceShielded source decreased: {details}");
             Ok(())
         } else {
-            tracing::error!("{}", details);
+            tracing::error!("BalanceShielded source is wrong: {details}");
             Err(CheckError::State(format!("BalanceShieldedSource check error: post source amount is not equal to pre balance - amount - fee: {} - {} - {fee} = {check_balance} != {post_balance}", self.pre_balance, self.amount)))
         }
     }

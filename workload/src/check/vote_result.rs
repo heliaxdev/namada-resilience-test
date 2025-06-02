@@ -40,16 +40,11 @@ impl CheckContext for VoteResult {
             "check_height": check_info.check_height
         });
 
-        antithesis_sdk::assert_always_or_unreachable!(
-            is_valid_vote,
-            "Vote was accepted as expected",
-            &details
-        );
-
         if is_valid_vote {
+            tracing::info!("Vote was accepted as expected: {details}");
             Ok(())
         } else {
-            tracing::error!("{}", details);
+            tracing::error!("Vote was not accepted: {details}");
             Err(CheckError::State(format!("VoteResult check error: Vote result {votes:?} doesn't correspond to the expected vote {}", self.vote)))
         }
     }

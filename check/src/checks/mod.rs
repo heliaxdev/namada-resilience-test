@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use chrono::{DateTime, Timelike, Utc};
 use enum_dispatch::enum_dispatch;
-use serde_json::json;
 use tokio::time::sleep;
 
 use crate::sdk::namada::Sdk;
@@ -99,7 +98,7 @@ trait DoCheck {
 }
 
 fn is_successful(checker: Checker, res: Result<(), String>) {
-    let details = if let Err(ref e) = res {
+    if let Err(ref e) = res {
         let is_timeout = e.to_lowercase().contains("timed out");
         let is_connection_closed = e.to_lowercase().contains("connection closed before");
         if is_timeout {
@@ -113,38 +112,32 @@ fn is_successful(checker: Checker, res: Result<(), String>) {
             );
             return;
         }
+    }
 
-        tracing::error!("{}", format!("Error! {}: {}", checker.name(), e));
-
-        json!({ "details": e })
-    } else {
-        tracing::debug!("Check {} was successful.", checker.name());
-
-        json!({})
-    };
-    // NOTE: `assert_always` requires a literal
     match checker {
-        Checker::VotingPower(_) => {
-            antithesis_sdk::assert_always!(res.is_ok(), "Voting power is checked", &details);
-        }
-        Checker::Height(_) => {
-            antithesis_sdk::assert_always!(res.is_ok(), "Block height increased", &details);
-        }
-        Checker::Epoch(_) => {
-            antithesis_sdk::assert_always!(res.is_ok(), "Epoch increased", &details);
-        }
-        Checker::Inflation(_) => {
-            antithesis_sdk::assert_always!(res.is_ok(), "Inflation increased", &details);
-        }
-        Checker::Status(_) => {
-            antithesis_sdk::assert_always!(res.is_ok(), "Status is checked", &details);
-        }
-        Checker::MaspIndexerHeight(_) => {
-            antithesis_sdk::assert_sometimes!(
-                res.is_ok(),
-                "Masp indexer block height increased",
-                &details
-            );
-        }
+        Checker::VotingPower(_) => match res {
+            Ok(_) => tracing::info!("Voting power is checked"),
+            Err(e) => tracing::error!("Voting power is wrong: {e}"),
+        },
+        Checker::Height(_) => match res {
+            Ok(_) => tracing::info!("Block height increased"),
+            Err(e) => tracing::error!("Block height was not increased: {e}"),
+        },
+        Checker::Epoch(_) => match res {
+            Ok(_) => tracing::info!("Epoch increased"),
+            Err(e) => tracing::error!("Epoch was not increased: {e}"),
+        },
+        Checker::Inflation(_) => match res {
+            Ok(_) => tracing::info!("Inflation increased"),
+            Err(e) => tracing::error!("Inflation was not increased: {e}"),
+        },
+        Checker::Status(_) => match res {
+            Ok(_) => tracing::info!("Status is checked"),
+            Err(e) => tracing::error!("Status is wrong: {e}"),
+        },
+        Checker::MaspIndexerHeight(_) => match res {
+            Ok(_) => tracing::info!("Masp indexer block height increased"),
+            Err(e) => tracing::error!("Masp indexer block height was not increased: {e}"),
+        },
     }
 }

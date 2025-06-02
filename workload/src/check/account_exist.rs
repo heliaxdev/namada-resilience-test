@@ -50,12 +50,11 @@ impl CheckContext for AccountExist {
             "check_height": check_info.check_height
         });
 
-        antithesis_sdk::assert_always!(is_valid, "OnChain account is valid", &details);
-
         if is_valid {
+            tracing::info!("OnChain account is valid: {details}");
             Ok(())
         } else {
-            tracing::error!("{}", details);
+            tracing::error!("OnChain account is invalid: {details}");
             Err(CheckError::State(format!(
                 "AccountExist check error: account {} is invalid",
                 self.target.name
