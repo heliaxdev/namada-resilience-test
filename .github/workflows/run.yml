@@ -72,4 +72,10 @@ jobs:
         - name: Generate random number for the test seed
           run: echo "TEST_SEED=$RANDOM" >> $GITHUB_ENV
         - name: Run test
-          run: ./test.sh
+          run: ./run.sh
+        - name: Upload logs
+          if: always()
+          uses: actions/upload-artifact@v4
+          with:
+            name: test-logs
+            path: test-*.log
