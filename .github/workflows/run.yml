@@ -38,12 +38,12 @@ jobs:
       runs-on: ubuntu-latest
       timeout-minutes: 1440
       env:
-        NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/ant-namada-genesis:${{ github.event.inputs.namada_genesis_docker_tag }}"
-        NAMADA_IMAGE: "ghcr.io/heliaxdev/ant-namada:${{ github.event.inputs.namada_docker_tag }}"
-        MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/heliaxdev/ant-masp-indexer"
+        NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/nrt-namada-genesis:${{ github.event.inputs.namada_genesis_docker_tag }}"
+        NAMADA_IMAGE: "ghcr.io/heliaxdev/nrt-namada:${{ github.event.inputs.namada_docker_tag }}"
+        MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/heliaxdev/nrt-masp-indexer"
         MASP_INDEXER_IMAGE_TAG: ${{ github.event.inputs.masp_indexer_docker_tag }}
-        WORKLOAD_IMAGE: "ghcr.io/heliaxdev/ant-workload:${{ github.event.inputs.workload_tag }}"
-        CHECK_IMAGE: "ghcr.io/heliaxdev/ant-check:${{ github.event.inputs.check_tag }}"
+        WORKLOAD_IMAGE: "ghcr.io/heliaxdev/nrt-workload:${{ github.event.inputs.workload_tag }}"
+        CHECK_IMAGE: "ghcr.io/heliaxdev/nrt-check:${{ github.event.inputs.check_tag }}"
         TEST_TIME_SEC: ${{ github.event.inputs.duration }}
         WORKLOAD_NUM: ${{ github.event.inputs.workload_num }}
 

@@ -4,7 +4,7 @@ services:
   genesis:
     container_name: genesis
     hostname: genesis
-    image: "${NAMADA_GENESIS_IMAGE:-ghcr.io/heliaxdev/ant-namada-genesis:main}"
+    image: "${NAMADA_GENESIS_IMAGE:-ghcr.io/heliaxdev/nrt-namada-genesis:main}"
     environment:
     - VALIDATOR0_ADDR=30.0.0.12:27657
     - VALIDATOR1_ADDR=30.0.0.13:27657
@@ -21,7 +21,7 @@ services:
   validator0:
     container_name: validator0
     hostname: validator0
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/ant-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -41,7 +41,7 @@ services:
   validator1:
     container_name: validator1
     hostname: validator1
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/ant-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -61,7 +61,7 @@ services:
   validator2:
     container_name: validator2
     hostname: validator2
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/ant-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -82,7 +82,7 @@ services:
   fullnode:
     container_name: fullnode
     hostname: fullnode
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/ant-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -102,7 +102,7 @@ services:
   workload:
     container_name: workload
     hostname: workload
-    image: "${WORKLOAD_IMAGE:-ghcr.io/heliaxdev/ant-workload:master}"
+    image: "${WORKLOAD_IMAGE:-ghcr.io/heliaxdev/nrt-workload:master}"
     environment:
       - RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
@@ -122,7 +122,7 @@ services:
   check:
     container_name: check
     hostname: check
-    image: "${CHECK_IMAGE:-ghcr.io/heliaxdev/ant-check:latest}"
+    image: "${CHECK_IMAGE:-ghcr.io/heliaxdev/nrt-check:latest}"
     restart: on-failure
     environment:
       - RPC=30.0.0.14:27658
@@ -152,7 +152,7 @@ services:
   masp-chain:
     container_name: masp-chain
     hostname: masp-chain
-    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/ant-masp-indexer}-chain:${MASP_INDEXER_IMAGE_TAG:-master}"
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-chain:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - COMETBFT_URL=http://30.0.0.12:27658
@@ -166,7 +166,7 @@ services:
   masp-webserver:
     container_name: masp-webserver
     hostname: masp-webserver
-    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/ant-masp-indexer}-webserver:${MASP_INDEXER_IMAGE_TAG:-master}"
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-webserver:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - PORT=5000
@@ -178,7 +178,7 @@ services:
   masp-block-filter:
     container_name: masp-block-filter
     hostname: masp-block-filter
-    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/ant-masp-indexer}-block-filter:${MASP_INDEXER_IMAGE_TAG:-master}"
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-block-filter:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - COMETBFT_URL=http://30.0.0.12:27658

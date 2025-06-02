@@ -64,7 +64,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/heliaxdev/ant-workload
+          images: ghcr.io/heliaxdev/nrt-workload
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -88,7 +88,7 @@ jobs:
         with:
           context: ${{ matrix.images.context }}
           push: true
-          tags: ghcr.io/heliaxdev/ant-${{ matrix.images.name }}:${{ github.event.inputs.commit }}
+          tags: ghcr.io/heliaxdev/nrt-${{ matrix.images.name }}:${{ github.event.inputs.commit }}
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |

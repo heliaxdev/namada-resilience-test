@@ -42,6 +42,6 @@ jobs:
         with:
           context: check
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ghcr.io/heliaxdev/ant-check:latest
+          tags: ghcr.io/heliaxdev/nrt-check:latest
           cache-from: type=gha,scope=check-image
           cache-to: type=gha,scope=check-image,mode=max
