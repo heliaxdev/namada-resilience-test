@@ -27,20 +27,19 @@ impl CheckContext for ValidatorAccount {
         retry_config: RetryConfig,
     ) -> Result<(), CheckError> {
         let (target_address, is_validator) = is_validator(ctx, &self.target, retry_config).await?;
-        antithesis_sdk::assert_always!(
-            is_validator,
-            "OnChain account is a validator",
-            &json!({
-                "target_alias": self.target,
-                "target": target_address.to_pretty_string(),
-                "execution_height": check_info.execution_height,
-                "check_height": check_info.check_height
-            })
-        );
+
+        let details = &json!({
+            "target_alias": self.target,
+            "target": target_address.to_pretty_string(),
+            "execution_height": check_info.execution_height,
+            "check_height": check_info.check_height
+        });
 
         if is_validator {
+            tracing::info!("OnChain account is a validator: {details}");
             Ok(())
         } else {
+            tracing::error!("OnChain account is not a validator: {details}");
             Err(CheckError::State(format!(
                 "ValidatorAccount check error: post target {} state isn't a validator",
                 self.target.name

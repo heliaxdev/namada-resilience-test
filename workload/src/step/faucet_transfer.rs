@@ -1,13 +1,11 @@
-use crate::code::{Code, CodeType};
 use crate::constants::FAUCET_AMOUNT;
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_unreachable_step};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaucetTransfer;
 
 impl StepContext for FaucetTransfer {
@@ -33,14 +31,5 @@ impl StepContext for FaucetTransfer {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done FaucetTransfer", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal FaucetTransfer", code),
-            CodeType::Skip => assert_unreachable_step!("Skipped FaucetTransfer", code),
-            CodeType::Failed => assert_unreachable_step!("Failed FaucetTransfer", code),
-        }
     }
 }

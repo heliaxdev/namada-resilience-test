@@ -1,19 +1,16 @@
-use antithesis_sdk::random::AntithesisRng;
 use rand::seq::IteratorRandom;
 
-use crate::code::{Code, CodeType};
 use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::utils::{get_epoch, get_validator_addresses, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
+use crate::utils::{get_epoch, get_validator_addresses, retry_config, with_rng};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Bond;
 
 impl StepContext for Bond {
@@ -35,10 +32,12 @@ impl StepContext for Bond {
         let current_epoch = get_epoch(ctx, retry_config()).await?;
         let validators = get_validator_addresses(ctx, retry_config()).await?;
 
-        let validator = validators
-            .iter()
-            .choose(&mut AntithesisRng)
-            .expect("There is always at least a validator");
+        let validator = with_rng(|rng| {
+            validators
+                .iter()
+                .choose(rng)
+                .expect("There is always at least a validator")
+        });
 
         let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
@@ -52,14 +51,5 @@ impl StepContext for Bond {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done Bond", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal Bond", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped Bond", code),
-            CodeType::Failed => assert_unreachable_step!("Failed Bond", code),
-        }
     }
 }

@@ -1,16 +1,14 @@
 use namada_sdk::dec::Dec;
 
-use crate::code::{Code, CodeType};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 use super::StepContext;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BecomeValidator;
 
 impl StepContext for BecomeValidator {
@@ -55,14 +53,5 @@ impl StepContext for BecomeValidator {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done BecomeValidator", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal BecomeValidator", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped BecomeValidator", code),
-            CodeType::Failed => assert_unreachable_step!("Failed BecomeValidator", code),
-        }
     }
 }

@@ -1,14 +1,12 @@
-use crate::code::{Code, CodeType};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ChangeMetadata;
 
 impl StepContext for ChangeMetadata {
@@ -43,14 +41,5 @@ impl StepContext for ChangeMetadata {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done ChangeMetadata", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal ChangeMetadata", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped ChangeMetadata", code),
-            CodeType::Failed => assert_unreachable_step!("Failed ChangeMetadata", code),
-        }
     }
 }

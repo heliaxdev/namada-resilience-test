@@ -1,19 +1,17 @@
 use std::collections::BTreeSet;
 
-use crate::code::{Code, CodeType};
 use crate::constants::{DEFAULT_FEE, MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::context::Ctx;
-use crate::error::{StepError, TaskError};
+use crate::error::StepError;
 use crate::state::State;
 use crate::step::utils::coin_flip;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::utils::{get_masp_epoch, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Unshielding;
 
 impl StepContext for Unshielding {
@@ -60,22 +58,5 @@ impl StepContext for Unshielding {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done Unshielding", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal Unshielding", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped Unshielding", code),
-            CodeType::Failed
-                if matches!(
-                    code,
-                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
-                ) =>
-            {
-                assert_sometimes_step!("Invalid Unshielding", code)
-            }
-            _ => assert_unreachable_step!("Failed Unshielding", code),
-        }
     }
 }

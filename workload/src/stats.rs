@@ -1,0 +1,124 @@
+use std::collections::HashMap;
+use std::thread::ThreadId;
+
+use crate::code::{Code, CodeType};
+use crate::error::TaskError;
+use crate::step::StepType;
+use crate::types::StepId;
+
+#[derive(Clone, Debug, Default)]
+pub struct Stats {
+    pub success: HashMap<StepType, u64>,
+    pub fatal: HashMap<StepType, u64>,
+    pub skip: HashMap<StepType, u64>,
+    pub acceptable_failures: HashMap<StepType, u64>,
+    pub unexpected_failures: HashMap<StepType, u64>,
+    pub fatal_failure_logs: HashMap<StepId, String>,
+    pub acceptable_failure_logs: HashMap<StepId, String>,
+    pub unexpected_failure_logs: HashMap<StepId, String>,
+}
+
+impl Stats {
+    pub fn update(&mut self, id: StepId, code: &Code) {
+        match code.code_type() {
+            CodeType::Success => {
+                self.success
+                    .entry(code.step_type().clone())
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+            }
+            CodeType::Skip => {
+                self.skip
+                    .entry(code.step_type().clone())
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+            }
+            CodeType::Fatal => {
+                self.fatal
+                    .entry(code.step_type().clone())
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+                self.fatal_failure_logs.insert(id, code.details());
+            }
+            CodeType::Failed => {
+                if matches!(
+                    code,
+                    Code::TaskFailure(_, TaskError::IbcTransfer(_))
+                        | Code::TaskFailure(_, TaskError::InvalidShielded { .. })
+                ) {
+                    self.acceptable_failures
+                        .entry(code.step_type().clone())
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
+                    self.acceptable_failure_logs.insert(id, code.details());
+                } else {
+                    self.unexpected_failures
+                        .entry(code.step_type().clone())
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
+                    self.unexpected_failure_logs.insert(id, code.details());
+                }
+            }
+        }
+    }
+
+    pub fn report(&self, thread_id: ThreadId) -> bool {
+        let (summary, is_successful) = if !self.fatal.is_empty() {
+            ("Fatal failures happened", false)
+        } else if !self.unexpected_failures.is_empty() {
+            ("Non-fatal failures happened", false)
+        } else if self.success.is_empty() {
+            ("No successful transaction", false)
+        } else {
+            ("Done successfully", true)
+        };
+        println!("==== {thread_id:?} Result: {summary} ====");
+
+        println!("{self}");
+
+        is_successful
+    }
+}
+
+impl std::fmt::Display for Stats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "==== Stats ====")?;
+        writeln!(f, "-- Success --")?;
+        for (step_type, count) in self.success.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Fatal --")?;
+        for (step_type, count) in self.fatal.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Skip --")?;
+        for (step_type, count) in self.skip.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Acceptable Failure --")?;
+        for (step_type, count) in self.acceptable_failures.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+        writeln!(f, "-- Unexpected Failure --")?;
+        for (step_type, count) in self.unexpected_failures.iter() {
+            writeln!(f, "  - {step_type}: {count}")?;
+        }
+
+        writeln!(f, "----------------")?;
+
+        writeln!(f, "-- Fatal Failure Logs --")?;
+        for (id, details) in self.fatal_failure_logs.iter() {
+            writeln!(f, "  - {id}: {details}")?;
+        }
+        writeln!(f, "-- Acceptable Failure Logs --")?;
+        for (id, details) in self.acceptable_failure_logs.iter() {
+            writeln!(f, "  - {id}: {details}")?;
+        }
+        writeln!(f, "-- Unexpected Failure Logs --")?;
+        for (id, details) in self.unexpected_failure_logs.iter() {
+            writeln!(f, "  - {id}: {details}")?;
+        }
+
+        Ok(())
+    }
+}

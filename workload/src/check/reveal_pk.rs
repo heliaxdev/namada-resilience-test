@@ -28,18 +28,17 @@ impl CheckContext for RevealPk {
     ) -> Result<(), CheckError> {
         let was_pk_revealed = is_pk_revealed(ctx, &self.target, retry_config).await?;
 
-        antithesis_sdk::assert_always!(
-            was_pk_revealed,
-            "The public key was revealed correctly",
-            &json!({
-                "target": self.target.name,
-                "execution_height": check_info.execution_height,
-                "check_height": check_info.check_height,
-            })
-        );
+        let details = json!({
+            "target": self.target.name,
+            "execution_height": check_info.execution_height,
+            "check_height": check_info.check_height,
+        });
+
         if was_pk_revealed {
+            tracing::info!("The public key was revealed correctly: {details}");
             Ok(())
         } else {
+            tracing::error!("Revealing failed: {details}");
             Err(CheckError::State(format!(
                 "RevealPk check error: pk for {} was not revealed",
                 self.target.name

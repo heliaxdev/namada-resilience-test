@@ -1,19 +1,16 @@
-use antithesis_sdk::random::AntithesisRng;
 use rand::seq::IteratorRandom;
 
-use crate::code::{Code, CodeType};
 use crate::constants::MAX_BATCH_TX_NUM;
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::utils::{get_epoch, get_validator_addresses, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
+use crate::utils::{get_epoch, get_validator_addresses, retry_config, with_rng};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Redelegate;
 
 impl StepContext for Redelegate {
@@ -40,11 +37,12 @@ impl StepContext for Redelegate {
             return Ok(vec![]);
         }
 
-        let to_validator = if let Some(validator) = validators
-            .iter()
-            .filter(|v| v.to_string() != source_bond.validator)
-            .choose(&mut AntithesisRng)
-        {
+        let to_validator = if let Some(validator) = with_rng(|rng| {
+            validators
+                .iter()
+                .filter(|v| v.to_string() != source_bond.validator)
+                .choose(rng)
+        }) {
             validator
         } else {
             return Ok(vec![]);
@@ -64,14 +62,5 @@ impl StepContext for Redelegate {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done Redelegate", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal Redelegate", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped Redelegate", code),
-            CodeType::Failed => assert_unreachable_step!("Failed Redelegate", code),
-        }
     }
 }

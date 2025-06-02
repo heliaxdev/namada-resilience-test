@@ -1,23 +1,16 @@
-rm -rf config/validator-0
-rm -rf config/validator-1
-rm -rf config/validator-2
-rm -rf config/fullnode
-rm -rf config/gaia-0
-rm -rf config/container_ready
+#!/bin/bash
 
-mkdir -p config/validator-0
-mkdir -p config/validator-1
-mkdir -p config/validator-2
-mkdir -p config/fullnode
-mkdir -p config/gaia-0
-mkdir -p config/container_ready
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-touch config/validator-0/DO_NOT_REMOVE
-touch config/validator-1/DO_NOT_REMOVE
-touch config/validator-2/DO_NOT_REMOVE
-touch config/fullnode/DO_NOT_REMOVE
-touch config/gaia-0/DO_NOT_REMOVE
-touch config/container_ready/DO_NOT_REMOVE
-
-docker-compose -f config/docker-compose-test.yml down
-docker-compose -f config/docker-compose-test.yml up --force-recreate
+#NAMADA_GENESIS_IMAGE="ghcr.io/heliaxdev/nrt-namada-genesis:main" \
+#NAMADA_IMAGE="ghcr.io/heliaxdev/nrt-namada:main" \
+#MASP_INDEXER_IMAGE_PREFIX="ghcr.io/heliaxdev/nrt-masp-indexer" \
+#MASP_INDEXER_IMAGE_TAG="master" \
+#WORKLOAD_IMAGE="ghcr.io/heliaxdev/nrt-workload:master" \
+#CHECK_IMAGE="ghcr.io/heliaxdev/nrt-check:latest" \
+#WORKLOAD_NUM=3 \
+WORKLOAD_IMAGE="local-workload:latest" \
+CHECK_IMAGE="local-check:latest" \
+TEST_SEED=${RANDOM} \
+TEST_TIME_SEC=300 \
+"${SCRIPT_DIR}/run.sh"

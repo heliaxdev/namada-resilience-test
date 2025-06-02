@@ -1,13 +1,11 @@
-use crate::code::{Code, CodeType};
 use crate::constants::FAUCET_AMOUNT;
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_unreachable_step};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FundAll;
 
 impl StepContext for FundAll {
@@ -41,14 +39,5 @@ impl StepContext for FundAll {
                 .settings(settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done FundAll", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal FundAll", code),
-            CodeType::Skip => assert_unreachable_step!("Skipped FundAll", code),
-            CodeType::Failed => assert_unreachable_step!("Failed FundAll", code),
-        }
     }
 }

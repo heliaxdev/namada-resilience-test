@@ -59,11 +59,6 @@ impl Check {
                     "expected_pre_balance": expected_pre_balance,
                     "actual_pre_balance": bs.pre_balance(),
                 });
-                antithesis_sdk::assert_always_or_unreachable!(
-                    matched,
-                    "Source pre balance matched",
-                    &details
-                );
                 (matched, details)
             }
             Check::BalanceTarget(bt) => {
@@ -79,11 +74,6 @@ impl Check {
                     "expected_pre_balance": expected_pre_balance,
                     "actual_pre_balance": bt.pre_balance(),
                 });
-                antithesis_sdk::assert_always_or_unreachable!(
-                    matched,
-                    "Target pre balance matched",
-                    &details
-                );
                 (matched, details)
             }
             Check::BalanceShieldedSource(bss) => {
@@ -98,11 +88,6 @@ impl Check {
                     "expected_pre_balance": expected_pre_balance,
                     "actual_pre_balance": bss.pre_balance(),
                 });
-                antithesis_sdk::assert_always_or_unreachable!(
-                    matched,
-                    "Source pre shielded balance matched",
-                    &details
-                );
                 (matched, details)
             }
             Check::BalanceShieldedTarget(bst) => {
@@ -117,11 +102,6 @@ impl Check {
                     "expected_pre_balance": expected_pre_balance,
                     "actual_pre_balance": bst.pre_balance(),
                 });
-                antithesis_sdk::assert_always_or_unreachable!(
-                    matched,
-                    "Target pre shielded balance matched",
-                    &details
-                );
                 (matched, details)
             }
             _ => (true, json!({})),

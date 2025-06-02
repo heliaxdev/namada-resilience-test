@@ -77,16 +77,11 @@ impl CheckContext for BalanceSource {
             "check_height": check_info.check_height,
         });
 
-        antithesis_sdk::assert_always!(
-            post_balance.eq(&check_balance),
-            "Balance source decreased",
-            &details
-        );
-
         if post_balance.eq(&check_balance) {
+            tracing::info!("Balance source decreased: {details}");
             Ok(())
         } else {
-            tracing::error!("{}", details);
+            tracing::error!("Balance source is wrong: {details}");
             Err(CheckError::State(format!("BalanceSource check error: post source amount is not equal to pre balance - amount - fee: {} - {} - {fee} = {check_balance} != {post_balance}", self.pre_balance, self.amount)))
         }
     }

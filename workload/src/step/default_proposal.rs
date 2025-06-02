@@ -1,6 +1,5 @@
 use namada_sdk::rpc;
 
-use crate::code::{Code, CodeType};
 use crate::constants::PROPOSAL_DEPOSIT;
 use crate::context::Ctx;
 use crate::error::StepError;
@@ -8,11 +7,10 @@ use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::utils::{get_epoch, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct DefaultProposal;
 
 impl StepContext for DefaultProposal {
@@ -59,14 +57,5 @@ impl StepContext for DefaultProposal {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done DefaultProposal", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal DefaultProposal", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped DefaultProposal", code),
-            CodeType::Failed => assert_unreachable_step!("Failed DefaultProposal", code),
-        }
     }
 }

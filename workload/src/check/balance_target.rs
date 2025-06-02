@@ -80,12 +80,11 @@ impl CheckContext for BalanceTarget {
             "check_height": check_info.check_height,
         });
 
-        antithesis_sdk::assert_always!(is_expected, "Balance target increased", &details);
-
         if is_expected {
+            tracing::info!("Balance target increased: {details}");
             Ok(())
         } else {
-            tracing::error!("{}", details);
+            tracing::error!("Balance target is wrong: {details}");
             Err(CheckError::State(format!("BalanceTarget check error: post target amount is not equal to pre balance + amount: {} + {} - {fee} = {check_balance} != {post_balance}", self.pre_balance, self.amount)))
         }
     }

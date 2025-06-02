@@ -4,7 +4,7 @@ services:
   genesis:
     container_name: genesis
     hostname: genesis
-    image: "namada-genesis:${IMAGE_TAG:-latest}"
+    image: "${NAMADA_GENESIS_IMAGE:-ghcr.io/heliaxdev/nrt-namada-genesis:main}"
     environment:
     - VALIDATOR0_ADDR=30.0.0.12:27657
     - VALIDATOR1_ADDR=30.0.0.13:27657
@@ -21,7 +21,7 @@ services:
   validator0:
     container_name: validator0
     hostname: validator0
-    image: "namada:${IMAGE_TAG:-latest}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -41,7 +41,7 @@ services:
   validator1:
     container_name: validator1
     hostname: validator1
-    image: "namada:${IMAGE_TAG:-latest}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -61,7 +61,7 @@ services:
   validator2:
     container_name: validator2
     hostname: validator2
-    image: "namada:${IMAGE_TAG:-latest}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -82,7 +82,7 @@ services:
   fullnode:
     container_name: fullnode
     hostname: fullnode
-    image: "namada:${IMAGE_TAG:-latest}"
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -99,73 +99,30 @@ services:
     networks:
       namada-net:
         ipv4_address: 30.0.0.15
-  workload0:
-    container_name: workload0
-    hostname: workload0
-    image: workload:latest
-    restart: on-failure
+  workload:
+    container_name: workload
+    hostname: workload
+    image: "${WORKLOAD_IMAGE:-ghcr.io/heliaxdev/nrt-workload:master}"
     environment:
       - RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
       - MASP_INDEXER_URL=http://30.0.0.20:5000
-      - WORKLOAD_ID=0
       - COSMOS_RPC=30.0.0.31:26657
       - COSMOS_GRPC=30.0.0.31:9090
       - COSMOS_DIR=/gaia-0
-      - NAMADA_LOG=debug
-      - WORKLOAD_NUM=3
+      - WORKLOAD_NUM=${WORKLOAD_NUM:-3}
+      - TEST_SEED=${TEST_SEED:-123}
+      - TEST_TIME_SEC=${TEST_TIME_SEC:-60}
     volumes:
       - ./container_ready/:/container_ready
       - ./gaia-0/:/gaia-0
     networks:
       namada-net:
         ipv4_address: 30.0.0.16
-  workload1:
-    container_name: workload1
-    hostname: workload1
-    image: workload:latest
-    restart: on-failure
-    environment:
-      - RPC=30.0.0.14:27658
-      - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
-      - MASP_INDEXER_URL=http://30.0.0.20:5000
-      - WORKLOAD_ID=1
-      - COSMOS_RPC=30.0.0.31:26657
-      - COSMOS_GRPC=30.0.0.31:9090
-      - COSMOS_DIR=/gaia-0
-      - NAMADA_LOG=debug
-      - WORKLOAD_NUM=3
-    volumes:
-      - ./container_ready/:/container_ready
-      - ./gaia-0/:/gaia-0
-    networks:
-      namada-net:
-        ipv4_address: 30.0.0.17
-  workload2:
-    container_name: workload2
-    hostname: workload2
-    image: workload:latest
-    restart: on-failure
-    environment:
-      - RPC=30.0.0.14:27658
-      - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
-      - MASP_INDEXER_URL=http://30.0.0.20:5000
-      - WORKLOAD_ID=2
-      - COSMOS_RPC=30.0.0.31:26657
-      - COSMOS_GRPC=30.0.0.31:9090
-      - COSMOS_DIR=/gaia-0
-      - NAMADA_LOG=debug
-      - WORKLOAD_NUM=3
-    volumes:
-      - ./container_ready/:/container_ready
-      - ./gaia-0/:/gaia-0
-    networks:
-      namada-net:
-        ipv4_address: 30.0.0.18
   check:
     container_name: check
     hostname: check
-    image: check:latest
+    image: "${CHECK_IMAGE:-ghcr.io/heliaxdev/nrt-check:latest}"
     restart: on-failure
     environment:
       - RPC=30.0.0.14:27658
@@ -195,7 +152,7 @@ services:
   masp-chain:
     container_name: masp-chain
     hostname: masp-chain
-    image: masp-indexer-chain:${MASP_INDEXER_IMAGE_TAG:-latest}
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-chain:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - COMETBFT_URL=http://30.0.0.12:27658
@@ -209,7 +166,7 @@ services:
   masp-webserver:
     container_name: masp-webserver
     hostname: masp-webserver
-    image: masp-indexer-webserver:${MASP_INDEXER_IMAGE_TAG:-latest}
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-webserver:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - PORT=5000
@@ -221,7 +178,7 @@ services:
   masp-block-filter:
     container_name: masp-block-filter
     hostname: masp-block-filter
-    image: masp-indexer-block-filter:${MASP_INDEXER_IMAGE_TAG:-latest}
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-block-filter:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - COMETBFT_URL=http://30.0.0.12:27658
@@ -235,7 +192,10 @@ services:
   gaia:
     container_name: gaia
     image: ghcr.io/cosmos/gaia:v22.3.1
+    restart: on-failure
     entrypoint: /entrypoint.sh
+    environment:
+      - WORKLOAD_NUM=${WORKLOAD_NUM:-3}
     networks:
       namada-net:
         ipv4_address: 30.0.0.31
@@ -246,6 +206,7 @@ services:
   hermes:
     container_name: hermes
     image: ghcr.io/heliaxdev/hermes:1.13.0
+    restart: on-failure
     entrypoint: /entrypoint.sh
     environment:
       - RPC_ADDRESS=30.0.0.14:27658

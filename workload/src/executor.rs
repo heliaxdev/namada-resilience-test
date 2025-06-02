@@ -201,7 +201,6 @@ impl WorkloadExecutor {
         for task in tasks {
             // update state
             task.update_state(&mut self.state);
-            task.update_stats(&mut self.state);
 
             match task {
                 Task::ClaimRewards(cr) => {

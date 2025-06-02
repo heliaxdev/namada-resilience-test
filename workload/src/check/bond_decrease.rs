@@ -72,12 +72,11 @@ impl CheckContext for BondDecrease {
             "check_height": check_info.check_height,
         });
 
-        antithesis_sdk::assert_always!(post_bond.eq(&check_bond), "Bond decreased", &details);
-
         if post_bond.eq(&check_bond) {
+            tracing::info!("Bond decreased: {details}");
             Ok(())
         } else {
-            tracing::error!("{}", details);
+            tracing::error!("Bond is wrong: {details}");
             Err(CheckError::State(format!("BondDecrease check error: post bond amount is not equal to pre bond - amount: {} - {} = {check_bond} != {post_bond}", self.pre_bond, self.amount)))
         }
     }

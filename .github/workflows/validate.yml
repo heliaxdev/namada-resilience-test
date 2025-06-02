@@ -24,8 +24,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      antithesis_registry_url: us-central1-docker.pkg.dev/molten-verve-216720/heliax-repository
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -48,4 +46,3 @@ jobs:
           CHECK_TAG: ${{ github.event.inputs.check_tag }}
           WORKLOAD_TAG: ${{ github.event.inputs.workload_tag }}
           MASP_TAG: ${{ github.event.inputs.masp_tag }}
-          

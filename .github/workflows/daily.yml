@@ -7,36 +7,62 @@ on:
 jobs:
   daily:
     runs-on: [ubuntu-latest]
+    timeout-minutes: 1440
     strategy:
-      fail-fast: true
       matrix:
         runs:
-          - image: "main-inst"
+          - namada: "main"
             genesis: "main"
             masp_indexer: "master"
             workload: "master"
-            duration: 14
+            check: "master"
+            duration: 14400
             config: "main"
-          - image: "v101.0.0-inst"
+          - image: "v101.0.0"
             genesis: "v101.0.0"
             config: "v101.0.0"
             masp_indexer: "v1.3.0"
             workload: "for-stable-namada"
-            duration: 2
+            check: "master"
+            duration: 14400
+    env:
+      NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/nrt-namada-genesis:${{ matrix.runs.inputs.genesis }}"
+      NAMADA_IMAGE: "ghcr.io/heliaxdev/nrt-namada:${{ matrix.runs.namada }}"
+      MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/heliaxdev/nrt-masp-indexer"
+      MASP_INDEXER_IMAGE_TAG: ${{ matrix.runs.masp_indexer }}
+      WORKLOAD_IMAGE: "ghcr.io/heliaxdev/nrt-workload:${{ matrix.runs.workload }}"
+      CHECK_IMAGE: "ghcr.io/heliaxdev/nrt-check:${{ matrix.runs.check }}"
+      TEST_TIME_SEC: ${{ matrix.runs.duration }}
 
     steps:
-      - uses: antithesishq/antithesis-trigger-action@v0.7
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
         with:
-          config_image: namada-config:${{ matrix.runs.config }}
-          notebook_name: namada2
-          tenant: heliax
-          username: ${{ secrets.ANTITHESIS_USER_NAME }}
-          password: ${{ secrets.ANTITHESIS_PASSWORD }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          images: namada-genesis:${{ matrix.runs.genesis }},namada:${{ matrix.runs.image }},workload:${{ matrix.runs.workload }},check:latest,masp-indexer-block-filter:${{ matrix.runs.masp_indexer }},masp-indexer-webserver:${{ matrix.runs.masp_indexer }},masp-indexer-chain:${{ matrix.runs.masp_indexer }},ghcr.io/cosmos/gaia:v22.3.1,ghcr.io/heliaxdev/hermes:1.13.0
-          email_recipients: |
-            gianmarco@heliax.dev,yuji@heliax.dev,heliax-antithesis-aaaammxjv6zgaqxcdury4ktshq@antithesisgroup.slack.com
-          additional_parameters: |
-            antithesis.source=${{ matrix.runs.image }}
-            custom.duration=${{ matrix.runs.duration }}
-            custom.faults=true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-compose-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-docker-compose-
+      - name: Docker compose build
+        run:  docker compose -f config/docker-compose.yml build
+      - name: Generate random number for the test seed
+        run: echo "TEST_SEED=$RANDOM" >> $GITHUB_ENV
+      - name: Run test
+        run: ./run.sh
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: test-*.log

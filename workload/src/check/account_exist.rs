@@ -30,18 +30,6 @@ impl CheckContext for AccountExist {
     ) -> Result<(), CheckError> {
         let (target_address, account) = get_account_info(ctx, &self.target, retry_config).await?;
         let account = account.ok_or_else(|| {
-            antithesis_sdk::assert_unreachable!(
-                "OnChain account doesn't exist",
-                &json!({
-                    "target_alias": self.target,
-                    "target": target_address.to_pretty_string(),
-                    "account": "",
-                    "threshold": self.threshold,
-                    "sources": self.sources,
-                    "execution_height": check_info.execution_height,
-                    "check_height": check_info.check_height
-                })
-            );
             CheckError::State(format!(
                 "AccountExist check error: account {} doesn't exist",
                 self.target.name
@@ -62,12 +50,11 @@ impl CheckContext for AccountExist {
             "check_height": check_info.check_height
         });
 
-        antithesis_sdk::assert_always!(is_valid, "OnChain account is valid", &details);
-
         if is_valid {
+            tracing::info!("OnChain account is valid: {details}");
             Ok(())
         } else {
-            tracing::error!("{}", details);
+            tracing::error!("OnChain account is invalid: {details}");
             Err(CheckError::State(format!(
                 "AccountExist check error: account {} is invalid",
                 self.target.name

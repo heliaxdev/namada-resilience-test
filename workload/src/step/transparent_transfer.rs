@@ -1,15 +1,13 @@
-use crate::code::{Code, CodeType};
 use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct TransparentTransfer;
 
 impl StepContext for TransparentTransfer {
@@ -42,14 +40,5 @@ impl StepContext for TransparentTransfer {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done TransparentTransfer", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal TransparentTransfer", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped TransparentTransfer", code),
-            CodeType::Failed => assert_unreachable_step!("Failed TransparentTransfer", code),
-        }
     }
 }

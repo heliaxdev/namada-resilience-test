@@ -1,7 +1,5 @@
-use antithesis_sdk::random::AntithesisRng;
 use rand::seq::IteratorRandom;
 
-use crate::code::{Code, CodeType};
 use crate::constants::{
     FAUCET_AMOUNT, INIT_ESTABLISHED_ADDR_NUM, INIT_IMPLICIT_ADDR_NUM, MAX_BATCH_TX_NUM,
 };
@@ -11,13 +9,12 @@ use crate::state::State;
 use crate::step::{StepContext, StepType};
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
-use crate::utils::{get_epoch, get_validator_addresses, retry_config};
-use crate::{assert_always_step, assert_unreachable_step};
+use crate::utils::{get_epoch, get_validator_addresses, retry_config, with_rng};
 
 use super::utils;
 
 /// Initialize accounts. Use this with `--no-check`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Initialize;
 
 impl StepContext for Initialize {
@@ -26,7 +23,7 @@ impl StepContext for Initialize {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.stats.is_empty())
+        Ok(state.accounts.is_empty())
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
@@ -61,12 +58,14 @@ impl StepContext for Initialize {
 
             let total_signers = utils::random_between(1, 4);
             let required_signers = utils::random_between(1, total_signers);
-            let source_aliases = implicit_aliases
-                .clone()
-                .into_iter()
-                .choose_multiple(&mut AntithesisRng, total_signers as usize)
-                .into_iter()
-                .collect();
+            let source_aliases = with_rng(|rng| {
+                implicit_aliases
+                    .clone()
+                    .into_iter()
+                    .choose_multiple(rng, total_signers as usize)
+                    .into_iter()
+                    .collect()
+            });
             // avoid batching them to save accounts to the wallet
             tasks.push(Task::InitAccount(
                 task::init_account::InitAccount::builder()
@@ -107,10 +106,12 @@ impl StepContext for Initialize {
             // limit the amount to avoid the insufficent balance for the batch fee
             let amount = utils::random_between(1, FAUCET_AMOUNT / MAX_BATCH_TX_NUM);
 
-            let validator = validators
-                .iter()
-                .choose(&mut AntithesisRng)
-                .expect("There is always at least a validator");
+            let validator = with_rng(|rng| {
+                validators
+                    .iter()
+                    .choose(rng)
+                    .expect("There is always at least a validator")
+            });
 
             let task_settings = TaskSettings::new([alias.clone()].into(), Alias::faucet());
 
@@ -133,14 +134,5 @@ impl StepContext for Initialize {
         ));
 
         Ok(tasks)
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done Initialize", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal Initialize", code),
-            CodeType::Skip => assert_unreachable_step!("Skipped Initialize", code),
-            CodeType::Failed => assert_unreachable_step!("Failed Initialize", code),
-        }
     }
 }

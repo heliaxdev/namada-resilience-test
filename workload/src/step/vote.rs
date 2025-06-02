@@ -1,4 +1,3 @@
-use crate::code::{Code, CodeType};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
@@ -6,11 +5,10 @@ use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::ProposalVote;
 use crate::utils::{get_epoch, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Vote;
 
 impl StepContext for Vote {
@@ -60,14 +58,5 @@ impl StepContext for Vote {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done Vote", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal Vote", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped Vote", code),
-            CodeType::Failed => assert_unreachable_step!("Failed Vote", code),
-        }
     }
 }

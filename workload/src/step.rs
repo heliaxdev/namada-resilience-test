@@ -2,12 +2,15 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use enum_dispatch::enum_dispatch;
+use rand::prelude::IteratorRandom;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
-use crate::code::Code;
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::task::Task;
+use crate::utils::with_rng;
 
 mod batch;
 mod become_validator;
@@ -35,7 +38,7 @@ mod utils;
 mod vote;
 
 #[enum_dispatch]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum StepType {
     Initialize(initialize::Initialize),
     FundAll(fund_all::FundAll),
@@ -64,6 +67,21 @@ pub enum StepType {
     Vote(vote::Vote),
     BatchBond(batch::BatchBond),
     BatchRandom(batch::BatchRandom),
+}
+
+impl StepType {
+    pub fn random_step_type() -> Self {
+        let exclude = [
+            Self::Initialize(Default::default()),
+            Self::FundAll(Default::default()),
+        ];
+        with_rng(|rng| {
+            StepType::iter()
+                .filter(|v| !exclude.contains(v))
+                .choose(rng)
+                .expect("StepType should exist")
+        })
+    }
 }
 
 impl FromStr for StepType {
@@ -120,6 +138,4 @@ pub trait StepContext {
 
     #[allow(async_fn_in_trait)]
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError>;
-
-    fn assert(&self, code: &Code);
 }

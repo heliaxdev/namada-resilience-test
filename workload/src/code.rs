@@ -1,14 +1,10 @@
 use crate::error::{CheckError, StepError, TaskError};
-use crate::state::StateError;
 use crate::step::{StepContext, StepType};
 
 pub enum Code {
     Success(StepType),
     // Fatal failures
     Fatal(StepType, CheckError),
-    StateFatal(StateError),
-    InitFatal(StepError),
-    ConfigFatal(String),
     // No execution
     Skip(StepType),
     NoTask(StepType),
@@ -29,26 +25,20 @@ impl Code {
     pub fn code(&self) -> i32 {
         match self {
             Code::Fatal(_, _) => 1,
-            Code::StateFatal(_) => 2,
-            Code::InitFatal(_) => 3,
-            Code::ConfigFatal(_) => 4,
             // system state is as expected
             _ => 0,
         }
     }
 
-    pub fn step_type(&self) -> Option<&StepType> {
+    pub fn step_type(&self) -> &StepType {
         match self {
-            Code::Success(st) => Some(st),
-            Code::Fatal(st, _) => Some(st),
-            Code::StateFatal(_) => None,
-            Code::InitFatal(_) => None,
-            Code::ConfigFatal(_) => None,
-            Code::Skip(st) => Some(st),
-            Code::NoTask(st) => Some(st),
-            Code::StepFailure(st, _) => Some(st),
-            Code::TaskFailure(st, _) => Some(st),
-            Code::CheckFailure(st, _) => Some(st),
+            Code::Success(st) => st,
+            Code::Fatal(st, _) => st,
+            Code::Skip(st) => st,
+            Code::NoTask(st) => st,
+            Code::StepFailure(st, _) => st,
+            Code::TaskFailure(st, _) => st,
+            Code::CheckFailure(st, _) => st,
         }
     }
 
@@ -71,51 +61,33 @@ impl Code {
                 tracing::warn!("Invalid step for {step_type}, skipping...")
             }
             Code::NoTask(step_type) => tracing::info!("No task for {step_type}, skipping..."),
-            Code::StateFatal(reason) => {
-                tracing::error!("State error -> {reason}")
-            }
-            Code::InitFatal(reason) => {
-                tracing::error!("Init error -> {reason}")
-            }
-            Code::ConfigFatal(reason) => {
-                tracing::error!("Config error -> {reason}")
-            }
         }
     }
 
     pub fn code_type(&self) -> CodeType {
         match self {
             Code::Success(_) => CodeType::Success,
-            Code::Fatal(_, _) | Code::StateFatal(_) | Code::InitFatal(_) | Code::ConfigFatal(_) => {
-                CodeType::Fatal
-            }
+            Code::Fatal(_, _) => CodeType::Fatal,
             Code::Skip(_) | Code::NoTask(_) => CodeType::Skip,
             _ => CodeType::Failed,
         }
     }
 
-    pub fn details(&self) -> serde_json::Value {
-        let (outcome, error) = match self {
-            Code::Success(_) => ("Success", Default::default()),
-            Code::Fatal(_, e) => ("Fatal failure", e.to_string()),
-            Code::StateFatal(e) => ("Fatal state failure", e.to_string()),
-            Code::InitFatal(e) => ("Fatal init failure", e.to_string()),
-            Code::ConfigFatal(e) => ("Fatal config failure", e.clone()),
-            Code::Skip(_) => ("Skipped step", Default::default()),
-            Code::NoTask(_) => ("No task", Default::default()),
-            Code::StepFailure(_, e) => ("Step failure", e.to_string()),
-            Code::TaskFailure(_, e) => ("Task failure", e.to_string()),
-            Code::CheckFailure(_, e) => ("Check failure", e.to_string()),
+    pub fn details(&self) -> String {
+        let (step_type, outcome, error) = match self {
+            Code::Success(step_type) => (step_type, "Success", Default::default()),
+            Code::Fatal(step_type, e) => (step_type, "Fatal failure", e.to_string()),
+            Code::Skip(step_type) => (step_type, "Skipped step", Default::default()),
+            Code::NoTask(step_type) => (step_type, "No task", Default::default()),
+            Code::StepFailure(step_type, e) => (step_type, "Step failure", e.to_string()),
+            Code::TaskFailure(step_type, e) => (step_type, "Task failure", e.to_string()),
+            Code::CheckFailure(step_type, e) => (step_type, "Check failure", e.to_string()),
         };
-        serde_json::json!({
+        let details = serde_json::json!({
+            "step_type": step_type.name(),
             "outcome": outcome,
             "error": error
-        })
-    }
-
-    pub fn assert(&self) {
-        if let Some(step_type) = self.step_type() {
-            step_type.assert(self);
-        }
+        });
+        serde_json::to_string_pretty(&details).expect("Details should be convertible")
     }
 }

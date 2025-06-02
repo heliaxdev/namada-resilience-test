@@ -1,22 +1,20 @@
 use std::collections::BTreeSet;
 
-use crate::code::{Code, CodeType};
 use crate::constants::DEFAULT_FEE;
 use crate::constants::{
     COSMOS_TOKEN, MAX_BATCH_TX_NUM, MAX_COSMOS_TRANSFER_AMOUNT, MIN_TRANSFER_BALANCE,
 };
 use crate::context::Ctx;
-use crate::error::{StepError, TaskError};
+use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
 use crate::utils::{get_masp_epoch, ibc_denom, is_native_denom, retry_config};
-use crate::{assert_always_step, assert_sometimes_step, assert_unreachable_step};
 
 use super::utils;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcTransferSend;
 
 impl StepContext for IbcTransferSend {
@@ -62,21 +60,9 @@ impl StepContext for IbcTransferSend {
                 .build(),
         )])
     }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done IbcTransferSend", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal IbcTransferSend", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped IbcTransferSend", code),
-            CodeType::Failed if matches!(code, Code::TaskFailure(_, TaskError::IbcTransfer(_))) => {
-                assert_sometimes_step!("Failed IbcTransferSend (acceptable)", code)
-            }
-            CodeType::Failed => assert_unreachable_step!("Failed IbcTransferSend", code),
-        }
-    }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcTransferRecv;
 
 impl StepContext for IbcTransferRecv {
@@ -119,21 +105,9 @@ impl StepContext for IbcTransferRecv {
                 .build(),
         )])
     }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done IbcTransferRecv", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal IbcTransferRecv", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped IbcTransferRecv", code),
-            CodeType::Failed if matches!(code, Code::TaskFailure(_, TaskError::IbcTransfer(_))) => {
-                assert_sometimes_step!("Failed IbcTransferRecv (acceptable)", code)
-            }
-            CodeType::Failed => assert_unreachable_step!("Failed IbcTransferRecv", code),
-        }
-    }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcShieldingTransfer;
 
 impl StepContext for IbcShieldingTransfer {
@@ -176,29 +150,9 @@ impl StepContext for IbcShieldingTransfer {
                 .build(),
         )])
     }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done IbcShieldingTransfer", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal IbcShieldingTransfer", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped IbcShieldingTransfer", code),
-            CodeType::Failed if matches!(code, Code::TaskFailure(_, TaskError::IbcTransfer(_))) => {
-                assert_sometimes_step!("Failed IbcShieldingTransfer (acceptable)", code)
-            }
-            CodeType::Failed
-                if matches!(
-                    code,
-                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
-                ) =>
-            {
-                assert_sometimes_step!("Invalid IbcShieldingTransfer", code)
-            }
-            _ => assert_unreachable_step!("Failed IbcShieldingTransfer", code),
-        }
-    }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct IbcUnshieldingTransfer;
 
 impl StepContext for IbcUnshieldingTransfer {
@@ -263,25 +217,5 @@ impl StepContext for IbcUnshieldingTransfer {
                 .settings(task_settings)
                 .build(),
         )])
-    }
-
-    fn assert(&self, code: &Code) {
-        match code.code_type() {
-            CodeType::Success => assert_always_step!("Done IbcUnshieldingTransfer", code),
-            CodeType::Fatal => assert_unreachable_step!("Fatal IbcUnshieldingTransfer", code),
-            CodeType::Skip => assert_sometimes_step!("Skipped IbcUnshieldingTransfer", code),
-            CodeType::Failed if matches!(code, Code::TaskFailure(_, TaskError::IbcTransfer(_))) => {
-                assert_sometimes_step!("Failed IbcUnshieldingTransfer (acceptable)", code)
-            }
-            CodeType::Failed
-                if matches!(
-                    code,
-                    Code::TaskFailure(_, TaskError::InvalidShielded { .. })
-                ) =>
-            {
-                assert_sometimes_step!("Invalid IbcUnshieldingTransfer", code)
-            }
-            _ => assert_unreachable_step!("Failed IbcUnshieldingTransfer", code),
-        }
     }
 }
