@@ -205,7 +205,7 @@ services:
     user: "0"
   hermes:
     container_name: hermes
-    image: ghcr.io/heliaxdev/hermes:1.13.0
+    image: ghcr.io/informalsystems/hermes:1.13.1
     restart: on-failure
     entrypoint: /entrypoint.sh
     environment:
