@@ -201,6 +201,12 @@ pub(crate) async fn execute_tx(
         Err(NamadaError::Tx(TxSubmitError::AppliedTimeout)) => {
             retry_tx_status_check(ctx, tx_args, &tx_hash, wrapper_hash, &cmts).await?
         }
+        Err(e)
+            if e.to_string()
+                .contains("connection closed before message completed") =>
+        {
+            return Err(TaskError::Connection(e))
+        }
         Err(e) => return Err(TaskError::Broadcast(e)),
     };
 

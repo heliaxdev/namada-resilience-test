@@ -44,6 +44,7 @@ impl Stats {
                     code,
                     Code::TaskFailure(_, TaskError::IbcTransfer(_))
                         | Code::TaskFailure(_, TaskError::InvalidShielded { .. })
+                        | Code::TaskFailure(_, TaskError::Connection(_))
                 ) {
                     self.acceptable_failures
                         .entry(code.step_type().clone())
