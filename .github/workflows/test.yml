@@ -29,6 +29,15 @@ jobs:
             registry: ghcr.io
             username: ${{ github.actor }}
             password: ${{ secrets.GITHUB_TOKEN }}
+        - name: Cache Docker layers
+          uses: actions/cache@v4
+          with:
+            path: /tmp/.buildx-cache
+            key: ${{ runner.os }}-docker-compose-${{ github.sha }}
+            restore-keys: |
+              ${{ runner.os }}-docker-compose-
+        - name: Docker compose build
+          run:  docker compose -f config/docker-compose.yml build
         - name: Generate random number for the test seed
           run: echo "TEST_SEED=$RANDOM" >> $GITHUB_ENV
         - name: Run test
