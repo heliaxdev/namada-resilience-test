@@ -14,7 +14,6 @@ jobs:
       name: Run workload test
       runs-on: ubuntu-latest
       env:
-        WORKLOAD_IMAGE: "local-workload:latest"
         TEST_TIME_SEC: 300
 
       steps:
@@ -30,21 +29,10 @@ jobs:
             registry: ghcr.io
             username: ${{ github.actor }}
             password: ${{ secrets.GITHUB_TOKEN }}
-        - name: Cache Docker layers
-          uses: actions/cache@v4
-          with:
-            path: /tmp/.buildx-cache
-            key: ${{ runner.os }}-docker-compose-${{ github.sha }}
-            restore-keys: |
-              ${{ runner.os }}-docker-compose-
-        - name: Build workload image
-          run: |
-            cd workload
-            docker build . -t local-workload
         - name: Generate random number for the test seed
           run: echo "TEST_SEED=$RANDOM" >> $GITHUB_ENV
         - name: Run test
-          run: ./run.sh
+          run: ./ci.sh
         - name: Upload logs
           if: always()
           uses: actions/upload-artifact@v4

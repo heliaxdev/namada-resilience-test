@@ -1,0 +1,232 @@
+version: "3.8"
+
+services:
+  genesis:
+    container_name: genesis
+    hostname: genesis
+    image: "${NAMADA_GENESIS_IMAGE:-ghcr.io/heliaxdev/nrt-namada-genesis:main}"
+    environment:
+    - VALIDATOR0_ADDR=30.0.0.12:27657
+    - VALIDATOR1_ADDR=30.0.0.13:27657
+    - VALIDATOR2_ADDR=30.0.0.14:27657
+    volumes:
+      - ./validator-0/:/validator-0
+      - ./validator-1/:/validator-1
+      - ./validator-2/:/validator-2
+      - ./fullnode/:/fullnode
+      - ./container_ready/:/container_ready
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.11
+  validator0:
+    container_name: validator0
+    hostname: validator0
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    environment:
+      - NAMADA_TOKIO_THREADS=4
+      - NAMADA_RAYON_THREADS=4
+      - NAMADA_LOG=info
+      - NAMADA_LOG_FMT=json
+      - CMT_LOG_LEVEL=p2p:none,pex:error
+      - NAMADA_CMT_STDOUT=true
+      - BASE_DIR=/validator-0
+    volumes:
+      - ./validator-0/:/validator-0
+      - ./container_ready/:/container_ready
+      - ./namada.sh:/entrypoint.sh
+    entrypoint: /entrypoint.sh
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.12
+  validator1:
+    container_name: validator1
+    hostname: validator1
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    environment:
+      - NAMADA_TOKIO_THREADS=4
+      - NAMADA_RAYON_THREADS=4
+      - NAMADA_LOG=info
+      - NAMADA_LOG_FMT=json
+      - CMT_LOG_LEVEL=p2p:none,pex:error
+      - NAMADA_CMT_STDOUT=true
+      - BASE_DIR=/validator-1
+    volumes:
+      - ./validator-1/:/validator-1
+      - ./container_ready/:/container_ready
+      - ./namada.sh:/entrypoint.sh
+    entrypoint: /entrypoint.sh
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.13
+  validator2:
+    container_name: validator2
+    hostname: validator2
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    environment:
+      - NAMADA_TOKIO_THREADS=4
+      - NAMADA_RAYON_THREADS=4
+      - NAMADA_LOG=info
+      - NAMADA_LOG_FMT=json
+      - CMT_LOG_LEVEL=p2p:none,pex:error
+      - NAMADA_CMT_STDOUT=true
+      - BASE_DIR=/validator-2
+      - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
+    volumes:
+      - ./validator-2/:/validator-2
+      - ./container_ready/:/container_ready
+      - ./namada.sh:/entrypoint.sh
+    entrypoint: /entrypoint.sh
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.14
+  fullnode:
+    container_name: fullnode
+    hostname: fullnode
+    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    environment:
+      - NAMADA_TOKIO_THREADS=4
+      - NAMADA_RAYON_THREADS=4
+      - NAMADA_LOG=info
+      - NAMADA_LOG_FMT=json
+      - CMT_LOG_LEVEL=p2p:none,pex:error
+      - NAMADA_CMT_STDOUT=true
+      - BASE_DIR=/fullnode
+    volumes:
+      - ./fullnode/:/fullnode
+      - ./container_ready/:/container_ready
+      - ./namada.sh:/entrypoint.sh
+    entrypoint: /entrypoint.sh
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.15
+  workload:
+    container_name: workload
+    hostname: workload
+    build:
+      context: ../workload
+    environment:
+      - RPC=30.0.0.14:27658
+      - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
+      - MASP_INDEXER_URL=http://30.0.0.20:5000
+      - COSMOS_RPC=30.0.0.31:26657
+      - COSMOS_GRPC=30.0.0.31:9090
+      - COSMOS_DIR=/gaia-0
+      - WORKLOAD_NUM=${WORKLOAD_NUM:-3}
+      - TEST_SEED=${TEST_SEED:-123}
+      - TEST_TIME_SEC=${TEST_TIME_SEC:-60}
+    volumes:
+      - ./container_ready/:/container_ready
+      - ./gaia-0/:/gaia-0
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.16
+  check:
+    container_name: check
+    hostname: check
+    build:
+      context: ../check
+    restart: on-failure
+    environment:
+      - RPC=30.0.0.14:27658
+      - MASP_INDEXER_URL=http://30.0.0.20:5000
+    volumes:
+      - ./container_ready/:/container_ready
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.19
+  postgres:
+    container_name: postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      PGUSER: postgres
+      POSTGRES_DB: masp_indexer_local
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "masp_indexer_local"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 80s
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.21
+  masp-chain:
+    container_name: masp-chain
+    hostname: masp-chain
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-chain:${MASP_INDEXER_IMAGE_TAG:-master}"
+    restart: on-failure
+    environment:
+      - COMETBFT_URL=http://30.0.0.12:27658
+      - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.22
+  masp-webserver:
+    container_name: masp-webserver
+    hostname: masp-webserver
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-webserver:${MASP_INDEXER_IMAGE_TAG:-master}"
+    restart: on-failure
+    environment:
+      - PORT=5000
+      - COMETBFT_URL=http://30.0.0.12:27658
+      - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.20
+  masp-block-filter:
+    container_name: masp-block-filter
+    hostname: masp-block-filter
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-block-filter:${MASP_INDEXER_IMAGE_TAG:-master}"
+    restart: on-failure
+    environment:
+      - COMETBFT_URL=http://30.0.0.12:27658
+      - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.23
+  gaia:
+    container_name: gaia
+    image: ghcr.io/cosmos/gaia:v22.3.1
+    restart: on-failure
+    entrypoint: /entrypoint.sh
+    environment:
+      - WORKLOAD_NUM=${WORKLOAD_NUM:-3}
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.31
+    volumes:
+      - ./gaia-0/:/gaia-0
+      - ./gaia.sh:/entrypoint.sh
+    user: "0"
+  hermes:
+    container_name: hermes
+    image: ghcr.io/heliaxdev/hermes:1.13.0
+    restart: on-failure
+    entrypoint: /entrypoint.sh
+    environment:
+      - RPC_ADDRESS=30.0.0.14:27658
+      - TARGET_VALIDATOR=validator-2
+    networks:
+      namada-net:
+        ipv4_address: 30.0.0.30
+    volumes:
+      - ./hermes.sh:/entrypoint.sh
+      - ./container_ready/:/container_ready
+      # for import relayer keys
+      - ./gaia-0/:/gaia-0
+      - ./validator-2/:/validator-2
+    user: "0"
+
+networks:
+  namada-net:
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 30.0.0.0/24
