@@ -122,7 +122,7 @@ services:
   check:
     container_name: check
     hostname: check
-    image: "${CHECK_IMAGE:-ghcr.io/heliaxdev/nrt-check:latest}"
+    image: "${CHECK_IMAGE:-ghcr.io/heliaxdev/nrt-check:master}"
     restart: on-failure
     environment:
       - RPC=30.0.0.14:27658

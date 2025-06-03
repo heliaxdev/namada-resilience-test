@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::thread::ThreadId;
 
 use crate::code::{Code, CodeType};
 use crate::error::TaskError;
@@ -61,28 +60,11 @@ impl Stats {
             }
         }
     }
-
-    pub fn report(&self, thread_id: ThreadId) -> bool {
-        let (summary, is_successful) = if !self.fatal.is_empty() {
-            ("Fatal failures happened", false)
-        } else if !self.unexpected_failures.is_empty() {
-            ("Non-fatal failures happened", false)
-        } else if self.success.is_empty() {
-            ("No successful transaction", false)
-        } else {
-            ("Done successfully", true)
-        };
-        println!("==== {thread_id:?} Result: {summary} ====");
-
-        println!("{self}");
-
-        is_successful
-    }
 }
 
 impl std::fmt::Display for Stats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "==== Stats ====")?;
+        writeln!(f, "==== {:?} Stats ====", std::thread::current().id())?;
         writeln!(f, "-- Success --")?;
         for (step_type, count) in self.success.iter() {
             writeln!(f, "  - {step_type}: {count}")?;
@@ -121,4 +103,63 @@ impl std::fmt::Display for Stats {
 
         Ok(())
     }
+}
+
+pub fn summary_stats(stats: Vec<Stats>) -> bool {
+    let mut success = HashMap::new();
+    let mut fatal = HashMap::new();
+    let mut skip = HashMap::new();
+    let mut acceptable_failures = HashMap::new();
+    let mut unexpected_failures = HashMap::new();
+    for s in stats {
+        for (st, v) in &s.success {
+            *success.entry(st.to_string()).or_insert(0) += *v;
+        }
+        for (st, v) in &s.fatal {
+            *fatal.entry(st.to_string()).or_insert(0) += *v;
+        }
+        for (st, v) in &s.skip {
+            *skip.entry(st.to_string()).or_insert(0) += *v;
+        }
+        for (st, v) in &s.acceptable_failures {
+            *acceptable_failures.entry(st.to_string()).or_insert(0) += *v;
+        }
+        for (st, v) in &s.unexpected_failures {
+            *unexpected_failures.entry(st.to_string()).or_insert(0) += *v;
+        }
+    }
+
+    let (summary, is_successful) = if !fatal.is_empty() {
+        ("Fatal failures happened", false)
+    } else if !unexpected_failures.is_empty() {
+        ("Non-fatal failures happened", false)
+    } else if success.is_empty() {
+        ("No successful transaction", false)
+    } else {
+        ("Done successfully", true)
+    };
+
+    println!("==== Summary: {summary} ====");
+    println!("-- Success --");
+    for (step_type, count) in success.iter() {
+        println!("  - {step_type}: {count}");
+    }
+    println!("-- Fatal --");
+    for (step_type, count) in fatal.iter() {
+        println!("  - {step_type}: {count}");
+    }
+    println!("-- Skip --");
+    for (step_type, count) in skip.iter() {
+        println!("  - {step_type}: {count}");
+    }
+    println!("-- Acceptable Failure --");
+    for (step_type, count) in acceptable_failures.iter() {
+        println!("  - {step_type}: {count}");
+    }
+    println!("-- Unexpected Failure --");
+    for (step_type, count) in unexpected_failures.iter() {
+        println!("  - {step_type}: {count}");
+    }
+
+    is_successful
 }

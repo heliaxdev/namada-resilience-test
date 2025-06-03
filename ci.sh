@@ -13,10 +13,11 @@ docker compose -f config/docker-compose.ci.yml stop
 
 docker compose -f config/docker-compose.ci.yml logs --no-color > test-${timestamp}.log
 
+summary=$(docker logs workload | sed -n '/Summary:/,$p')
 if [ "${result}" -eq 0 ]; then
-  echo "==== Done successfully ===="
+  echo "${summary}"
   exit 0
 else
-  echo "!!!! Failed !!!!"
+  echo "${summary}"
   exit 1
 fi

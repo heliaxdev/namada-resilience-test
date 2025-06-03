@@ -9,7 +9,7 @@ use namada_chain_workload::context::Ctx;
 use namada_chain_workload::error::CheckError;
 use namada_chain_workload::executor::WorkloadExecutor;
 use namada_chain_workload::state::State;
-use namada_chain_workload::stats::Stats;
+use namada_chain_workload::stats::{summary_stats, Stats};
 use namada_chain_workload::step::StepType;
 use tokio::runtime::Builder;
 use tokio::time::sleep;
@@ -80,7 +80,8 @@ async fn main() {
                 .expect("Failed to build Tokio runtime");
 
             rt.block_on(async move {
-                tracing::info!("Initializing accounts for {:?}...", thread::current().id());
+                let thread_id = thread::current().id();
+                tracing::info!("Initializing accounts for {thread_id:?}...");
                 // Initialize accounts
                 let code = try_step(
                     &mut executor,
@@ -102,10 +103,7 @@ async fn main() {
                     stats.update(step_id, &code);
                     return stats;
                 }
-                tracing::info!(
-                    "Initialization for {:?} has been completed",
-                    thread::current().id()
-                );
+                tracing::info!("Initialization for {thread_id:?} has been completed");
 
                 while end_time > SystemTime::now() {
                     step_id += 1;
@@ -116,6 +114,7 @@ async fn main() {
                     code.output_logs();
                 }
 
+                println!("{stats}");
                 stats
             })
         });
@@ -125,13 +124,9 @@ async fn main() {
 
     let results: Vec<_> = handles
         .into_iter()
-        .map(|h| {
-            let thread_id = h.thread().id();
-            let stats = h.join().expect("No error should happen");
-            stats.report(thread_id)
-        })
+        .map(|h| h.join().expect("No error should happen"))
         .collect();
-    let is_successful = results.iter().all(|success| *success);
+    let is_successful = summary_stats(results);
 
     std::process::exit(if is_successful { 0 } else { 1 });
 }

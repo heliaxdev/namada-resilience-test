@@ -9,6 +9,7 @@ jobs:
     runs-on: [ubuntu-latest]
     timeout-minutes: 1440
     strategy:
+      fail-fast: false
       matrix:
         runs:
           - namada: "main"
