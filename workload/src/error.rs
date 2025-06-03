@@ -34,8 +34,6 @@ pub enum TaskError {
     BuildCheck(String),
     #[error("Broadcasting tx failed: `{0}`")]
     Broadcast(namada_sdk::error::Error),
-    #[error("Connection closed: `{0}`")]
-    Connection(namada_sdk::error::Error),
     #[error("Executing tx failed: `{err}`")]
     Execution { err: String, height: Height },
     #[error("Unexpected tx response: `{0}`")]
