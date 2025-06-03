@@ -9,6 +9,7 @@ jobs:
     runs-on: [ubuntu-latest]
     timeout-minutes: 1440
     strategy:
+      fail-fast: false
       matrix:
         runs:
           - namada: "main"
@@ -22,7 +23,7 @@ jobs:
             genesis: "v101.0.0"
             config: "v101.0.0"
             masp_indexer: "v1.3.0"
-            workload: "for-stable-namada"
+            workload: "master"
             check: "master"
             duration: 14400
     env:

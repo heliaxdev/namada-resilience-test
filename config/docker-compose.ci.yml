@@ -102,7 +102,8 @@ services:
   workload:
     container_name: workload
     hostname: workload
-    image: "${WORKLOAD_IMAGE:-ghcr.io/heliaxdev/nrt-workload:master}"
+    build:
+      context: ../workload
     environment:
       - RPC=30.0.0.14:27658
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
@@ -122,7 +123,8 @@ services:
   check:
     container_name: check
     hostname: check
-    image: "${CHECK_IMAGE:-ghcr.io/heliaxdev/nrt-check:master}"
+    build:
+      context: ../check
     restart: on-failure
     environment:
       - RPC=30.0.0.14:27658

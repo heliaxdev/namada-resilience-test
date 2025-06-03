@@ -32,10 +32,10 @@ thread_local! {
     static THREAD_ID: RefCell<usize> = RefCell::new(THREAD_COUNTER.fetch_add(1, Ordering::SeqCst));
 
     static THREAD_RNG: RefCell<SmallRng> = {
-        // u64 ? [u8; 32] ???
         let seed = GLOBAL_SEED.get().expect("Seed must be initialized first");
         let mut seed_bytes = [0u8; 32];
-        seed_bytes[..8].copy_from_slice(&seed.to_le_bytes());
+        let combined = seed ^ thread_id() as u64;
+        seed_bytes[..8].copy_from_slice(&combined.to_le_bytes());
 
         RefCell::new(SmallRng::from_seed(seed_bytes))
     };
