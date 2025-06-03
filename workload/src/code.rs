@@ -1,6 +1,8 @@
 use crate::error::{CheckError, StepError, TaskError};
 use crate::step::{StepContext, StepType};
 
+const CONNECTION_ERROR_MESSAGE: &str = "connection closed before message completed";
+
 pub enum Code {
     Success(StepType),
     // Fatal failures
@@ -18,7 +20,8 @@ pub enum CodeType {
     Success,
     Fatal,
     Skip,
-    Failed,
+    AcceptableFailure,
+    UnexpectedFailure,
 }
 
 impl Code {
@@ -69,7 +72,8 @@ impl Code {
             Code::Success(_) => CodeType::Success,
             Code::Fatal(_, _) => CodeType::Fatal,
             Code::Skip(_) | Code::NoTask(_) => CodeType::Skip,
-            _ => CodeType::Failed,
+            Code::TaskFailure(_, err) if is_acceptable_failure(err) => CodeType::AcceptableFailure,
+            _ => CodeType::UnexpectedFailure,
         }
     }
 
@@ -89,5 +93,14 @@ impl Code {
             "error": error
         });
         serde_json::to_string_pretty(&details).expect("Details should be convertible")
+    }
+}
+
+fn is_acceptable_failure(err: &TaskError) -> bool {
+    match err {
+        TaskError::IbcTransfer(_) | TaskError::InvalidShielded { .. } => true,
+        TaskError::BuildTx(e) if e.to_string().contains(CONNECTION_ERROR_MESSAGE) => true,
+        TaskError::Broadcast(e) if e.to_string().contains(CONNECTION_ERROR_MESSAGE) => true,
+        _ => false,
     }
 }

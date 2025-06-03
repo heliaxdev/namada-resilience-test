@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::code::{Code, CodeType};
-use crate::error::TaskError;
 use crate::step::StepType;
 use crate::types::StepId;
 
@@ -39,25 +38,19 @@ impl Stats {
                     .or_insert(1);
                 self.fatal_failure_logs.insert(id, code.details());
             }
-            CodeType::Failed => {
-                if matches!(
-                    code,
-                    Code::TaskFailure(_, TaskError::IbcTransfer(_))
-                        | Code::TaskFailure(_, TaskError::InvalidShielded { .. })
-                        | Code::TaskFailure(_, TaskError::Connection(_))
-                ) {
-                    self.acceptable_failures
-                        .entry(code.step_type().clone())
-                        .and_modify(|count| *count += 1)
-                        .or_insert(1);
-                    self.acceptable_failure_logs.insert(id, code.details());
-                } else {
-                    self.unexpected_failures
-                        .entry(code.step_type().clone())
-                        .and_modify(|count| *count += 1)
-                        .or_insert(1);
-                    self.unexpected_failure_logs.insert(id, code.details());
-                }
+            CodeType::AcceptableFailure => {
+                self.acceptable_failures
+                    .entry(code.step_type().clone())
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+                self.acceptable_failure_logs.insert(id, code.details());
+            }
+            CodeType::UnexpectedFailure => {
+                self.unexpected_failures
+                    .entry(code.step_type().clone())
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
+                self.unexpected_failure_logs.insert(id, code.details());
             }
         }
     }
