@@ -14,6 +14,7 @@ pub struct Stats {
     pub fatal_failure_logs: HashMap<StepId, String>,
     pub acceptable_failure_logs: HashMap<StepId, String>,
     pub unexpected_failure_logs: HashMap<StepId, String>,
+    pub pre_balance_check_failures: HashMap<StepId, HashMap<String, serde_json::Value>>,
 }
 
 impl Stats {
@@ -94,6 +95,17 @@ impl std::fmt::Display for Stats {
         for (id, details) in self.unexpected_failure_logs.iter() {
             writeln!(f, "  - {id}: {details}")?;
         }
+        writeln!(f, "-- Pre-balance Check Failure Logs --")?;
+        for (id, details) in self.pre_balance_check_failures.iter() {
+            writeln!(f, "  - {id}:")?;
+            for (check_type, info) in details {
+                writeln!(f, "    - {check_type}:")?;
+                let pretty = serde_json::to_string_pretty(info).expect("infallible");
+                for line in pretty.lines() {
+                    writeln!(f, "      {line}")?;
+                }
+            }
+        }
 
         Ok(())
     }
@@ -105,6 +117,9 @@ pub fn summary_stats(stats: Vec<Stats>) -> bool {
     let mut skip = HashMap::new();
     let mut acceptable_failures = HashMap::new();
     let mut unexpected_failures = HashMap::new();
+    let all_prebalance_correct = stats
+        .iter()
+        .all(|s| s.pre_balance_check_failures.is_empty());
     for s in stats {
         for (st, v) in &s.success {
             *success.entry(st.to_string()).or_insert(0) += *v;
@@ -127,6 +142,8 @@ pub fn summary_stats(stats: Vec<Stats>) -> bool {
         ("Fatal failures happened", false)
     } else if !unexpected_failures.is_empty() {
         ("Non-fatal failures happened", false)
+    } else if !all_prebalance_correct {
+        ("Pre-balance check failure happened", false)
     } else if success.is_empty() {
         ("No successful transaction", false)
     } else {

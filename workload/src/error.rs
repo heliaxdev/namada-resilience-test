@@ -56,6 +56,8 @@ pub enum CheckError {
     Query(QueryError),
     #[error("State check failed: `{0}`")]
     State(String),
+    #[error("Pre balance check failed: `{0}`")]
+    PreBalance(serde_json::Value),
 }
 
 #[derive(Error, Debug)]
