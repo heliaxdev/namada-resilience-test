@@ -121,11 +121,12 @@ for ((i = 0; i < len; i++)); do
 done
 
 #9. Initialize full node
-NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir /fullnode utils join-network --chain-id $CHAIN_ID
+NAMADA_NETWORK_CONFIGS_DIR=$network_config_path namadac --base-dir /fullnode utils join-network --chain-id $CHAIN_ID --add-persistent-peers
 
 # Copy all of the wasm artifacts from the chain into base directory for each fullnode chain directory
 rm -rf /fullnode/${CHAIN_ID}/wasm
 cp -r ${namada_path}/${CHAIN_ID}/wasm /fullnode/${CHAIN_ID}/
+sed -i 's|laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|' /fullnode/${CHAIN_ID}/config.toml
 
 # Let each fullnode know it's ready to start 
 touch /container_ready/fullnode
