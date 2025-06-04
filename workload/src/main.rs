@@ -6,10 +6,8 @@ use clap::Parser;
 use namada_chain_workload::code::Code;
 use namada_chain_workload::config::{AppConfig, Args};
 use namada_chain_workload::context::Ctx;
-use namada_chain_workload::error::CheckError;
 use namada_chain_workload::executor::WorkloadExecutor;
-use namada_chain_workload::state::State;
-use namada_chain_workload::stats::{summary_stats, Stats};
+use namada_chain_workload::stats::summary_stats;
 use namada_chain_workload::step::StepType;
 use tokio::runtime::Builder;
 use tokio::time::sleep;
@@ -53,9 +51,6 @@ async fn main() {
 
     let mut handles = Vec::new();
     for _ in 0..args.concurrency {
-        let state = State::new();
-        let mut stats = Stats::default();
-
         let ctx = loop {
             match Ctx::new(&config).await {
                 Ok(ctx) => break ctx,
@@ -66,14 +61,13 @@ async fn main() {
             }
         };
 
-        let mut executor = WorkloadExecutor::new(ctx, state);
+        let mut executor = WorkloadExecutor::new(ctx);
         executor
             .init()
             .await
             .expect("Executor initialization failed");
 
         let handle = thread::spawn(move || {
-            let mut step_id = 0;
             let rt = Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -83,37 +77,26 @@ async fn main() {
                 let thread_id = thread::current().id();
                 tracing::info!("Initializing accounts for {thread_id:?}...");
                 // Initialize accounts
-                let code = try_step(
-                    &mut executor,
-                    StepType::Initialize(Default::default()),
-                    true,
-                )
-                .await;
+                let code = executor
+                    .try_step(StepType::Initialize(Default::default()), true)
+                    .await;
                 if !matches!(code, Code::Success(_)) {
-                    stats.update(step_id, &code);
-                    return stats;
+                    return executor.final_report();
                 }
-                try_step(
-                    &mut executor,
-                    StepType::FundAll(Default::default()),
-                    args.no_check,
-                )
-                .await;
+                executor
+                    .try_step(StepType::FundAll(Default::default()), args.no_check)
+                    .await;
                 if !matches!(code, Code::Success(_)) {
-                    stats.update(step_id, &code);
-                    return stats;
+                    return executor.final_report();
                 }
                 tracing::info!("Initialization for {thread_id:?} has been completed");
 
                 while end_time > SystemTime::now() {
-                    step_id += 1;
                     let next_step = StepType::random_step_type();
-                    let code = try_step(&mut executor, next_step, args.no_check).await;
-
-                    stats.update(step_id, &code);
-                    code.output_logs();
+                    executor.try_step(next_step, args.no_check).await;
                 }
 
+                let stats = executor.final_report();
                 println!("{stats}");
                 stats
             })
@@ -129,57 +112,4 @@ async fn main() {
     let is_successful = summary_stats(results);
 
     std::process::exit(if is_successful { 0 } else { 1 });
-}
-
-async fn try_step(executor: &mut WorkloadExecutor, next_step: StepType, no_check: bool) -> Code {
-    tracing::info!("StepType: {next_step}");
-
-    match executor.is_valid(&next_step).await {
-        Ok(true) => {}
-        _ => {
-            tracing::warn!("Invalid step: {next_step} -> {:>?}", executor.state());
-            return Code::Skip(next_step);
-        }
-    }
-
-    tracing::info!("Step is: {next_step}...");
-    let tasks = match executor.build_tasks(&next_step).await {
-        Ok(tasks) if tasks.is_empty() => {
-            return Code::NoTask(next_step);
-        }
-        Ok(tasks) => tasks,
-        Err(e) => {
-            return Code::StepFailure(next_step, e);
-        }
-    };
-    tracing::info!("Built tasks for {next_step}");
-
-    let checks = if no_check {
-        vec![]
-    } else {
-        match executor.build_check(&tasks).await {
-            Ok(checks) => checks,
-            Err(e) => return Code::TaskFailure(next_step, e),
-        }
-    };
-    tracing::info!("Built checks for {next_step}");
-
-    let (result, fees) = executor.execute(&tasks).await;
-    executor.apply_fee_payments(&fees);
-
-    let execution_height = match result {
-        Ok(height) => height,
-        Err(e) => return Code::TaskFailure(next_step, e),
-    };
-
-    tracing::info!("Execution were successful, updating state...");
-    if let Err(e) = executor.post_execute(&tasks, execution_height).await {
-        return Code::TaskFailure(next_step, e);
-    }
-
-    match executor.checks(checks, execution_height, &fees).await {
-        Ok(_) => Code::Success(next_step),
-        Err(e) if matches!(e, CheckError::State(_)) => Code::Fatal(next_step, e),
-        Err(e) => Code::CheckFailure(next_step, e),
-    }
 }

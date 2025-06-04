@@ -44,7 +44,7 @@ impl Display for Check {
 }
 
 impl Check {
-    pub fn assert_pre_balance(&self, state: &State) {
+    pub fn check_pre_balance(&self, state: &State) -> Result<(), CheckError> {
         let (matched, details) = match self {
             Check::BalanceSource(bs) => {
                 let expected_pre_balance = if is_native_denom(bs.denom()) {
@@ -107,8 +107,13 @@ impl Check {
             _ => (true, json!({})),
         };
 
-        if !matched {
+        if matched {
+            Ok(())
+        } else {
             tracing::error!("Pre-balance mismatched: {details}");
+            Err(CheckError::PreBalance(
+                serde_json::to_string_pretty(&details).expect("to_string shouldn't fail"),
+            ))
         }
     }
 }

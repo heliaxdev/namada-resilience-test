@@ -5,9 +5,11 @@ use namada_sdk::rpc;
 use tokio::time::{sleep, Duration};
 
 use crate::check::{Check, CheckContext, CheckInfo};
+use crate::code::Code;
 use crate::context::Ctx;
 use crate::error::{CheckError, StepError, TaskError};
 use crate::state::State;
+use crate::stats::Stats;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
 use crate::types::{Alias, Epoch, Fee, Height};
@@ -18,19 +20,22 @@ use crate::utils::{
 pub struct WorkloadExecutor {
     ctx: Ctx,
     state: State,
+    stats: Stats,
+    step_id: u64,
 }
 
 impl WorkloadExecutor {
-    pub fn new(ctx: Ctx, state: State) -> Self {
-        Self { ctx, state }
+    pub fn new(ctx: Ctx) -> Self {
+        Self {
+            ctx,
+            state: State::new(),
+            stats: Stats::default(),
+            step_id: 0u64,
+        }
     }
 
-    pub fn ctx(&self) -> &Ctx {
-        &self.ctx
-    }
-
-    pub fn state(&self) -> &State {
-        &self.state
+    pub fn final_report(self) -> Stats {
+        self.stats
     }
 
     async fn fetch_epoch_at_height(&self, height: Height) -> Epoch {
@@ -103,6 +108,85 @@ impl WorkloadExecutor {
         Ok(())
     }
 
+    pub async fn try_step(&mut self, next_step: StepType, no_check: bool) -> Code {
+        self.step_id += 1;
+        tracing::info!("StepID: {}, StepType: {next_step}", self.step_id);
+
+        match self.is_valid(&next_step).await {
+            Ok(true) => {}
+            _ => {
+                tracing::warn!("Invalid step: {next_step} -> {:>?}", self.state);
+                let code = Code::Skip(next_step);
+                self.stats.update(self.step_id, &code);
+                code.output_logs();
+                return code;
+            }
+        }
+
+        tracing::info!("Step is: {next_step}...");
+        let tasks = match self.build_tasks(&next_step).await {
+            Ok(tasks) if tasks.is_empty() => {
+                let code = Code::NoTask(next_step);
+                self.stats.update(self.step_id, &code);
+                code.output_logs();
+                return code;
+            }
+            Ok(tasks) => tasks,
+            Err(e) => {
+                let code = Code::StepFailure(next_step, e);
+                self.stats.update(self.step_id, &code);
+                code.output_logs();
+                return code;
+            }
+        };
+        tracing::info!("Built tasks for {next_step}");
+
+        let checks = if no_check {
+            vec![]
+        } else {
+            match self.build_check(&tasks).await {
+                Ok(checks) => checks,
+                Err(e) => {
+                    let code = Code::TaskFailure(next_step, e);
+                    self.stats.update(self.step_id, &code);
+                    code.output_logs();
+                    return code;
+                }
+            }
+        };
+        tracing::info!("Built checks for {next_step}");
+
+        let (result, fees) = self.execute(&tasks).await;
+        self.apply_fee_payments(&fees);
+
+        let execution_height = match result {
+            Ok(height) => height,
+            Err(e) => {
+                let code = Code::TaskFailure(next_step, e);
+                self.stats.update(self.step_id, &code);
+                code.output_logs();
+                return code;
+            }
+        };
+
+        tracing::info!("Execution were successful, updating state...");
+        if let Err(e) = self.post_execute(&tasks, execution_height).await {
+            let code = Code::TaskFailure(next_step, e);
+            self.stats.update(self.step_id, &code);
+            code.output_logs();
+            return code;
+        }
+
+        let code = match self.checks(checks, execution_height, &fees).await {
+            Ok(_) => Code::Success(next_step),
+            Err(e) if matches!(e, CheckError::State(_)) => Code::Fatal(next_step, e),
+            Err(e) => Code::CheckFailure(next_step, e),
+        };
+        self.stats.update(self.step_id, &code);
+        code.output_logs();
+        code
+    }
+
     pub async fn is_valid(&self, step_type: &StepType) -> Result<bool, StepError> {
         step_type.is_valid(&self.ctx, &self.state).await
     }
@@ -111,14 +195,20 @@ impl WorkloadExecutor {
         step_type.build_task(&self.ctx, &self.state).await
     }
 
-    pub async fn build_check(&self, tasks: &[Task]) -> Result<Vec<Check>, TaskError> {
+    pub async fn build_check(&mut self, tasks: &[Task]) -> Result<Vec<Check>, TaskError> {
         let retry_config = retry_config();
         let mut checks = vec![];
         for task in tasks {
             let built_checks = task.build_checks(&self.ctx, retry_config).await?;
-            built_checks
-                .iter()
-                .for_each(|check| check.assert_pre_balance(&self.state));
+            built_checks.iter().for_each(|check| {
+                if let Err(CheckError::PreBalance(details)) = check.check_pre_balance(&self.state) {
+                    self.stats
+                        .pre_balance_check_failures
+                        .entry(self.step_id)
+                        .or_default()
+                        .insert(check.summary(), details);
+                }
+            });
             checks.extend(built_checks)
         }
         Ok(checks)
