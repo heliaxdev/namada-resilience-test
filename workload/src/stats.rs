@@ -99,11 +99,11 @@ impl std::fmt::Display for Stats {
         for (id, details) in self.pre_balance_check_failures.iter() {
             writeln!(f, "  - {id}:")?;
             for (check_type, info) in details {
-                writeln!(
-                    f,
-                    "    - {check_type}: {}",
-                    serde_json::to_string_pretty(info).expect("infallible")
-                )?;
+                writeln!(f, "    - {check_type}:")?;
+                let pretty = serde_json::to_string_pretty(info).expect("infallible");
+                for line in pretty.lines() {
+                    writeln!(f, "      {line}")?;
+                }
             }
         }
 
