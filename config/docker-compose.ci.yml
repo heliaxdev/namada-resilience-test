@@ -103,7 +103,7 @@ services:
     build:
       context: ../workload
     environment:
-      - RPC=30.0.0.15:27657
+      - RPC=30.0.0.15:26657
       - FAUCET_SK=00dfd790bd727b708f8b846374c596d886eaf1ebf0fc4394530e0a9b24aa630963
       - MASP_INDEXER_URL=http://30.0.0.20:5000
       - COSMOS_RPC=30.0.0.31:26657
@@ -125,7 +125,7 @@ services:
       context: ../check
     restart: on-failure
     environment:
-      - RPC=30.0.0.15:27657
+      - RPC=30.0.0.15:26657
       - MASP_INDEXER_URL=http://30.0.0.20:5000
     volumes:
       - ./container_ready/:/container_ready
@@ -155,7 +155,7 @@ services:
     image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-chain:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
-      - COMETBFT_URL=http://30.0.0.15:27657
+      - COMETBFT_URL=http://30.0.0.15:26657
       - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     depends_on:
       postgres:
@@ -170,7 +170,7 @@ services:
     restart: on-failure
     environment:
       - PORT=5000
-      - COMETBFT_URL=http://30.0.0.15:27657
+      - COMETBFT_URL=http://30.0.0.15:26657
       - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     networks:
       namada-net:
@@ -181,7 +181,7 @@ services:
     image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-block-filter:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
-      - COMETBFT_URL=http://30.0.0.15:27657
+      - COMETBFT_URL=http://30.0.0.15:26657
       - DATABASE_URL=postgres://postgres:password@30.0.0.21:5432/masp_indexer_local
     depends_on:
       postgres:
@@ -209,7 +209,7 @@ services:
     restart: on-failure
     entrypoint: /entrypoint.sh
     environment:
-      - RPC_ADDRESS=30.0.0.15:27657
+      - RPC_ADDRESS=30.0.0.15:26657
       - TARGET_VALIDATOR=validator-2
     networks:
       namada-net:
