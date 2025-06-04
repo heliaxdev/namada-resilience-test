@@ -111,9 +111,7 @@ impl Check {
             Ok(())
         } else {
             tracing::error!("Pre-balance mismatched: {details}");
-            Err(CheckError::PreBalance(
-                serde_json::to_string_pretty(&details).expect("to_string shouldn't fail"),
-            ))
+            Err(CheckError::PreBalance(details))
         }
     }
 }

@@ -14,7 +14,7 @@ pub struct Stats {
     pub fatal_failure_logs: HashMap<StepId, String>,
     pub acceptable_failure_logs: HashMap<StepId, String>,
     pub unexpected_failure_logs: HashMap<StepId, String>,
-    pub pre_balance_check_failures: HashMap<StepId, HashMap<String, String>>,
+    pub pre_balance_check_failures: HashMap<StepId, HashMap<String, serde_json::Value>>,
 }
 
 impl Stats {
@@ -97,7 +97,14 @@ impl std::fmt::Display for Stats {
         }
         writeln!(f, "-- Pre-balance Check Failure Logs --")?;
         for (id, details) in self.pre_balance_check_failures.iter() {
-            writeln!(f, "  - {id}: {details:#?}")?;
+            writeln!(f, "  - {id}:")?;
+            for (check_type, info) in details {
+                writeln!(
+                    f,
+                    "    - {check_type}: {}",
+                    serde_json::to_string_pretty(info).expect("infallible")
+                )?;
+            }
         }
 
         Ok(())
