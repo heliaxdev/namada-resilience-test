@@ -3,11 +3,6 @@ name: Run test (triggerable)
 on:
   workflow_dispatch:
     inputs:
-      namada_genesis_docker_tag:
-        description: 'The docker tag of the namada genesis docker images'
-        required: true
-        type: string
-        default: "main"
       namada_docker_tag:
         description: 'The docker tag of the namada docker images'
         required: true
@@ -43,7 +38,7 @@ jobs:
       runs-on: ubuntu-latest
       timeout-minutes: 1440
       env:
-        NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/nrt-namada-genesis:${{ github.event.inputs.namada_genesis_docker_tag }}"
+        NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/nrt-namada-genesis:${{ github.event.inputs.namada_docker_tag }}"
         NAMADA_IMAGE: "ghcr.io/heliaxdev/nrt-namada:${{ github.event.inputs.namada_docker_tag }}"
         MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/heliaxdev/nrt-masp-indexer"
         MASP_INDEXER_IMAGE_TAG: ${{ github.event.inputs.masp_indexer_docker_tag }}

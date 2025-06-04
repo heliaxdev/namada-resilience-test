@@ -13,21 +13,17 @@ jobs:
       matrix:
         runs:
           - namada: "main"
-            genesis: "main"
             masp_indexer: "master"
             workload: "master"
             check: "master"
             duration: 14400
-            config: "main"
-          - image: "v101.0.0"
-            genesis: "v101.0.0"
-            config: "v101.0.0"
+          - namada: "v101.0.0"
             masp_indexer: "v1.3.0"
             workload: "master"
             check: "master"
             duration: 14400
     env:
-      NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/nrt-namada-genesis:${{ matrix.runs.inputs.genesis }}"
+      NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/nrt-namada-genesis:${{ matrix.runs.namada }}"
       NAMADA_IMAGE: "ghcr.io/heliaxdev/nrt-namada:${{ matrix.runs.namada }}"
       MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/heliaxdev/nrt-masp-indexer"
       MASP_INDEXER_IMAGE_TAG: ${{ matrix.runs.masp_indexer }}
