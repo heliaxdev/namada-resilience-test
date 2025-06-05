@@ -1,6 +1,8 @@
 # Namada Resilience test
 
-This is a fully containerized "devnet" that runs 3 validator nodes. It is primarily used for testing.
+This is a fully containerized "devnet" that runs 3 validator nodes, a full node, MASP indexer, Hermes (IBC relayer), Gaia (Cosmos chain), a `workload` process as clients, and `check` process. It is primarily used for testing.
+
+![components](docs/components.png)
 
 ## Use this
 
