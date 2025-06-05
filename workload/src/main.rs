@@ -75,25 +75,27 @@ async fn main() {
 
             rt.block_on(async move {
                 let thread_id = thread::current().id();
-                tracing::info!("Initializing accounts for {thread_id:?}...");
-                // Initialize accounts
-                let code = executor
-                    .try_step(StepType::Initialize(Default::default()), true)
-                    .await;
-                if !matches!(code, Code::Success(_)) {
-                    return executor.final_report();
-                }
-                executor
-                    .try_step(StepType::FundAll(Default::default()), args.no_check)
-                    .await;
-                if !matches!(code, Code::Success(_)) {
-                    return executor.final_report();
-                }
-                tracing::info!("Initialization for {thread_id:?} has been completed");
-
-                while end_time > SystemTime::now() {
-                    let next_step = StepType::random_step_type();
-                    executor.try_step(next_step, args.no_check).await;
+                if args.init {
+                    tracing::info!("Initializing accounts for {thread_id:?}...");
+                    // Initialize accounts
+                    let code = executor
+                        .try_step(StepType::Initialize(Default::default()), true)
+                        .await;
+                    if !matches!(code, Code::Success(_)) {
+                        return executor.final_report();
+                    }
+                    executor
+                        .try_step(StepType::FundAll(Default::default()), args.no_check)
+                        .await;
+                    if !matches!(code, Code::Success(_)) {
+                        return executor.final_report();
+                    }
+                    tracing::info!("Initialization for {thread_id:?} has been completed");
+                } else {
+                    while end_time > SystemTime::now() {
+                        let next_step = StepType::random_step_type();
+                        executor.try_step(next_step, args.no_check).await;
+                    }
                 }
 
                 let stats = executor.final_report();
@@ -109,7 +111,7 @@ async fn main() {
         .into_iter()
         .map(|h| h.join().expect("No error should happen"))
         .collect();
-    let is_successful = summary_stats(results);
+    let is_successful = summary_stats(results, !args.init);
 
     std::process::exit(if is_successful { 0 } else { 1 });
 }
