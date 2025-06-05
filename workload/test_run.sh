@@ -31,6 +31,22 @@ do
     sleep 2
 done
 
+# Initialize workload accounts
+echo "Creating config_init.toml..."
+cat <<EOF > config_init.toml
+chain_id = "${CHAIN_ID}"
+rpc = "http://${RPC}"
+masp_indexer_url = "${MASP_INDEXER_URL}"
+faucet_sk = "${FAUCET_SK}"
+cosmos_rpc = "http://${COSMOS_RPC}"
+cosmos_grpc = "http://${COSMOS_GRPC}"
+cosmos_base_dir = "${COSMOS_DIR}"
+namada_channel_id = "channel-0"
+cosmos_channel_id = "channel-0"
+EOF
+
+/app/namada-chain-workload --config config_init.toml --seed ${TEST_SEED} --concurrency ${WORKLOAD_NUM} --test-time-sec 0 --init
+
 # Wait for IBC channel
 while [ ! -f /container_ready/ibc_channels ]
 do
@@ -53,5 +69,7 @@ cosmos_base_dir = "${COSMOS_DIR}"
 namada_channel_id = "${namada_channel_id}"
 cosmos_channel_id = "${cosmos_channel_id}"
 EOF
+
+touch /container_ready/workload
 
 /app/namada-chain-workload --config config.toml --seed ${TEST_SEED} --concurrency ${WORKLOAD_NUM} --test-time-sec ${TEST_TIME_SEC}

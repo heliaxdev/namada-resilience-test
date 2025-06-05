@@ -111,7 +111,7 @@ impl std::fmt::Display for Stats {
     }
 }
 
-pub fn summary_stats(stats: Vec<Stats>) -> bool {
+pub fn summary_stats(stats: Vec<Stats>, output: bool) -> bool {
     let mut success = HashMap::new();
     let mut fatal = HashMap::new();
     let mut skip = HashMap::new();
@@ -150,26 +150,28 @@ pub fn summary_stats(stats: Vec<Stats>) -> bool {
         ("Done successfully", true)
     };
 
-    println!("==== Summary: {summary} ====");
-    println!("-- Success --");
-    for (step_type, count) in success.iter() {
-        println!("  - {step_type}: {count}");
-    }
-    println!("-- Fatal --");
-    for (step_type, count) in fatal.iter() {
-        println!("  - {step_type}: {count}");
-    }
-    println!("-- Skip --");
-    for (step_type, count) in skip.iter() {
-        println!("  - {step_type}: {count}");
-    }
-    println!("-- Acceptable Failure --");
-    for (step_type, count) in acceptable_failures.iter() {
-        println!("  - {step_type}: {count}");
-    }
-    println!("-- Unexpected Failure --");
-    for (step_type, count) in unexpected_failures.iter() {
-        println!("  - {step_type}: {count}");
+    if output {
+        println!("==== Summary: {summary} ====");
+        println!("-- Success --");
+        for (step_type, count) in success.iter() {
+            println!("  - {step_type}: {count}");
+        }
+        println!("-- Fatal --");
+        for (step_type, count) in fatal.iter() {
+            println!("  - {step_type}: {count}");
+        }
+        println!("-- Skip --");
+        for (step_type, count) in skip.iter() {
+            println!("  - {step_type}: {count}");
+        }
+        println!("-- Acceptable Failure --");
+        for (step_type, count) in acceptable_failures.iter() {
+            println!("  - {step_type}: {count}");
+        }
+        println!("-- Unexpected Failure --");
+        for (step_type, count) in unexpected_failures.iter() {
+            println!("  - {step_type}: {count}");
+        }
     }
 
     is_successful

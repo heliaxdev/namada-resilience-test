@@ -21,6 +21,9 @@ pub struct Args {
     #[clap(long, env)]
     #[clap(default_value_t = false)]
     pub no_check: bool,
+    #[clap(long, env)]
+    #[clap(default_value_t = false)]
+    pub init: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
