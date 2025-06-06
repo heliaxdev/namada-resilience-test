@@ -62,10 +62,6 @@ async fn main() {
         };
 
         let mut executor = WorkloadExecutor::new(ctx);
-        executor
-            .init()
-            .await
-            .expect("Executor initialization failed");
 
         let handle = thread::spawn(move || {
             let rt = Builder::new_current_thread()
@@ -77,6 +73,10 @@ async fn main() {
                 let thread_id = thread::current().id();
                 if args.init {
                     tracing::info!("Initializing accounts for {thread_id:?}...");
+                    executor
+                        .init_faucet()
+                        .await
+                        .expect("Executor initialization failed");
                     // Initialize accounts
                     let code = executor
                         .try_step(StepType::Initialize(Default::default()), true)
