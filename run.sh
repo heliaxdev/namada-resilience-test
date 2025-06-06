@@ -11,7 +11,7 @@ docker compose -f config/docker-compose.yml up --force-recreate -d
 result=$(docker wait workload)
 docker compose -f config/docker-compose.yml stop
 
-docker compose -f config/docker-compose.yml logs --no-color > test-${timestamp}.log
+docker compose -f config/docker-compose.yml logs --no-color -t > test-${timestamp}.log
 
 summary=$(docker logs workload | sed -n '/Summary:/,$p')
 if [ "${result}" -eq 0 ]; then

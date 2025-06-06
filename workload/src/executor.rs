@@ -48,7 +48,7 @@ impl WorkloadExecutor {
         }
     }
 
-    pub async fn init(&self) -> Result<(), StepError> {
+    pub async fn init_faucet(&self) -> Result<(), StepError> {
         let client = &self.ctx.namada.client;
         let wallet = self.ctx.namada.wallet.read().await;
         let faucet_alias = Alias::faucet();

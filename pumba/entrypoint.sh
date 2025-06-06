@@ -71,7 +71,8 @@ while true; do
 
   case "$FAULT" in
     kill)
-      pumba kill --signal SIGKILL $TARGETS
+      # Containers couldn't restart when `pumba kill`
+      pumba restart --timeout 0 $TARGETS
       ;;
     pause)
       pumba pause --duration "$DURATION" $TARGETS
