@@ -1,4 +1,4 @@
-name: Run antithesis daily (cron)
+name: Run daily test (cron)
 
 on:
   schedule:
@@ -56,10 +56,52 @@ jobs:
       - name: Generate random number for the test seed
         run: echo "TEST_SEED=$RANDOM" >> $GITHUB_ENV
       - name: Run test
-        run: ./run.sh
-      - name: Upload logs
+        run: ./run.sh | tee test-run.log
+      - name: Check result
+        id: summary
+        run: |
+          SUMMARY=$(awk '/^==== Summary:/{flag=1;print;next}/^====/{flag=0}flag' test-run.log)
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          if echo "$SUMMARY" | grep -q "Done successfully"; then
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+          fi
+      - name: Upload full log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-logs-${{ matrix.runs.namada }}
+          name: test-log-${{ matrix.runs.namada }}
           path: test-*.log
+      - name: Set Slack color
+        run: |
+          if [ "${{ steps.summary.outputs.result }}" = "success" ]; then
+            echo "SLACK_COLOR=good" >> $GITHUB_ENV
+          else
+            echo "SLACK_COLOR=danger" >> $GITHUB_ENV
+          fi
+      - name: Send Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "${{ env.SLACK_COLOR }}",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*Test Result: `${{ matrix.runs.namada }}`*\n\n```\n${{ steps.summary.outputs.summary }}\n```\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View and download test logs (Artifacts)>"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
