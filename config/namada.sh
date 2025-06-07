@@ -18,6 +18,6 @@ do
 done
 
 if [ -n "$FAUCET_SK" ]; then
-    namadaw --base-dir $BASE_DIR add --alias faucet --value $FAUCET_SK --unsafe-dont-encrypt
+    namadaw --base-dir $BASE_DIR add --alias faucet --value $FAUCET_SK --unsafe-dont-encrypt --alias-force
 fi
 namadan ledger run --base-dir $BASE_DIR

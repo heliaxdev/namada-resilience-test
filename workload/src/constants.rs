@@ -3,7 +3,7 @@ pub const INIT_IMPLICIT_ADDR_NUM: u64 = 10;
 pub const INIT_ESTABLISHED_ADDR_NUM: u64 = 5;
 
 // For retry
-pub const MAX_RETRY_COUNT: u32 = 4;
+pub const MAX_RETRY_COUNT: u32 = 8;
 pub const INIT_DELAY_SEC: u64 = 1;
 pub const MAX_DELAY_SEC: u64 = 10;
 

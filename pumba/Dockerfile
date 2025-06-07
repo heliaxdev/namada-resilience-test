@@ -5,7 +5,7 @@ ARG TARGETARCH
 ENV PUMBA_VERSION=${PUMBA_VERSION}
 ENV TARGETARCH=${TARGETARCH}
 
-RUN apk add --no-cache bash curl
+RUN apk add --no-cache bash curl docker-cli
 
 RUN case "${TARGETARCH}" in \
       amd64) ARCH_SUFFIX="amd64" ;; \

@@ -72,7 +72,9 @@ while true; do
   case "$FAULT" in
     kill)
       # Containers couldn't restart when `pumba kill`
-      pumba restart --timeout 0 $TARGETS
+      pumba kill $TARGETS
+      sleep $DURATION
+      docker restart $TARGETS
       ;;
     pause)
       pumba pause --duration "$DURATION" $TARGETS
