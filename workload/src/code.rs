@@ -102,6 +102,7 @@ fn is_acceptable_failure(err: &TaskError) -> bool {
         TaskError::IbcTransfer(_) | TaskError::InvalidShielded { .. } => true,
         TaskError::BuildTx(e) if e.to_string().contains(CONNECTION_ERROR_MESSAGE) => true,
         TaskError::Broadcast(e) if e.to_string().contains(CONNECTION_ERROR_MESSAGE) => true,
+        TaskError::CosmosTx(e) if e.to_string().contains(CONNECTION_ERROR_MESSAGE) => true,
         TaskError::CosmosTx(e) if e.to_string().contains(COSMOS_ACC_SEQ_ERROR_MESSAGE) => true,
         _ => false,
     }
