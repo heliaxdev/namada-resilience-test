@@ -1,7 +1,8 @@
 #!/bin/sh
 
 BASE_SEED=${TEST_SEED:-42}
-TARGET_CONTAINERS="validator0 validator1 validator2 fullnode masp-chain masp-webserver masp-block-filter gaia hermes"
+# TODO: skip fullnode for https://github.com/anoma/namada/issues/4689
+TARGET_CONTAINERS="validator0 validator1 validator2 masp-chain masp-webserver masp-block-filter gaia hermes"
 CONTAINERS=$(echo "$TARGET_CONTAINERS")
 FAULTS="kill pause delay loss rate duplicate corrupt"
 
