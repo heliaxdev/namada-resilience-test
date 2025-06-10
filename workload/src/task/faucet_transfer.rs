@@ -1,4 +1,4 @@
-use namada_sdk::args::{self, InputAmount, TxBuilder, TxTransparentTransferData};
+use namada_sdk::args::{self, InputAmount, TxBuilder, TxTransparentSource, TxTransparentTarget};
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::token::{self, DenominatedAmount};
 use namada_sdk::tx::data::GasLimit;
@@ -40,12 +40,14 @@ impl TaskContext for FaucetTransfer {
         let faucet_alias = Alias::faucet();
         let native_token_alias = Alias::nam();
 
-        let source_address = wallet.find_address(&faucet_alias.name).ok_or_else(|| {
-            TaskError::Wallet(format!("No source address: {}", faucet_alias.name))
-        })?;
+        let source_address = wallet
+            .find_address(&faucet_alias.name)
+            .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", faucet_alias.name)))?
+            .into_owned();
         let target_address = wallet
             .find_address(&self.target.name)
-            .ok_or_else(|| TaskError::Wallet(format!("No target address: {}", self.target.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No target address: {}", self.target.name)))?
+            .into_owned();
         let token_address = wallet
             .find_address(&native_token_alias.name)
             .ok_or_else(|| {
@@ -53,20 +55,26 @@ impl TaskContext for FaucetTransfer {
                     "No native token address: {}",
                     native_token_alias.name
                 ))
-            })?;
+            })?
+            .into_owned();
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
             .map_err(|e| TaskError::Wallet(e.to_string()))?;
         let token_amount = token::Amount::from_u64(self.amount);
+        let amount = InputAmount::Unvalidated(DenominatedAmount::native(token_amount));
 
-        let tx_transfer_data = TxTransparentTransferData {
-            source: source_address.into_owned(),
-            target: target_address.into_owned(),
-            token: token_address.into_owned(),
-            amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
-        };
+        let sources = vec![TxTransparentSource {
+            source: source_address,
+            token: token_address.clone(),
+            amount,
+        }];
+        let targets = vec![TxTransparentTarget {
+            target: target_address,
+            token: token_address,
+            amount,
+        }];
 
-        let mut transfer_tx_builder = ctx.namada.new_transparent_transfer(vec![tx_transfer_data]);
+        let mut transfer_tx_builder = ctx.namada.new_transparent_transfer(sources, targets);
 
         transfer_tx_builder =
             transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));

@@ -83,14 +83,12 @@ async fn default_tx_arg(ctx: &Ctx) -> args::Tx {
         expiration: Default::default(),
         chain_id: None,
         signing_keys: vec![],
-        signatures: vec![],
         tx_reveal_code_path: PathBuf::from(TX_REVEAL_PK),
         password: None,
         memo: None,
         use_device: false,
         device_transport: DeviceTransport::default(),
         dump_wrapper_tx: false,
-        wrapper_signature: None,
     }
 }
 

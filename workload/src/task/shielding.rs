@@ -1,4 +1,4 @@
-use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldingTransferData};
+use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldedTarget, TxTransparentSource};
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
 use namada_sdk::signing::SigningTxData;
 use namada_sdk::token::{self, DenominatedAmount};
@@ -56,7 +56,8 @@ impl TaskContext for Shielding {
 
         let source_address = wallet
             .find_address(&self.source.name)
-            .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?;
+            .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?
+            .into_owned();
         let target_payment_address =
             *wallet.find_payment_addr(&self.target.name).ok_or_else(|| {
                 TaskError::Wallet(format!("No payment address: {}", self.target.name))
@@ -68,21 +69,26 @@ impl TaskContext for Shielding {
                     "No native token address: {}",
                     native_token_alias.name
                 ))
-            })?;
+            })?
+            .into_owned();
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
             .map_err(|e| TaskError::Wallet(e.to_string()))?;
         let token_amount = token::Amount::from_u64(self.amount);
+        let amount = InputAmount::Unvalidated(DenominatedAmount::native(token_amount));
 
-        let tx_transfer_data = TxShieldingTransferData {
-            source: source_address.into_owned(),
-            token: token_address.into_owned(),
-            amount: InputAmount::Unvalidated(DenominatedAmount::native(token_amount)),
-        };
+        let sources = vec![TxTransparentSource {
+            source: source_address,
+            token: token_address.clone(),
+            amount,
+        }];
+        let targets = vec![TxShieldedTarget {
+            target: target_payment_address,
+            token: token_address,
+            amount,
+        }];
 
-        let mut transfer_tx_builder = ctx
-            .namada
-            .new_shielding_transfer(target_payment_address, vec![tx_transfer_data]);
+        let mut transfer_tx_builder = ctx.namada.new_shielding_transfer(targets, sources);
         transfer_tx_builder =
             transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
         transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);

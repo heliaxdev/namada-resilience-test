@@ -15,8 +15,8 @@ enum_dispatch = "0.3.13"
 fs2 = "0.4.3"
 futures = "0.3.30"
 ibc-proto = "0.52.0"
-namada_sdk = { version = "0.149.1", default-features = false, features = ["std", "async-send", "download-params"] }
-namada_wallet = { version = "0.149.1", default-features = false, features = ["std"] }
+namada_sdk = { version = "0.150.1", default-features = false, features = ["std", "async-send", "download-params"] }
+namada_wallet = { version = "0.150.1", default-features = false, features = ["std"] }
 once_cell = "1.21.3"
 prost = "0.13.5"
 rand = { version = "0.8.5", default-features = false, features = ["small_rng"] }
