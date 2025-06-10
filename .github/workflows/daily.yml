@@ -60,10 +60,9 @@ jobs:
       - name: Check result
         id: summary
         run: |
-          SUMMARY=$(awk '/^==== Summary:/{flag=1;print;next}/^====/{flag=0}flag' test-run.log)
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "$SUMMARY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          SUMMARY=$(awk '/^==== Summary:/{flag=1;print;next}/^====/{if(flag){print};flag=0}flag' test-run.log)
+          ESCAPED_SUMMARY=$(echo "$SUMMARY" | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "summary=$ESCAPED_SUMMARY" >> $GITHUB_OUTPUT
           if echo "$SUMMARY" | grep -q "Done successfully"; then
             echo "result=success" >> $GITHUB_OUTPUT
           else
@@ -98,7 +97,7 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": "*Test Result: `${{ matrix.runs.namada }}`*\n\n```\n${{ steps.summary.outputs.summary }}\n```\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View and download test logs (Artifacts)>"
+                        "text": "*Daily Test Result: `${{ matrix.runs.namada }}`*\n\n```\n${{ steps.summary.outputs.summary }}\n```\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View and download test logs (Artifacts)>"
                       }
                     }
                   ]
