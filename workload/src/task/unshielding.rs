@@ -1,4 +1,4 @@
-use namada_sdk::args::{self, InputAmount, TxBuilder, TxUnshieldingTransferData};
+use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldedSource, TxTransparentTarget};
 use namada_sdk::masp_primitives;
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
 use namada_sdk::masp_primitives::zip32::PseudoExtendedKey;
@@ -77,15 +77,21 @@ impl TaskContext for Unshielding {
                     "No native token address: {}",
                     native_token_alias.name
                 ))
-            })?;
+            })?
+            .into_owned();
         let token_amount = token::Amount::from_u64(self.amount);
         let amount = InputAmount::Unvalidated(token::DenominatedAmount::native(token_amount));
 
-        let tx_transfer_data = TxUnshieldingTransferData {
-            target: target_address.into_owned(),
-            token: token.into_owned(),
+        let sources = vec![TxShieldedSource {
+            source: pseudo_spending_key_from_spending_key,
+            token: token.clone(),
             amount,
-        };
+        }];
+        let targets = vec![TxTransparentTarget {
+            target: target_address.into_owned(),
+            token,
+            amount,
+        }];
 
         let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
         let gas_spending_key = if disposable_gas_payer {
@@ -98,12 +104,9 @@ impl TaskContext for Unshielding {
             None
         };
 
-        let mut transfer_tx_builder = ctx.namada.new_unshielding_transfer(
-            pseudo_spending_key_from_spending_key,
-            vec![tx_transfer_data],
-            gas_spending_key,
-            disposable_gas_payer,
-        );
+        let mut transfer_tx_builder =
+            ctx.namada
+                .new_unshielding_transfer(sources, targets, gas_spending_key);
         transfer_tx_builder =
             transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
         if !disposable_gas_payer {

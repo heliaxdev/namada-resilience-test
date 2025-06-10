@@ -89,7 +89,6 @@ impl TaskContext for IbcTransferSend {
             token_address,
             amount,
             self.src_channel_id.clone(),
-            false,
         );
         tx_builder = tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
         tx_builder = tx_builder.wrapper_fee_payer(fee_payer);
@@ -540,7 +539,6 @@ impl TaskContext for IbcUnshieldingTransfer {
             token_address,
             amount,
             self.src_channel_id.clone(),
-            disposable_gas_payer,
         );
         tx_builder.gas_spending_key = gas_spending_key;
         let refund_target = wallet

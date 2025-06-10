@@ -3953,9 +3953,9 @@ dependencies = [
 
 [[package]]
 name = "namada_account"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "825895fe589e6136f495acc8e203218b8ec90fb1736d8a522dca77775e0d5d03"
+checksum = "0536da2bea1e02784d90370dda28459127f89cf45e96a602e9ff16f1badb32d5"
 dependencies = [
  "borsh",
  "namada_core",
@@ -3966,9 +3966,9 @@ dependencies = [
 
 [[package]]
 name = "namada_controller"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae91ea4502deaf7053277dd260f6580813410ab37598c36714d8120f5aa03cfc"
+checksum = "1496842f09e7e00403788540bec33de7c2909026c502e23a6670af374504ba1f"
 dependencies = [
  "namada_core",
  "smooth-operator",
@@ -3977,9 +3977,9 @@ dependencies = [
 
 [[package]]
 name = "namada_core"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb6d76951adce81378692fd558650496d87d44ce22767d81538f6c5a97fde847"
+checksum = "0ccc72e3b4b16d30d153febe04bf84ce21853aec3e7bf5f89135ac755de738dd"
 dependencies = [
  "bech32 0.11.0",
  "borsh",
@@ -4027,9 +4027,9 @@ dependencies = [
 
 [[package]]
 name = "namada_ethereum_bridge"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10d55597c32a4b4167c6e5703a317f666db819da3cb62a21ce96f98d07a05e9f"
+checksum = "a0188b05f224bc71f024f2d698adf37d63f80574f660c73aa8fa21f6871972e0"
 dependencies = [
  "borsh",
  "ethers",
@@ -4056,9 +4056,9 @@ dependencies = [
 
 [[package]]
 name = "namada_events"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c26d2e8a9c07b9c8365861dcce4b1021e1d657a59faef77fe0f668f8582f5a89"
+checksum = "8d00a4b052b90613401fa67d47697d0a82f78ff9275f45d29af37d795fe66d0b"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4071,9 +4071,9 @@ dependencies = [
 
 [[package]]
 name = "namada_gas"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da478c2bae8624d3ff0551d4f0e9afb27cba202c14e2cf1c64469398767eedb6"
+checksum = "f8a85d1bde970e94a735554bd831f0cb966905fec0480851b5bd7af90377301e"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4085,9 +4085,9 @@ dependencies = [
 
 [[package]]
 name = "namada_governance"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55278f2a221ce7c9cb5f36f894de3556fd5d604f6d94f201de1b0a02da436dd6"
+checksum = "b462261abb6a84b18fd8d7f0670c7a88a3515595137d5521304d4b9ae76bc596"
 dependencies = [
  "borsh",
  "itertools 0.14.0",
@@ -4109,9 +4109,9 @@ dependencies = [
 
 [[package]]
 name = "namada_ibc"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c02af0d9d2dd79946e660de0a3600c5c78747fc6116a982058d6daf6549d475e"
+checksum = "3196fce67d3773dec4c2b6b5189d8e8537e42bab9065a0fe61ee8f2d20e01efd"
 dependencies = [
  "borsh",
  "data-encoding",
@@ -4145,9 +4145,9 @@ dependencies = [
 
 [[package]]
 name = "namada_io"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dbeead2685556e21264866ff126e698024737576adb04ca4b834080d739b50a"
+checksum = "b5744525bc25fc83077de977047d11203d0c5c7e7439e38e2c3d30d5813b5ce9"
 dependencies = [
  "async-trait",
  "kdam",
@@ -4159,9 +4159,9 @@ dependencies = [
 
 [[package]]
 name = "namada_macros"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bdfb4030ba839bcf6856ba0cdff946edc89a65559413b8b661711ad24536b20"
+checksum = "0730dc83bdc394ffd8d44d1c6670c79895b45d839d0b8c229b56183b1ab16ffb"
 dependencies = [
  "data-encoding",
  "proc-macro2",
@@ -4172,9 +4172,9 @@ dependencies = [
 
 [[package]]
 name = "namada_merkle_tree"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3d78772d1334343a6b2e9c969cb5192c4c4165c98178cc335e5b07913227c9c"
+checksum = "0bd30edd6c30ccb7bdfb8c9723fbf85a3edc49acc295e8980f09c0b9db962d10"
 dependencies = [
  "borsh",
  "eyre",
@@ -4188,9 +4188,9 @@ dependencies = [
 
 [[package]]
 name = "namada_parameters"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f18d0973dc04541b6442512221c63744cff79e5a33799b3a39d3370d7b8fe5a"
+checksum = "77fbe2557ef927cfea5fd7821704b8dfe96d4a8064938fb3eb449d795a46675f"
 dependencies = [
  "namada_core",
  "namada_macros",
@@ -4204,9 +4204,9 @@ dependencies = [
 
 [[package]]
 name = "namada_proof_of_stake"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aade987142f8caf9405f602da90654b08a29ff25f410184dd59ff947050abe0"
+checksum = "46402dd4dbcbbc1eb4324b6baaa2f9569206f6d0ba40a36d8c4122107e80eaca"
 dependencies = [
  "borsh",
  "itertools 0.14.0",
@@ -4229,18 +4229,18 @@ dependencies = [
 
 [[package]]
 name = "namada_replay_protection"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1b0a3815a0c585ef29b39fa0673d1bb15b293ad1f4c015f3f213a9696a25176"
+checksum = "3e44d232ecc28ce3ffaa3ae6988e2c5a194fdd8d0a45816fe13ba888a83fa24e"
 dependencies = [
  "namada_core",
 ]
 
 [[package]]
 name = "namada_sdk"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "368031f2c3698b137b6cc8509db9b10752d0544db8e128f31b221e6692ced1a3"
+checksum = "b6d768567ddc50d3d18bda9059e63fe0ec388813b340d921366a5aa8f3eda4e3"
 dependencies = [
  "async-trait",
  "bech32 0.11.0",
@@ -4310,9 +4310,9 @@ dependencies = [
 
 [[package]]
 name = "namada_shielded_token"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6b930e7e5db8dd0354754055e04a90eac0a826a2d753bba9cfb4780dea547d1"
+checksum = "a587bd44851617e03f0e198fb82ca216c5c117b8f707f7c6867f48c366192942"
 dependencies = [
  "async-trait",
  "borsh",
@@ -4352,9 +4352,9 @@ dependencies = [
 
 [[package]]
 name = "namada_state"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adf640707caf5862fb97f2ad97c09a3a6b7342ae5cebd231f683f2fe9795008c"
+checksum = "b980f8b17e2adc929d54f54e5c8a9e5944a208287fea29bcfd121ce24239c172"
 dependencies = [
  "borsh",
  "clru",
@@ -4376,9 +4376,9 @@ dependencies = [
 
 [[package]]
 name = "namada_storage"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ce775658b4b2482b62d7c84a0789a395c726b7f8bd757f356ae0e0174a93265"
+checksum = "05b0d6c2f21519db884454bbfeacfd4e1f13cc5a09de20d22a25579c7b5e536f"
 dependencies = [
  "borsh",
  "itertools 0.14.0",
@@ -4396,9 +4396,9 @@ dependencies = [
 
 [[package]]
 name = "namada_systems"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "363ceed8a89888907e11cac6de01b5621c07c7af2b2d307687726e30929fa98b"
+checksum = "a24a2ac2b810831fa767c70e29a44b317b64f3cb24a09500af5eac71a70aa655"
 dependencies = [
  "namada_core",
  "namada_events",
@@ -4407,9 +4407,9 @@ dependencies = [
 
 [[package]]
 name = "namada_token"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb977f3012fe0e00b6f20e3e033d374ed40c8b9933f4c5eece38039d4959e3a3"
+checksum = "9611bbe749d1131956094534ebfedf9d81ed515b1bb8fabe857871983508337e"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4426,9 +4426,9 @@ dependencies = [
 
 [[package]]
 name = "namada_trans_token"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f436936b2041d11e5396d2723da10627a6e2dc19f9dce12e560cc426a4a4761"
+checksum = "1f27fe0a206283256bbed8c334a4a938296f232a9aa4a013e221675a3f9978d3"
 dependencies = [
  "konst",
  "namada_core",
@@ -4444,9 +4444,9 @@ dependencies = [
 
 [[package]]
 name = "namada_tx"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc556a7fcf4ec14b9381128bd796973fd2f845ca27d3119c5ef92f1b532c985d"
+checksum = "d38bae87a95f415f2ef83e84f295a7d270379e8b125cd9812db03b713c263ccc"
 dependencies = [
  "ark-bls12-381",
  "bitflags 2.9.1",
@@ -4474,9 +4474,9 @@ dependencies = [
 
 [[package]]
 name = "namada_tx_env"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1263a5f67795c2ebbcc53e467469a7d446b982c8b99a67ae5365b956581f338"
+checksum = "4d093c2acdf1239c3a2b9dbd9aa054669cd80f5f7151db6d6c3e7ae5b1afe108"
 dependencies = [
  "namada_core",
  "namada_events",
@@ -4485,9 +4485,9 @@ dependencies = [
 
 [[package]]
 name = "namada_vm"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7cb63f9e4042ffd600fcacc8055d9070ef93625ccd227118016aac03a4b3e35"
+checksum = "f5630ac0cce2ceb4265969c150e6d3e88d2ed24070958c8c7d5e9b4342d914d4"
 dependencies = [
  "borsh",
  "clru",
@@ -4508,9 +4508,9 @@ dependencies = [
 
 [[package]]
 name = "namada_vote_ext"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bc3356f018b1186dd3a3e7814a732d40487b63351777cf2d64932e7841a6837"
+checksum = "2126d2af3c7a89b19419023543294a6660cd264efa83b626d2ecdbb7b9eb5d02"
 dependencies = [
  "borsh",
  "namada_core",
@@ -4521,9 +4521,9 @@ dependencies = [
 
 [[package]]
 name = "namada_vp"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "850a0dd511d2d7cb43aabd1046400af408bb2a1708ce0029ff46d61acaa15cff"
+checksum = "1b37bf4de4bb090e87814ded23c4cc7ba9f28be923b113d4674705f8394825d0"
 dependencies = [
  "namada_core",
  "namada_events",
@@ -4538,9 +4538,9 @@ dependencies = [
 
 [[package]]
 name = "namada_vp_env"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f6a2886fa36675cd64ca75390fba2bf7ef6808ce61a4fdb00a155b6f56fb202"
+checksum = "c2187a586798b8a55bc305b7746bf2ac82ccd7eefbad81f8d0566a9d917eac3a"
 dependencies = [
  "derivative",
  "masp_primitives",
@@ -4554,9 +4554,9 @@ dependencies = [
 
 [[package]]
 name = "namada_wallet"
-version = "0.149.1"
+version = "0.150.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68df2c006fecfa64b2116b304a49d3219fef1d7d09c8c2c96b35cfdedea3bbc5"
+checksum = "6a24d6b8ef0744dcbcc87104cf576eb85dcd7a58d80672de9652fa75f2b8b81f"
 dependencies = [
  "bimap",
  "borsh",
