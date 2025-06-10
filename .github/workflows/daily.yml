@@ -61,6 +61,9 @@ jobs:
         id: summary
         run: |
           SUMMARY=$(awk '/^==== Summary:/{flag=1;print;next}/^====/{if(flag){print};flag=0}flag' test-run.log)
+          if [ -z "$SUMMARY" ]; then
+            SUMMARY="Something was wrong in the test"
+          fi
           ESCAPED_SUMMARY=$(echo "$SUMMARY" | sed ':a;N;$!ba;s/\n/\\n/g')
           echo "summary=$ESCAPED_SUMMARY" >> $GITHUB_OUTPUT
           if echo "$SUMMARY" | grep -q "Done successfully"; then

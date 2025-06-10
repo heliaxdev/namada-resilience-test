@@ -77,6 +77,9 @@ jobs:
           id: summary
           run: |
             SUMMARY=$(awk '/^==== Summary:/{flag=1;print;next}/^====/{if(flag){print};flag=0}flag' test-run.log)
+            if [ -z "$SUMMARY" ]; then
+              SUMMARY="Something was wrong in the test"
+            fi
             ESCAPED_SUMMARY=$(echo "$SUMMARY" | sed ':a;N;$!ba;s/\n/\\n/g')
             echo "summary=$ESCAPED_SUMMARY" >> $GITHUB_OUTPUT
             if echo "$SUMMARY" | grep -q "Done successfully"; then
@@ -88,7 +91,7 @@ jobs:
           if: always()
           uses: actions/upload-artifact@v4
           with:
-            name: test-log-${{ matrix.runs.namada }}
+            name: test-log-dispatched
             path: test-*.log
         - name: Set Slack color
           run: |
@@ -113,7 +116,7 @@ jobs:
                         "type": "section",
                         "text": {
                           "type": "mrkdwn",
-                          "text": "*Dispatched Test Result: `${{ matrix.runs.namada }}`*\n\n```\n${{ steps.summary.outputs.summary }}\n```\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View and download test logs (Artifacts)>"
+                          "text": "*Dispatched Test Result:*\n\n```\n${{ steps.summary.outputs.summary }}\n```\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View and download test logs (Artifacts)>"
                         }
                       }
                     ]
