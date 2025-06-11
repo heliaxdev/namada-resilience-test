@@ -235,7 +235,7 @@ pub trait TaskContext {
             let result = execute_cosmos_tx(ctx, any_msg.clone()).await;
             if let Err(TaskError::CosmosTx(ref e)) = result {
                 if e.contains("unauthorized") {
-                    // retry for sequence mismatch
+                    // retry for unauthorized error
                     sleep(Duration::from_secs(1)).await;
                     continue;
                 }
