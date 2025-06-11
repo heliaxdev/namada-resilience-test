@@ -4,6 +4,7 @@ use std::fmt::Display;
 use cosmrs::Any;
 use enum_dispatch::enum_dispatch;
 use namada_sdk::{args, signing::SigningTxData, tx::Tx};
+use tokio::time::{sleep, Duration};
 
 use crate::check::Check;
 use crate::constants::DEFAULT_GAS_LIMIT;
@@ -230,7 +231,17 @@ pub trait TaskContext {
     #[allow(async_fn_in_trait)]
     async fn execute_cosmos_tx(&self, ctx: &Ctx) -> Result<Height, TaskError> {
         let any_msg = self.build_cosmos_tx(ctx).await?;
-        let height = execute_cosmos_tx(ctx, any_msg).await?;
+        let height = loop {
+            let result = execute_cosmos_tx(ctx, any_msg.clone()).await;
+            if let Err(TaskError::CosmosTx(ref e)) = result {
+                if e.contains("unauthorized") {
+                    // retry for unauthorized error
+                    sleep(Duration::from_secs(1)).await;
+                    continue;
+                }
+            }
+            break result;
+        }?;
         wait_cosmos_settlement(ctx, height).await;
         Ok(height)
     }
