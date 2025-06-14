@@ -232,15 +232,17 @@ pub trait TaskContext {
     async fn execute_cosmos_tx(&self, ctx: &Ctx) -> Result<Height, TaskError> {
         let any_msg = self.build_cosmos_tx(ctx).await?;
         let height = loop {
-            let result = execute_cosmos_tx(ctx, any_msg.clone()).await;
-            if let Err(TaskError::CosmosTx(ref e)) = result {
-                if e.contains("unauthorized") {
-                    // retry for unauthorized error
+            match execute_cosmos_tx(ctx, any_msg.clone()).await {
+                Err(TaskError::CosmosTx(ref e)) if e.contains("unauthorized") => {
+                    tracing::warn!("retry for cosmos `unauthorized` error");
                     sleep(Duration::from_secs(1)).await;
-                    continue;
                 }
+                Err(TaskError::Query(_)) => {
+                    tracing::warn!("retry for cosmos query error");
+                    sleep(Duration::from_secs(1)).await;
+                }
+                res => break res,
             }
-            break result;
         }?;
         wait_cosmos_settlement(ctx, height).await;
         Ok(height)

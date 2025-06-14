@@ -99,7 +99,7 @@ impl Code {
 
 fn is_acceptable_failure(err: &TaskError) -> bool {
     match err {
-        TaskError::IbcTransfer(_) | TaskError::InvalidShielded { .. } => true,
+        TaskError::IbcTransfer(_) | TaskError::InvalidShielded { .. } | TaskError::Query(_) => true,
         TaskError::BuildTx(e) if e.to_string().contains(CONNECTION_ERROR_MESSAGE) => true,
         TaskError::Broadcast(e) if e.to_string().contains(CONNECTION_ERROR_MESSAGE) => true,
         TaskError::CosmosTx(e)
