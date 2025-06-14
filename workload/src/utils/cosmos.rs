@@ -59,7 +59,7 @@ pub async fn execute_cosmos_tx(ctx: &Ctx, any_msg: Any) -> Result<Height, TaskEr
     // Account
     let mut grpc_client = QueryClient::connect(ctx.cosmos.grpc_endpoint.clone())
         .await
-        .expect("invalid gRPC");
+        .map_err(|e| QueryError::Grpc(e.to_string()))?;
     let res = grpc_client
         .account(QueryAccountRequest {
             address: ctx.cosmos.account.to_string(),
