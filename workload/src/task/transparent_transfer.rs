@@ -92,23 +92,22 @@ impl TaskContext for TransparentTransfer {
         ctx: &Ctx,
         retry_config: RetryConfig,
     ) -> Result<Vec<Check>, TaskError> {
-        let denom = Alias::nam().name;
-        let (_, pre_balance) = get_balance(ctx, &self.source, &denom, retry_config).await?;
+        let (_, pre_balance) = get_balance(ctx, &self.source, &self.denom, retry_config).await?;
         let source_check = Check::BalanceSource(
             check::balance_source::BalanceSource::builder()
                 .target(self.source.clone())
                 .pre_balance(pre_balance)
-                .denom(denom.clone())
+                .denom(self.denom.clone())
                 .amount(self.amount)
                 .build(),
         );
 
-        let (_, pre_balance) = get_balance(ctx, &self.target, &denom, retry_config).await?;
+        let (_, pre_balance) = get_balance(ctx, &self.target, &self.denom, retry_config).await?;
         let target_check = Check::BalanceTarget(
             check::balance_target::BalanceTarget::builder()
                 .target(self.target.clone())
                 .pre_balance(pre_balance)
-                .denom(denom)
+                .denom(self.denom.clone())
                 .amount(self.amount)
                 .build(),
         );

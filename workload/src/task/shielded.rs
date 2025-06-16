@@ -1,9 +1,8 @@
-use namada_sdk::args::{self, InputAmount, TxBuilder, TxShieldedSource, TxShieldedTarget};
+use namada_sdk::args::{self, TxBuilder, TxShieldedSource, TxShieldedTarget};
 use namada_sdk::masp_primitives;
 use namada_sdk::masp_primitives::transaction::components::sapling::builder::RngBuildParams;
 use namada_sdk::masp_primitives::zip32::PseudoExtendedKey;
 use namada_sdk::signing::SigningTxData;
-use namada_sdk::token;
 use namada_sdk::tx::data::GasLimit;
 use namada_sdk::tx::Tx;
 use namada_sdk::Namada;
@@ -16,12 +15,13 @@ use crate::error::TaskError;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount, Height, MaspEpoch};
-use crate::utils::{get_shielded_balance, shielded_sync_with_retry, RetryConfig};
+use crate::utils::{get_shielded_balance, get_token, shielded_sync_with_retry, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct ShieldedTransfer {
     source: Alias,
     target: Alias,
+    denom: String,
     amount: Amount,
     epoch: MaspEpoch,
     settings: TaskSettings,
@@ -59,8 +59,6 @@ impl TaskContext for ShieldedTransfer {
         let mut bparams = RngBuildParams::new(OsRng);
         let mut wallet = ctx.namada.wallet.write().await;
 
-        let native_token_alias = Alias::nam();
-
         let source_spending_key = wallet
             .find_spending_key(&self.source.name, None)
             .map_err(|e| TaskError::Wallet(e.to_string()))?;
@@ -70,17 +68,7 @@ impl TaskContext for ShieldedTransfer {
             *wallet.find_payment_addr(&self.target.name).ok_or_else(|| {
                 TaskError::Wallet(format!("No payment address: {}", self.target.name))
             })?;
-        let token = wallet
-            .find_address(&native_token_alias.name)
-            .ok_or_else(|| {
-                TaskError::Wallet(format!(
-                    "No native token address: {}",
-                    native_token_alias.name
-                ))
-            })?
-            .into_owned();
-        let token_amount = token::Amount::from_u64(self.amount);
-        let amount = InputAmount::Unvalidated(token::DenominatedAmount::native(token_amount));
+        let (token, amount) = get_token(ctx, &self.denom, self.amount).await?;
 
         let sources = vec![TxShieldedSource {
             source: pseudo_spending_key_from_spending_key,
@@ -138,27 +126,26 @@ impl TaskContext for ShieldedTransfer {
     ) -> Result<Vec<Check>, TaskError> {
         shielded_sync_with_retry(ctx, &self.source, None, false, retry_config).await?;
 
-        let denom = Alias::nam().name;
-        let pre_balance = get_shielded_balance(ctx, &self.source, &denom, retry_config)
+        let pre_balance = get_shielded_balance(ctx, &self.source, &self.denom, retry_config)
             .await?
             .unwrap_or_default();
         let source_check = Check::BalanceShieldedSource(
             check::balance_shielded_source::BalanceShieldedSource::builder()
                 .target(self.source.clone())
                 .pre_balance(pre_balance)
-                .denom(denom.clone())
+                .denom(self.denom.clone())
                 .amount(self.amount)
                 .build(),
         );
 
-        let pre_balance = get_shielded_balance(ctx, &self.target, &denom, retry_config)
+        let pre_balance = get_shielded_balance(ctx, &self.target, &self.denom, retry_config)
             .await?
             .unwrap_or_default();
         let target_check = Check::BalanceShieldedTarget(
             check::balance_shielded_target::BalanceShieldedTarget::builder()
                 .target(self.target.clone())
                 .pre_balance(pre_balance)
-                .denom(denom)
+                .denom(self.denom.clone())
                 .amount(self.amount)
                 .build(),
         );

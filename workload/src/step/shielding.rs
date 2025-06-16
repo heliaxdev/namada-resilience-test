@@ -1,10 +1,11 @@
-use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
+use crate::constants::{COSMOS_TOKEN, MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE};
 use crate::context::Ctx;
 use crate::error::StepError;
 use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
-use crate::utils::{get_masp_epoch, retry_config};
+use crate::types::Alias;
+use crate::utils::{get_masp_epoch, ibc_denom, retry_config};
 
 use super::utils;
 
@@ -21,8 +22,15 @@ impl StepContext for Shielding {
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
-        let source_account = state
-            .random_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
+        let (source_account, denom) = state
+            .random_account_with_ibc_balance(vec![])
+            .filter(|_| utils::coin_flip(0.5))
+            .map(|account| (account, ibc_denom(&ctx.namada_channel_id, COSMOS_TOKEN)))
+            .or_else(|| {
+                state
+                    .random_account_with_min_balance(vec![], MIN_TRANSFER_BALANCE)
+                    .map(|account| (account, Alias::nam().name))
+            })
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let epoch = get_masp_epoch(ctx, retry_config()).await?;
         let target_account = state
@@ -38,6 +46,7 @@ impl StepContext for Shielding {
             task::shielding::Shielding::builder()
                 .source(source_account.alias)
                 .target(target_account.alias.payment_address())
+                .denom(denom)
                 .amount(amount)
                 .epoch(epoch)
                 .settings(task_settings)
