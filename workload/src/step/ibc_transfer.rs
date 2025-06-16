@@ -22,8 +22,8 @@ impl StepContext for IbcTransferSend {
         "ibc-transfer-send".to_string()
     }
 
-    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_account_can_make_transfer())
+    async fn is_valid(&self, _ctx: &Ctx, _state: &State) -> Result<bool, StepError> {
+        Ok(true)
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
@@ -70,8 +70,8 @@ impl StepContext for IbcTransferRecv {
         "ibc-transfer-recv".to_string()
     }
 
-    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_account())
+    async fn is_valid(&self, _ctx: &Ctx, _state: &State) -> Result<bool, StepError> {
+        Ok(true)
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
@@ -115,8 +115,8 @@ impl StepContext for IbcShieldingTransfer {
         "ibc-shielding-transfer".to_string()
     }
 
-    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_account())
+    async fn is_valid(&self, _ctx: &Ctx, _state: &State) -> Result<bool, StepError> {
+        Ok(true)
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
@@ -160,8 +160,8 @@ impl StepContext for IbcUnshieldingTransfer {
         "ibc-unshielding-transfer".to_string()
     }
 
-    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_account_can_make_transfer())
+    async fn is_valid(&self, _ctx: &Ctx, _state: &State) -> Result<bool, StepError> {
+        Ok(true)
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

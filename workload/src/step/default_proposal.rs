@@ -19,7 +19,7 @@ impl StepContext for DefaultProposal {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_account_with_min_balance(PROPOSAL_DEPOSIT))
+        Ok(state.at_least_account_with_min_balance(1, PROPOSAL_DEPOSIT))
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

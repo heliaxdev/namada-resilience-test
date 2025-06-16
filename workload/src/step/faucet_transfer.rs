@@ -13,8 +13,8 @@ impl StepContext for FaucetTransfer {
         "faucet-transfer".to_string()
     }
 
-    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_account())
+    async fn is_valid(&self, _ctx: &Ctx, _state: &State) -> Result<bool, StepError> {
+        Ok(true)
     }
 
     async fn build_task(&self, _ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

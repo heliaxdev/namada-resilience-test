@@ -20,7 +20,7 @@ impl StepContext for BatchBond {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE))
+        Ok(state.at_least_account_with_min_balance(3, MIN_TRANSFER_BALANCE))
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
@@ -43,7 +43,10 @@ impl StepContext for BatchRandom {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.min_n_account_with_min_balance(3, MIN_TRANSFER_BALANCE) && state.min_bonds(3))
+        Ok(
+            state.at_least_account_with_min_balance(3, MIN_TRANSFER_BALANCE)
+                && state.at_least_bond(3),
+        )
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

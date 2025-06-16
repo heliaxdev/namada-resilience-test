@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use once_cell::sync::OnceCell;
 use rand::rngs::SmallRng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConfig};
 
 use crate::constants::{INIT_DELAY_SEC, MAX_DELAY_SEC, MAX_RETRY_COUNT};
@@ -46,6 +46,10 @@ where
     F: FnOnce(&mut SmallRng) -> R,
 {
     THREAD_RNG.with(|rng| f(&mut rng.borrow_mut()))
+}
+
+pub fn coin_flip(p: f64) -> bool {
+    with_rng(|rng| rng.gen_bool(p))
 }
 
 pub fn thread_id() -> usize {

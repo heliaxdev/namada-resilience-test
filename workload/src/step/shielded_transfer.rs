@@ -20,8 +20,7 @@ impl StepContext for ShieldedTransfer {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.at_least_masp_accounts(2)
-            && state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE))
+        Ok(state.at_least_masp_account_with_minimal_balance(1, MIN_TRANSFER_BALANCE))
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

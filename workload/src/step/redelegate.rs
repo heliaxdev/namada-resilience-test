@@ -19,7 +19,7 @@ impl StepContext for Redelegate {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_bond())
+        Ok(state.at_least_bond(1))
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {
