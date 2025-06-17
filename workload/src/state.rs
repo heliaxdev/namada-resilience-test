@@ -1,4 +1,5 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::path::Path;
 
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
@@ -58,7 +59,7 @@ pub struct Bond {
     pub amount: u64,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
@@ -92,6 +93,21 @@ impl State {
             deactivated_validators: HashMap::default(),
             proposals: HashMap::default(),
         }
+    }
+
+    // FILE
+
+    pub fn save(&self, dir: &Path) -> Result<(), StateError> {
+        let path = dir.join("state.json");
+        let json = serde_json::to_string(self).map_err(StateError::Serde)?;
+        std::fs::write(path, json).map_err(StateError::File)
+    }
+
+    pub fn load(dir: &Path) -> Result<Self, StateError> {
+        let path = dir.join("state.json");
+        let json = std::fs::read_to_string(path).map_err(StateError::File)?;
+        let state = serde_json::from_str(&json).map_err(StateError::Serde)?;
+        Ok(state)
     }
 
     // READ

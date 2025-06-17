@@ -8,13 +8,13 @@ use crate::check::{Check, CheckContext, CheckInfo};
 use crate::code::Code;
 use crate::context::Ctx;
 use crate::error::{CheckError, StepError, TaskError};
-use crate::state::State;
+use crate::state::{State, StateError};
 use crate::stats::Stats;
 use crate::step::{StepContext, StepType};
 use crate::task::{Task, TaskContext};
 use crate::types::{Alias, Epoch, Fee, Height};
 use crate::utils::{
-    execute_reveal_pk, get_block_height, get_proposals, is_pk_revealed, retry_config,
+    base_dir, execute_reveal_pk, get_block_height, get_proposals, is_pk_revealed, retry_config,
 };
 
 pub struct WorkloadExecutor {
@@ -106,6 +106,15 @@ impl WorkloadExecutor {
         }
 
         Ok(())
+    }
+
+    pub fn load_state(&mut self) -> Result<(), StateError> {
+        self.state = State::load(&base_dir())?;
+        Ok(())
+    }
+
+    pub fn save_state(&self) -> Result<(), StateError> {
+        self.state.save(&base_dir())
     }
 
     pub async fn try_step(&mut self, next_step: StepType, no_check: bool) -> Code {

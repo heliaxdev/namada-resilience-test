@@ -92,12 +92,15 @@ async fn main() {
                     }
                     tracing::info!("Initialization for {thread_id:?} has been completed");
                 } else {
+                    executor.load_state().expect("Loading state file failed");
+
                     while end_time > SystemTime::now() {
                         let next_step = StepType::random_step_type();
                         executor.try_step(next_step, args.no_check).await;
                     }
                 }
 
+                executor.save_state().expect("Saving state failed");
                 let stats = executor.final_report();
                 println!("{stats}");
                 stats
