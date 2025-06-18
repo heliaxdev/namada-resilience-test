@@ -49,8 +49,22 @@ impl StepContext for ShieldedTransfer {
         };
         let amount = utils::random_between(1, balance / MAX_BATCH_TX_NUM);
 
-        let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
-        let disposable_gas_payer = transparent_source_balance < DEFAULT_FEE || coin_flip(0.5);
+        let disposable_gas_payer = match (
+            is_native_denom(&denom),
+            state.get_balance_for(&source_account.alias.base()),
+            state.get_shielded_balance_for(&source_account.alias),
+        ) {
+            (true, balance, _) if balance < DEFAULT_FEE => true,
+            (true, _, _) => coin_flip(0.5),
+            (_, balance, shielded_balance)
+                if balance >= DEFAULT_FEE && shielded_balance >= DEFAULT_FEE =>
+            {
+                coin_flip(0.5)
+            }
+            (_, balance, _) if balance >= DEFAULT_FEE => false,
+            (_, _, shielded_balance) if shielded_balance >= DEFAULT_FEE => true,
+            _ => return Ok(vec![]), // insufficient fee
+        };
         let task_settings = TaskSettings::new(
             BTreeSet::from([source_account.alias.base()]),
             if disposable_gas_payer {
