@@ -551,21 +551,6 @@ impl State {
             .and_modify(|bond| bond.get_mut(validator).unwrap().0 -= amount);
     }
 
-    pub fn modify_shielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        *self.balances.get_mut(source).unwrap() -= amount;
-        *self.masp_balances.get_mut(&target.base()).unwrap() += amount;
-    }
-
-    pub fn modify_unshielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        *self.masp_balances.get_mut(&source.base()).unwrap() -= amount;
-        *self.balances.get_mut(target).unwrap() += amount;
-    }
-
-    pub fn modify_shielded_transfer(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        *self.masp_balances.get_mut(&target.base()).unwrap() += amount;
-        *self.masp_balances.get_mut(&source.base()).unwrap() -= amount;
-    }
-
     pub fn set_established_as_validator(&mut self, alias: &Alias) {
         let account = self.accounts.remove(alias).unwrap();
         self.balances.remove(alias).unwrap();

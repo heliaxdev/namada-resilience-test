@@ -38,12 +38,12 @@ impl StepContext for IbcTransferSend {
             })
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
         let target_account = ctx.cosmos.account.to_string();
-        let amount_account = if is_native_denom(&denom) {
+        let balance = if is_native_denom(&denom) {
             state.get_balance_for(&source_account.alias)
         } else {
             state.get_ibc_balance_for(&source_account.alias, &denom)
         };
-        let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
+        let amount = utils::random_between(1, balance / MAX_BATCH_TX_NUM);
 
         let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(source_account.public_keys, gas_payer);
@@ -178,12 +178,12 @@ impl StepContext for IbcUnshieldingTransfer {
             return Ok(vec![]);
         };
         let target_account = ctx.cosmos.account.to_string();
-        let amount_account = if is_native_denom(&denom) {
+        let balance = if is_native_denom(&denom) {
             state.get_shielded_balance_for(&source_account.alias)
         } else {
             state.get_ibc_balance_for(&source_account.alias.spending_key(), &denom)
         };
-        let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
+        let amount = utils::random_between(1, balance / MAX_BATCH_TX_NUM);
 
         let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
         let shielded_source_balance =

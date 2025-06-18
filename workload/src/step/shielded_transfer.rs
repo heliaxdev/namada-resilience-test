@@ -8,7 +8,7 @@ use crate::step::utils::coin_flip;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
-use crate::utils::{get_masp_epoch, ibc_denom, retry_config};
+use crate::utils::{get_masp_epoch, ibc_denom, is_native_denom, retry_config};
 
 use super::utils;
 
@@ -42,8 +42,12 @@ impl StepContext for ShieldedTransfer {
         let target_account = state
             .random_payment_address(vec![source_account.alias.clone()])
             .ok_or(StepError::BuildTask("No more target accounts".to_string()))?;
-        let amount_account = state.get_shielded_balance_for(&source_account.alias);
-        let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
+        let balance = if is_native_denom(&denom) {
+            state.get_shielded_balance_for(&source_account.alias)
+        } else {
+            state.get_ibc_balance_for(&source_account.alias.spending_key(), &denom)
+        };
+        let amount = utils::random_between(1, balance / MAX_BATCH_TX_NUM);
 
         let transparent_source_balance = state.get_balance_for(&source_account.alias.base());
         let disposable_gas_payer = transparent_source_balance < DEFAULT_FEE || coin_flip(0.5);

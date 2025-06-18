@@ -15,6 +15,7 @@ use crate::task::{Task, TaskContext};
 use crate::types::{Alias, Epoch, Fee, Height};
 use crate::utils::{
     base_dir, execute_reveal_pk, get_block_height, get_proposals, is_pk_revealed, retry_config,
+    thread_id,
 };
 
 pub struct WorkloadExecutor {
@@ -109,12 +110,15 @@ impl WorkloadExecutor {
     }
 
     pub fn load_state(&mut self) -> Result<(), StateError> {
-        self.state = State::load(&base_dir())?;
+        let dir = base_dir().join(format!("state-{}", thread_id()));
+        self.state = State::load(&dir)?;
         Ok(())
     }
 
     pub fn save_state(&self) -> Result<(), StateError> {
-        self.state.save(&base_dir())
+        let dir = base_dir().join(format!("state-{}", thread_id()));
+        std::fs::create_dir_all(&dir).map_err(StateError::File)?;
+        self.state.save(&dir)
     }
 
     pub async fn try_step(&mut self, next_step: StepType, no_check: bool) -> Code {

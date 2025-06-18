@@ -5,7 +5,7 @@ use crate::state::State;
 use crate::step::StepContext;
 use crate::task::{self, Task, TaskSettings};
 use crate::types::Alias;
-use crate::utils::ibc_denom;
+use crate::utils::{ibc_denom, is_native_denom};
 
 use super::utils;
 
@@ -35,8 +35,12 @@ impl StepContext for TransparentTransfer {
         let target_account = state
             .random_account(vec![source_account.alias.clone()])
             .ok_or(StepError::BuildTask("No more accounts".to_string()))?;
-        let amount_account = state.get_balance_for(&source_account.alias);
-        let amount = utils::random_between(1, amount_account / MAX_BATCH_TX_NUM);
+        let balance = if is_native_denom(&denom) {
+            state.get_balance_for(&source_account.alias)
+        } else {
+            state.get_ibc_balance_for(&source_account.alias, &denom)
+        };
+        let amount = utils::random_between(1, balance / MAX_BATCH_TX_NUM);
 
         let gas_payer = utils::get_gas_payer(source_account.public_keys.iter(), state);
         let task_settings = TaskSettings::new(source_account.public_keys, gas_payer);

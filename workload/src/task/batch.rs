@@ -4,14 +4,15 @@ use namada_sdk::{args, signing::SigningTxData, tx::Tx};
 use typed_builder::TypedBuilder;
 
 use crate::check::{self, Check};
+use crate::constants::COSMOS_TOKEN;
 use crate::context::Ctx;
 use crate::error::TaskError;
 use crate::state::State;
 use crate::task::{Task, TaskContext, TaskSettings};
 use crate::types::{Alias, Height};
 use crate::utils::{
-    execute_tx, get_balance, get_block_height, get_bond, get_shielded_balance, merge_tx,
-    retry_config, wait_block_settlement, RetryConfig,
+    execute_tx, get_balance, get_block_height, get_bond, get_shielded_balance, ibc_denom,
+    is_native_denom, merge_tx, retry_config, wait_block_settlement, RetryConfig,
 };
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -110,33 +111,62 @@ impl TaskContext for Batch {
         let mut prepared_checks = vec![];
         let mut balances: HashMap<Alias, i64> = HashMap::default();
         let mut shielded_balances: HashMap<Alias, i64> = HashMap::default();
+        let mut ibc_balances: HashMap<Alias, i64> = HashMap::default();
         let mut bonds: HashMap<String, (u64, i64)> = HashMap::default();
         for check in checks {
             match check {
                 Check::RevealPk(_) => prepared_checks.push(check),
                 Check::BalanceSource(balance_source) => {
-                    balances
-                        .entry(balance_source.target().clone())
-                        .and_modify(|balance| *balance -= balance_source.amount() as i64)
-                        .or_insert(-(balance_source.amount() as i64));
+                    if is_native_denom(balance_source.denom()) {
+                        balances
+                            .entry(balance_source.target().clone())
+                            .and_modify(|balance| *balance -= balance_source.amount() as i64)
+                            .or_insert(-(balance_source.amount() as i64));
+                    } else {
+                        ibc_balances
+                            .entry(balance_source.target().clone())
+                            .and_modify(|balance| *balance -= balance_source.amount() as i64)
+                            .or_insert(-(balance_source.amount() as i64));
+                    }
                 }
                 Check::BalanceTarget(balance_target) => {
-                    balances
-                        .entry(balance_target.target().clone())
-                        .and_modify(|balance| *balance += balance_target.amount() as i64)
-                        .or_insert(balance_target.amount() as i64);
+                    if is_native_denom(balance_target.denom()) {
+                        balances
+                            .entry(balance_target.target().clone())
+                            .and_modify(|balance| *balance += balance_target.amount() as i64)
+                            .or_insert(balance_target.amount() as i64);
+                    } else {
+                        ibc_balances
+                            .entry(balance_target.target().clone())
+                            .and_modify(|balance| *balance += balance_target.amount() as i64)
+                            .or_insert(balance_target.amount() as i64);
+                    }
                 }
                 Check::BalanceShieldedSource(balance_source) => {
-                    shielded_balances
-                        .entry(balance_source.target().base().clone())
-                        .and_modify(|balance| *balance -= balance_source.amount() as i64)
-                        .or_insert(-(balance_source.amount() as i64));
+                    if is_native_denom(balance_source.denom()) {
+                        shielded_balances
+                            .entry(balance_source.target().base().clone())
+                            .and_modify(|balance| *balance -= balance_source.amount() as i64)
+                            .or_insert(-(balance_source.amount() as i64));
+                    } else {
+                        ibc_balances
+                            .entry(balance_source.target().spending_key().clone())
+                            .and_modify(|balance| *balance -= balance_source.amount() as i64)
+                            .or_insert(-(balance_source.amount() as i64));
+                    }
                 }
                 Check::BalanceShieldedTarget(balance_target) => {
-                    shielded_balances
-                        .entry(balance_target.target().base().clone())
-                        .and_modify(|balance| *balance += balance_target.amount() as i64)
-                        .or_insert(balance_target.amount() as i64);
+                    if is_native_denom(balance_target.denom()) {
+                        shielded_balances
+                            .entry(balance_target.target().base().clone())
+                            .and_modify(|balance| *balance += balance_target.amount() as i64)
+                            .or_insert(balance_target.amount() as i64);
+                    } else {
+                        ibc_balances
+                            .entry(balance_target.target().payment_address().clone())
+                            .and_modify(|balance| *balance += balance_target.amount() as i64)
+                            .or_insert(balance_target.amount() as i64);
+                    }
                 }
                 Check::BondIncrease(bond_increase) => {
                     bonds
@@ -244,6 +274,55 @@ impl TaskContext for Batch {
                         .amount(amount.unsigned_abs())
                         .build(),
                 ));
+            }
+        }
+
+        let ibc_denom = ibc_denom(&ctx.namada_channel_id, COSMOS_TOKEN);
+        for (alias, amount) in ibc_balances {
+            if alias.is_spending_key() || alias.is_payment_address() {
+                let pre_balance = get_shielded_balance(ctx, &alias, &ibc_denom, retry_config)
+                    .await?
+                    .unwrap_or_default();
+                if amount >= 0 {
+                    prepared_checks.push(Check::BalanceShieldedTarget(
+                        check::balance_shielded_target::BalanceShieldedTarget::builder()
+                            .target(alias.payment_address())
+                            .pre_balance(pre_balance)
+                            .denom(ibc_denom.clone())
+                            .amount(amount.unsigned_abs())
+                            .build(),
+                    ));
+                } else {
+                    prepared_checks.push(Check::BalanceShieldedSource(
+                        check::balance_shielded_source::BalanceShieldedSource::builder()
+                            .target(alias.spending_key())
+                            .pre_balance(pre_balance)
+                            .denom(ibc_denom.clone())
+                            .amount(amount.unsigned_abs())
+                            .build(),
+                    ));
+                }
+            } else {
+                let (_, pre_balance) = get_balance(ctx, &alias, &ibc_denom, retry_config).await?;
+                if amount >= 0 {
+                    prepared_checks.push(Check::BalanceTarget(
+                        check::balance_target::BalanceTarget::builder()
+                            .target(alias)
+                            .pre_balance(pre_balance)
+                            .denom(ibc_denom.clone())
+                            .amount(amount.unsigned_abs())
+                            .build(),
+                    ));
+                } else {
+                    prepared_checks.push(Check::BalanceSource(
+                        check::balance_source::BalanceSource::builder()
+                            .target(alias)
+                            .pre_balance(pre_balance)
+                            .denom(ibc_denom.clone())
+                            .amount(amount.unsigned_abs())
+                            .build(),
+                    ));
+                }
             }
         }
 

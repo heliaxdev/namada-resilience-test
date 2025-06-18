@@ -11,7 +11,7 @@ use crate::error::TaskError;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount};
-use crate::utils::{get_balance, get_token, RetryConfig};
+use crate::utils::{get_balance, get_token, is_native_denom, RetryConfig};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct TransparentTransfer {
@@ -116,7 +116,12 @@ impl TaskContext for TransparentTransfer {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.decrease_balance(&self.source, self.amount);
-        state.increase_balance(&self.target, self.amount);
+        if is_native_denom(&self.denom) {
+            state.decrease_balance(&self.source, self.amount);
+            state.increase_balance(&self.target, self.amount);
+        } else {
+            state.decrease_ibc_balance(&self.source, &self.denom, self.amount);
+            state.increase_ibc_balance(&self.target, &self.denom, self.amount);
+        }
     }
 }

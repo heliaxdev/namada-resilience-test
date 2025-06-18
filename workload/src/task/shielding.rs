@@ -14,7 +14,8 @@ use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount, Height, MaspEpoch};
 use crate::utils::{
-    get_balance, get_shielded_balance, get_token, shielded_sync_with_retry, RetryConfig,
+    get_balance, get_shielded_balance, get_token, is_native_denom, shielded_sync_with_retry,
+    RetryConfig,
 };
 
 #[derive(Clone, Debug, TypedBuilder)]
@@ -137,6 +138,12 @@ impl TaskContext for Shielding {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.modify_shielding(&self.source, &self.target, self.amount)
+        if is_native_denom(&self.denom) {
+            state.decrease_balance(&self.source, self.amount);
+            state.increase_masp_balance(&self.target, self.amount);
+        } else {
+            state.decrease_ibc_balance(&self.source, &self.denom, self.amount);
+            state.increase_ibc_balance(&self.target, &self.denom, self.amount);
+        }
     }
 }

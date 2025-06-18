@@ -489,7 +489,7 @@ impl TaskContext for IbcUnshieldingTransfer {
             .map_err(|e| TaskError::Wallet(e.to_string()))?;
         let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(source_spending_key);
         let pseudo_spending_key_from_spending_key = PseudoExtendedKey::from(tmp);
-        let (token_address, amount) = get_token(ctx, &self.denom, self.amount).await?;
+        let source = TransferSource::ExtendedKey(pseudo_spending_key_from_spending_key);
 
         let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
         let gas_spending_key = if disposable_gas_payer {
@@ -502,15 +502,7 @@ impl TaskContext for IbcUnshieldingTransfer {
             None
         };
 
-        let source = TransferSource::ExtendedKey(pseudo_spending_key_from_spending_key);
-        let mut tx_builder = ctx.namada.new_ibc_transfer(
-            source,
-            self.receiver.name.clone(),
-            token_address,
-            amount,
-            self.src_channel_id.clone(),
-        );
-        tx_builder.gas_spending_key = gas_spending_key;
+        // use the original transparent address for testing
         let refund_target = wallet
             .find_address(self.source.base().name)
             .ok_or_else(|| {
@@ -520,16 +512,33 @@ impl TaskContext for IbcUnshieldingTransfer {
                 ))
             })?
             .into_owned();
-        // use the original transparent address for testing
+
+        let fee_payer = if disposable_gas_payer {
+            None
+        } else {
+            Some(
+                wallet
+                    .find_public_key(&self.settings.gas_payer.name)
+                    .map_err(|e| TaskError::Wallet(e.to_string()))?,
+            )
+        };
+        drop(wallet);
+
+        let (token_address, amount) = get_token(ctx, &self.denom, self.amount).await?;
+
+        let mut tx_builder = ctx.namada.new_ibc_transfer(
+            source,
+            self.receiver.name.clone(),
+            token_address,
+            amount,
+            self.src_channel_id.clone(),
+        );
+        tx_builder.gas_spending_key = gas_spending_key;
         tx_builder.refund_target = Some(TransferTarget::Address(refund_target));
         tx_builder = tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        if !disposable_gas_payer {
-            let fee_payer = wallet
-                .find_public_key(&self.settings.gas_payer.name)
-                .map_err(|e| TaskError::Wallet(e.to_string()))?;
+        if let Some(fee_payer) = fee_payer {
             tx_builder = tx_builder.wrapper_fee_payer(fee_payer);
         }
-        drop(wallet);
 
         // signing key isn't needed for unshielding transfer
 

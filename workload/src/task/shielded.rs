@@ -15,7 +15,9 @@ use crate::error::TaskError;
 use crate::state::State;
 use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount, Height, MaspEpoch};
-use crate::utils::{get_shielded_balance, get_token, shielded_sync_with_retry, RetryConfig};
+use crate::utils::{
+    get_shielded_balance, get_token, is_native_denom, shielded_sync_with_retry, RetryConfig,
+};
 
 #[derive(Clone, Debug, TypedBuilder)]
 pub struct ShieldedTransfer {
@@ -68,6 +70,29 @@ impl TaskContext for ShieldedTransfer {
             *wallet.find_payment_addr(&self.target.name).ok_or_else(|| {
                 TaskError::Wallet(format!("No payment address: {}", self.target.name))
             })?;
+
+        let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
+        let gas_spending_key = if disposable_gas_payer {
+            let spending_key = wallet
+                .find_spending_key(&self.settings.gas_payer.name, None)
+                .map_err(|e| TaskError::Wallet(e.to_string()))?;
+            let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(spending_key);
+            Some(PseudoExtendedKey::from(tmp))
+        } else {
+            None
+        };
+
+        let fee_payer = if disposable_gas_payer {
+            None
+        } else {
+            Some(
+                wallet
+                    .find_public_key(&self.settings.gas_payer.name)
+                    .map_err(|e| TaskError::Wallet(e.to_string()))?,
+            )
+        };
+        drop(wallet);
+
         let (token, amount) = get_token(ctx, &self.denom, self.amount).await?;
 
         let sources = vec![TxShieldedSource {
@@ -81,29 +106,14 @@ impl TaskContext for ShieldedTransfer {
             amount,
         }];
 
-        let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
-        let gas_spending_key = if disposable_gas_payer {
-            let spending_key = wallet
-                .find_spending_key(&self.settings.gas_payer.name, None)
-                .map_err(|e| TaskError::Wallet(e.to_string()))?;
-            let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(spending_key);
-            Some(PseudoExtendedKey::from(tmp))
-        } else {
-            None
-        };
-
         let mut transfer_tx_builder =
             ctx.namada
                 .new_shielded_transfer(sources, targets, gas_spending_key);
         transfer_tx_builder =
             transfer_tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        if !disposable_gas_payer {
-            let fee_payer = wallet
-                .find_public_key(&self.settings.gas_payer.name)
-                .map_err(|e| TaskError::Wallet(e.to_string()))?;
+        if let Some(fee_payer) = fee_payer {
             transfer_tx_builder = transfer_tx_builder.wrapper_fee_payer(fee_payer);
         }
-        drop(wallet);
 
         // signing key isn't needed for shielded transfer
 
@@ -154,6 +164,12 @@ impl TaskContext for ShieldedTransfer {
     }
 
     fn update_state(&self, state: &mut State) {
-        state.modify_shielded_transfer(&self.source, &self.target, self.amount);
+        if is_native_denom(&self.denom) {
+            state.decrease_masp_balance(&self.source, self.amount);
+            state.increase_masp_balance(&self.target, self.amount);
+        } else {
+            state.decrease_ibc_balance(&self.source, &self.denom, self.amount);
+            state.increase_ibc_balance(&self.target, &self.denom, self.amount);
+        }
     }
 }

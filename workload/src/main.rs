@@ -51,18 +51,7 @@ async fn main() {
 
     let mut handles = Vec::new();
     for _ in 0..args.concurrency {
-        let ctx = loop {
-            match Ctx::new(&config).await {
-                Ok(ctx) => break ctx,
-                Err(e) => {
-                    tracing::info!("Setup Context failed: {e}, retrying...");
-                    sleep(Duration::from_secs(2)).await;
-                }
-            }
-        };
-
-        let mut executor = WorkloadExecutor::new(ctx);
-
+        let config = Arc::clone(&config);
         let handle = thread::spawn(move || {
             let rt = Builder::new_current_thread()
                 .enable_all()
@@ -70,7 +59,18 @@ async fn main() {
                 .expect("Failed to build Tokio runtime");
 
             rt.block_on(async move {
+                let ctx = loop {
+                    match Ctx::new(&config).await {
+                        Ok(ctx) => break ctx,
+                        Err(e) => {
+                            tracing::info!("Setup Context failed: {e}, retrying...");
+                            sleep(Duration::from_secs(2)).await;
+                        }
+                    }
+                };
+                let mut executor = WorkloadExecutor::new(ctx);
                 let thread_id = thread::current().id();
+
                 if args.init {
                     tracing::info!("Initializing accounts for {thread_id:?}...");
                     executor
