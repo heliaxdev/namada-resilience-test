@@ -8,7 +8,7 @@ use crate::check::{CheckContext, CheckInfo};
 use crate::context::Ctx;
 use crate::error::CheckError;
 use crate::types::{Alias, Amount, Balance, Fee};
-use crate::utils::{get_balance, RetryConfig};
+use crate::utils::{get_balance, is_native_denom, RetryConfig};
 
 #[derive(TypedBuilder)]
 pub struct BalanceTarget {
@@ -53,7 +53,11 @@ impl CheckContext for BalanceTarget {
         let (target_address, post_balance) =
             get_balance(ctx, &self.target, &self.denom, retry_config).await?;
 
-        let fee = fees.get(&self.target).cloned().unwrap_or_default();
+        let fee = if is_native_denom(&self.denom) {
+            fees.get(&self.target).cloned().unwrap_or_default()
+        } else {
+            0u64
+        };
 
         let check_balance = self
             .pre_balance
@@ -61,7 +65,7 @@ impl CheckContext for BalanceTarget {
             .and_then(|b| b.checked_sub(token::Amount::from_u64(fee)))
             .ok_or_else(|| {
                 CheckError::State(format!(
-                    "BalanceTarget check error: {} balance is overflowing",
+                    "BalanceTarget check error: {} balance is underflowing",
                     self.target.name
                 ))
             })?;
