@@ -19,7 +19,7 @@ impl StepContext for Bond {
     }
 
     async fn is_valid(&self, _sdk: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.any_account_with_min_balance(MIN_TRANSFER_BALANCE))
+        Ok(state.at_least_account_with_min_balance(1, MIN_TRANSFER_BALANCE))
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

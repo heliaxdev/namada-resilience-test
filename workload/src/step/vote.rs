@@ -18,7 +18,7 @@ impl StepContext for Vote {
 
     async fn is_valid(&self, ctx: &Ctx, state: &State) -> Result<bool, StepError> {
         let current_epoch = get_epoch(ctx, retry_config()).await?;
-        Ok(state.any_bond() && state.any_votable_proposal(current_epoch))
+        Ok(state.at_least_bond(1) && state.any_votable_proposal(current_epoch))
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

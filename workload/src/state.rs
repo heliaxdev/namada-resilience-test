@@ -1,10 +1,11 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::path::Path;
 
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::constants::{MAX_BATCH_TX_NUM, MIN_TRANSFER_BALANCE, PIPELINE_LEN};
+use crate::constants::{MAX_BATCH_TX_NUM, PIPELINE_LEN};
 use crate::types::{Alias, Epoch, ProposalId};
 use crate::utils::with_rng;
 
@@ -58,7 +59,7 @@ pub struct Bond {
     pub amount: u64,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Alias, Account>,
     pub balances: HashMap<Alias, u64>,
@@ -94,23 +95,22 @@ impl State {
         }
     }
 
+    // FILE
+
+    pub fn save(&self, dir: &Path) -> Result<(), StateError> {
+        let path = dir.join("state.json");
+        let json = serde_json::to_string(self).map_err(StateError::Serde)?;
+        std::fs::write(path, json).map_err(StateError::File)
+    }
+
+    pub fn load(dir: &Path) -> Result<Self, StateError> {
+        let path = dir.join("state.json");
+        let json = std::fs::read_to_string(path).map_err(StateError::File)?;
+        let state = serde_json::from_str(&json).map_err(StateError::Serde)?;
+        Ok(state)
+    }
+
     // READ
-
-    pub fn any_account(&self) -> bool {
-        self.at_least_accounts(1)
-    }
-
-    pub fn at_least_accounts(&self, sample: u64) -> bool {
-        self.accounts.len() >= sample as usize
-    }
-
-    pub fn at_least_masp_accounts(&self, sample: u64) -> bool {
-        self.accounts
-            .iter()
-            .filter(|(_, account)| account.is_implicit())
-            .count()
-            >= sample as usize
-    }
 
     pub fn at_least_masp_account_with_minimal_balance(
         &self,
@@ -124,13 +124,7 @@ impl State {
             >= number_of_accounts
     }
 
-    pub fn any_account_with_min_balance(&self, min_balance: u64) -> bool {
-        self.balances
-            .iter()
-            .any(|(_, balance)| balance >= &min_balance)
-    }
-
-    pub fn min_n_account_with_min_balance(&self, sample: usize, min_balance: u64) -> bool {
+    pub fn at_least_account_with_min_balance(&self, sample: usize, min_balance: u64) -> bool {
         self.balances
             .iter()
             .filter(|(_, balance)| **balance >= min_balance)
@@ -138,33 +132,7 @@ impl State {
             >= sample
     }
 
-    pub fn any_account_can_make_transfer(&self) -> bool {
-        self.balances
-            .iter()
-            .any(|(_, balance)| balance >= &MIN_TRANSFER_BALANCE)
-    }
-
-    pub fn min_n_implicit_accounts(&self, sample_size: usize) -> bool {
-        self.accounts
-            .iter()
-            .filter(|(_, account)| account.is_implicit())
-            .count()
-            > sample_size
-    }
-
-    pub fn min_n_established_accounts(&self, sample_size: usize) -> bool {
-        self.accounts
-            .iter()
-            .filter(|(_, account)| account.is_established())
-            .count()
-            > sample_size
-    }
-
-    pub fn any_bond(&self) -> bool {
-        self.min_bonds(1)
-    }
-
-    pub fn min_bonds(&self, sample: usize) -> bool {
+    pub fn at_least_bond(&self, sample: usize) -> bool {
         self.bonds
             .values()
             .filter(|data| data.values().any(|(amount, _)| *amount > 2))
@@ -173,11 +141,11 @@ impl State {
             >= sample
     }
 
-    pub fn min_n_validators(&self, sample: usize) -> bool {
+    pub fn at_least_validator(&self, sample: usize) -> bool {
         self.validators.len() >= sample
     }
 
-    pub fn min_n_deactivated_validators(&self, sample: usize) -> bool {
+    pub fn at_least_deactivated_validator(&self, sample: usize) -> bool {
         self.deactivated_validators.len() >= sample
     }
 
@@ -581,21 +549,6 @@ impl State {
         self.bonds
             .entry(source.clone())
             .and_modify(|bond| bond.get_mut(validator).unwrap().0 -= amount);
-    }
-
-    pub fn modify_shielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        *self.balances.get_mut(source).unwrap() -= amount;
-        *self.masp_balances.get_mut(&target.base()).unwrap() += amount;
-    }
-
-    pub fn modify_unshielding(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        *self.masp_balances.get_mut(&source.base()).unwrap() -= amount;
-        *self.balances.get_mut(target).unwrap() += amount;
-    }
-
-    pub fn modify_shielded_transfer(&mut self, source: &Alias, target: &Alias, amount: u64) {
-        *self.masp_balances.get_mut(&target.base()).unwrap() += amount;
-        *self.masp_balances.get_mut(&source.base()).unwrap() -= amount;
     }
 
     pub fn set_established_as_validator(&mut self, alias: &Alias) {

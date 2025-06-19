@@ -17,8 +17,8 @@ impl StepContext for InitAccount {
         "init-account".to_string()
     }
 
-    async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.min_n_implicit_accounts(3))
+    async fn is_valid(&self, _ctx: &Ctx, _state: &State) -> Result<bool, StepError> {
+        Ok(true)
     }
 
     async fn build_task(&self, _ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

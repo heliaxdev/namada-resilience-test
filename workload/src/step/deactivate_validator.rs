@@ -16,7 +16,7 @@ impl StepContext for DeactivateValidator {
     }
 
     async fn is_valid(&self, _ctx: &Ctx, state: &State) -> Result<bool, StepError> {
-        Ok(state.min_n_validators(1))
+        Ok(state.at_least_validator(1))
     }
 
     async fn build_task(&self, ctx: &Ctx, state: &State) -> Result<Vec<Task>, StepError> {

@@ -1,5 +1,5 @@
 use cosmrs::Any;
-use namada_sdk::args::{self, InputAmount, TxBuilder};
+use namada_sdk::args::{self, TxBuilder};
 use namada_sdk::ibc::convert_masp_tx_to_ibc_memo;
 use namada_sdk::ibc::core::host::types::identifiers::ChannelId;
 use namada_sdk::masp_primitives;
@@ -9,7 +9,7 @@ use namada_sdk::signing::SigningTxData;
 use namada_sdk::tx::data::GasLimit;
 use namada_sdk::tx::Tx;
 use namada_sdk::Namada;
-use namada_sdk::{token, TransferSource, TransferTarget};
+use namada_sdk::{TransferSource, TransferTarget};
 use rand::rngs::OsRng;
 use typed_builder::TypedBuilder;
 
@@ -22,8 +22,8 @@ use crate::task::{TaskContext, TaskSettings};
 use crate::types::{Alias, Amount, Height, MaspEpoch};
 use crate::utils::{
     base_denom, build_cosmos_ibc_transfer, cosmos_denom_hash, execute_tx, gen_shielding_tx,
-    get_balance, get_block_height, get_ibc_packet_sequence, get_shielded_balance, ibc_denom,
-    ibc_token_address, is_ibc_transfer_successful, is_native_denom, is_recv_packet, retry_config,
+    get_balance, get_block_height, get_ibc_packet_sequence, get_shielded_balance, get_token,
+    ibc_denom, is_ibc_transfer_successful, is_native_denom, is_recv_packet, retry_config,
     shielded_sync_with_retry, wait_block_settlement, RetryConfig,
 };
 
@@ -62,25 +62,10 @@ impl TaskContext for IbcTransferSend {
         let source_address = wallet
             .find_address(&self.source.name)
             .ok_or_else(|| TaskError::Wallet(format!("No source address: {}", self.source.name)))?;
-        let token_amount = token::Amount::from_u64(self.amount);
-        let (token_address, denominated_amount) = if is_native_denom(&self.denom) {
-            let address = wallet
-                .find_address(&self.denom)
-                .ok_or_else(|| {
-                    TaskError::Wallet(format!("No native token address: {}", self.denom))
-                })?
-                .into_owned();
-            (address, token::DenominatedAmount::native(token_amount))
-        } else {
-            (
-                ibc_token_address(&self.denom),
-                token::DenominatedAmount::new(token_amount, 0u8.into()),
-            )
-        };
+        let (token_address, amount) = get_token(ctx, &self.denom, self.amount).await?;
         let fee_payer = wallet
             .find_public_key(&self.settings.gas_payer.name)
             .map_err(|e| TaskError::Wallet(e.to_string()))?;
-        let amount = InputAmount::Unvalidated(denominated_amount);
 
         let source = TransferSource::Address(source_address.into_owned());
         let mut tx_builder = ctx.namada.new_ibc_transfer(
@@ -504,22 +489,7 @@ impl TaskContext for IbcUnshieldingTransfer {
             .map_err(|e| TaskError::Wallet(e.to_string()))?;
         let tmp = masp_primitives::zip32::ExtendedSpendingKey::from(source_spending_key);
         let pseudo_spending_key_from_spending_key = PseudoExtendedKey::from(tmp);
-        let token_amount = token::Amount::from_u64(self.amount);
-        let (token_address, denominated_amount) = if is_native_denom(&self.denom) {
-            let address = wallet
-                .find_address(&self.denom)
-                .ok_or_else(|| {
-                    TaskError::Wallet(format!("No native token address: {}", self.denom))
-                })?
-                .into_owned();
-            (address, token::DenominatedAmount::native(token_amount))
-        } else {
-            (
-                ibc_token_address(&self.denom),
-                token::DenominatedAmount::new(token_amount, 0u8.into()),
-            )
-        };
-        let amount = InputAmount::Unvalidated(denominated_amount);
+        let source = TransferSource::ExtendedKey(pseudo_spending_key_from_spending_key);
 
         let disposable_gas_payer = self.settings.gas_payer.is_spending_key();
         let gas_spending_key = if disposable_gas_payer {
@@ -532,15 +502,7 @@ impl TaskContext for IbcUnshieldingTransfer {
             None
         };
 
-        let source = TransferSource::ExtendedKey(pseudo_spending_key_from_spending_key);
-        let mut tx_builder = ctx.namada.new_ibc_transfer(
-            source,
-            self.receiver.name.clone(),
-            token_address,
-            amount,
-            self.src_channel_id.clone(),
-        );
-        tx_builder.gas_spending_key = gas_spending_key;
+        // use the original transparent address for testing
         let refund_target = wallet
             .find_address(self.source.base().name)
             .ok_or_else(|| {
@@ -550,16 +512,33 @@ impl TaskContext for IbcUnshieldingTransfer {
                 ))
             })?
             .into_owned();
-        // use the original transparent address for testing
+
+        let fee_payer = if disposable_gas_payer {
+            None
+        } else {
+            Some(
+                wallet
+                    .find_public_key(&self.settings.gas_payer.name)
+                    .map_err(|e| TaskError::Wallet(e.to_string()))?,
+            )
+        };
+        drop(wallet);
+
+        let (token_address, amount) = get_token(ctx, &self.denom, self.amount).await?;
+
+        let mut tx_builder = ctx.namada.new_ibc_transfer(
+            source,
+            self.receiver.name.clone(),
+            token_address,
+            amount,
+            self.src_channel_id.clone(),
+        );
+        tx_builder.gas_spending_key = gas_spending_key;
         tx_builder.refund_target = Some(TransferTarget::Address(refund_target));
         tx_builder = tx_builder.gas_limit(GasLimit::from(self.settings.gas_limit));
-        if !disposable_gas_payer {
-            let fee_payer = wallet
-                .find_public_key(&self.settings.gas_payer.name)
-                .map_err(|e| TaskError::Wallet(e.to_string()))?;
+        if let Some(fee_payer) = fee_payer {
             tx_builder = tx_builder.wrapper_fee_payer(fee_payer);
         }
-        drop(wallet);
 
         // signing key isn't needed for unshielding transfer
 

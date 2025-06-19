@@ -4,13 +4,14 @@ use std::time::{self, Instant};
 
 use namada_sdk::account::Account;
 use namada_sdk::address::Address;
+use namada_sdk::args::InputAmount;
 use namada_sdk::control_flow::install_shutdown_signal;
 use namada_sdk::io::DevNullProgressBar;
 use namada_sdk::masp::shielded_wallet::ShieldedApi;
 use namada_sdk::masp::{IndexerMaspClient, LedgerMaspClient, MaspLocalTaskEnv, ShieldedSyncConfig};
 use namada_sdk::masp_primitives::zip32;
 use namada_sdk::proof_of_stake::types::ValidatorStateInfo;
-use namada_sdk::token::{self, MaspEpoch};
+use namada_sdk::token::{self, DenominatedAmount, MaspEpoch};
 use namada_sdk::{rpc, Namada};
 use namada_wallet::DatedKeypair;
 use reqwest::Url;
@@ -19,8 +20,33 @@ use tryhard::{backoff_strategies::ExponentialBackoff, NoOnRetry, RetryFutureConf
 
 use crate::context::Ctx;
 use crate::error::QueryError;
-use crate::types::{Alias, Epoch, Height, ProposalId, ProposalVote};
+use crate::types::{Alias, Amount, Epoch, Height, ProposalId, ProposalVote};
 use crate::utils::{ibc_token_address, is_native_denom, RetryConfig};
+
+pub async fn get_token(
+    ctx: &Ctx,
+    denom: &str,
+    amount: Amount,
+) -> Result<(Address, InputAmount), QueryError> {
+    let wallet = ctx.namada.wallet.read().await;
+
+    let token_amount = token::Amount::from_u64(amount);
+    let (token_address, denominated_amount) = if is_native_denom(denom) {
+        let address = wallet
+            .find_address(denom)
+            .ok_or_else(|| QueryError::Wallet(format!("No native token address: {}", denom)))?
+            .into_owned();
+        (address, DenominatedAmount::native(token_amount))
+    } else {
+        (
+            ibc_token_address(denom),
+            DenominatedAmount::new(token_amount, 0u8.into()),
+        )
+    };
+    let input_amount = InputAmount::Unvalidated(denominated_amount);
+
+    Ok((token_address, input_amount))
+}
 
 pub async fn get_account_info(
     ctx: &Ctx,
