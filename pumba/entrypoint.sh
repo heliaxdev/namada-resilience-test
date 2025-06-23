@@ -101,7 +101,7 @@ while true; do
   esac
 
   SEED_INTERVAL=$((BASE_SEED + LOOP * 10 + 4))
-  INTERVAL=$(rand_range "$SEED_INTERVAL" 1 120)
+  INTERVAL=$(( $(rand_range "$SEED_INTERVAL" 1 120) + 60 ))
   echo "[INFO] ==== Sleeping for $INTERVAL seconds ===="
   sleep "$INTERVAL"
 
