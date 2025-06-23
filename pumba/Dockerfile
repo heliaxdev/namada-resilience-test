@@ -17,5 +17,4 @@ RUN case "${TARGETARCH}" in \
     chmod +x /usr/local/bin/pumba
 
 COPY entrypoint.sh /entrypoint.sh
-
 ENTRYPOINT ["/entrypoint.sh"]

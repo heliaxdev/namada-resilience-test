@@ -229,7 +229,7 @@ services:
     build:
       context: ../pumba
     environment:
-      - TEST_SEED=${TEST_SEED:-123}
+      - TEST_SEED=${TEST_SEED:-456}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./container_ready/:/container_ready
