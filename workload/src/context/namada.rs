@@ -66,3 +66,10 @@ pub async fn namada_ctx(config: &AppConfig) -> Result<NamadaCtx, String> {
     let namada = namada.chain_id(ChainId::from_str(&config.chain_id).unwrap());
     Ok(namada)
 }
+
+pub fn reconnect(ctx: &mut NamadaCtx, config: &AppConfig) {
+    let url = Url::from_str(&config.rpc).expect("invalid RPC address");
+    let http_client = HttpClient::new(url).unwrap();
+
+    ctx.client = http_client;
+}

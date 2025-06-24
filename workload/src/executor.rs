@@ -6,6 +6,7 @@ use tokio::time::{sleep, Duration};
 
 use crate::check::{Check, CheckContext, CheckInfo};
 use crate::code::Code;
+use crate::config::AppConfig;
 use crate::context::Ctx;
 use crate::error::{CheckError, StepError, TaskError};
 use crate::state::{State, StateError};
@@ -33,6 +34,10 @@ impl WorkloadExecutor {
             stats: Stats::default(),
             step_id: 0u64,
         }
+    }
+
+    pub fn reconnect(&mut self, config: &AppConfig) {
+        self.ctx.reconnect(config);
     }
 
     pub fn final_report(self) -> Stats {
