@@ -96,6 +96,7 @@ async fn main() {
 
                     while end_time > SystemTime::now() {
                         let next_step = StepType::random_step_type();
+                        executor.reconnect(&config);
                         executor.try_step(next_step, args.no_check).await;
                     }
                 }

@@ -24,4 +24,8 @@ impl Ctx {
             masp_indexer_url: format!("{}/api/v1", config.masp_indexer_url.clone()),
         })
     }
+
+    pub fn reconnect(&mut self, config: &AppConfig) {
+        namada::reconnect(&mut self.namada, config);
+    }
 }
