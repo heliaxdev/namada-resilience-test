@@ -101,6 +101,9 @@ services:
     networks:
       namada-net:
         ipv4_address: 30.0.0.15
+    cpu_count: 1
+    cpu_period: 100000
+    cpu_quota: 100000
   workload:
     container_name: workload
     hostname: workload
