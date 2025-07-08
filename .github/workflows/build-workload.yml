@@ -47,7 +47,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/heliaxdev/nrt-workload
+          images: ghcr.io/namada-net/nrt-workload
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -69,6 +69,6 @@ jobs:
         with:
           context: workload
           push: true
-          tags: ghcr.io/heliaxdev/nrt-workload:${{ github.event.inputs.workload_commit }}
+          tags: ghcr.io/namada-net/nrt-workload:${{ github.event.inputs.workload_commit }}
           cache-from: type=gha,scope=workload-image
           cache-to: type=gha,scope=workload-image,mode=max

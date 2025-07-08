@@ -23,12 +23,12 @@ jobs:
             check: "master"
             duration: 14400
     env:
-      NAMADA_GENESIS_IMAGE: "ghcr.io/heliaxdev/nrt-namada-genesis:${{ matrix.runs.namada }}"
-      NAMADA_IMAGE: "ghcr.io/heliaxdev/nrt-namada:${{ matrix.runs.namada }}"
-      MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/heliaxdev/nrt-masp-indexer"
+      NAMADA_GENESIS_IMAGE: "ghcr.io/namada-net/nrt-namada-genesis:${{ matrix.runs.namada }}"
+      NAMADA_IMAGE: "ghcr.io/namada-net/nrt-namada:${{ matrix.runs.namada }}"
+      MASP_INDEXER_IMAGE_PREFIX: "ghcr.io/namada-net/nrt-masp-indexer"
       MASP_INDEXER_IMAGE_TAG: ${{ matrix.runs.masp_indexer }}
-      WORKLOAD_IMAGE: "ghcr.io/heliaxdev/nrt-workload:${{ matrix.runs.workload }}"
-      CHECK_IMAGE: "ghcr.io/heliaxdev/nrt-check:${{ matrix.runs.check }}"
+      WORKLOAD_IMAGE: "ghcr.io/namada-net/nrt-workload:${{ matrix.runs.workload }}"
+      CHECK_IMAGE: "ghcr.io/namada-net/nrt-check:${{ matrix.runs.check }}"
       TEST_TIME_SEC: ${{ matrix.runs.duration }}
 
     steps:

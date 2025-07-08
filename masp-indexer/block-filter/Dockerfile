@@ -6,7 +6,7 @@ RUN [ -z "$GIT_SHA" ] && echo "GIT_SHA is required" && exit 1 || true
 
 RUN apt-get -y update && apt-get install -y make git-core libssl-dev pkg-config libclang-dev build-essential protobuf-compiler libudev-dev
 
-ADD --keep-git-dir=true https://github.com/anoma/namada-masp-indexer.git#$GIT_SHA .
+ADD --keep-git-dir=true https://github.com/namada-net/namada-masp-indexer.git#$GIT_SHA .
 RUN cargo build --release --locked --package block-index
 
 FROM debian:bookworm-slim AS runtime

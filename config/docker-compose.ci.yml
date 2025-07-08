@@ -2,7 +2,7 @@ services:
   genesis:
     container_name: genesis
     hostname: genesis
-    image: "${NAMADA_GENESIS_IMAGE:-ghcr.io/heliaxdev/nrt-namada-genesis:main}"
+    image: "${NAMADA_GENESIS_IMAGE:-ghcr.io/namada-net/nrt-namada-genesis:main}"
     environment:
     - VALIDATOR0_ADDR=30.0.0.12:27657
     - VALIDATOR1_ADDR=30.0.0.13:27657
@@ -19,7 +19,7 @@ services:
   validator0:
     container_name: validator0
     hostname: validator0
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/namada-net/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -39,7 +39,7 @@ services:
   validator1:
     container_name: validator1
     hostname: validator1
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/namada-net/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -59,7 +59,7 @@ services:
   validator2:
     container_name: validator2
     hostname: validator2
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/namada-net/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -80,7 +80,7 @@ services:
   fullnode:
     container_name: fullnode
     hostname: fullnode
-    image: "${NAMADA_IMAGE:-ghcr.io/heliaxdev/nrt-namada:main}"
+    image: "${NAMADA_IMAGE:-ghcr.io/namada-net/nrt-namada:main}"
     environment:
       - NAMADA_TOKIO_THREADS=4
       - NAMADA_RAYON_THREADS=4
@@ -152,7 +152,7 @@ services:
   masp-chain:
     container_name: masp-chain
     hostname: masp-chain
-    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-chain:${MASP_INDEXER_IMAGE_TAG:-master}"
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/namada-net/nrt-masp-indexer}-chain:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - COMETBFT_URL=http://30.0.0.15:26657
@@ -166,7 +166,7 @@ services:
   masp-webserver:
     container_name: masp-webserver
     hostname: masp-webserver
-    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-webserver:${MASP_INDEXER_IMAGE_TAG:-master}"
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/namada-net/nrt-masp-indexer}-webserver:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - PORT=5000
@@ -178,7 +178,7 @@ services:
   masp-block-filter:
     container_name: masp-block-filter
     hostname: masp-block-filter
-    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/heliaxdev/nrt-masp-indexer}-block-filter:${MASP_INDEXER_IMAGE_TAG:-master}"
+    image: "${MASP_INDEXER_IMAGE_PREFIX:-ghcr.io/namada-net/nrt-masp-indexer}-block-filter:${MASP_INDEXER_IMAGE_TAG:-master}"
     restart: on-failure
     environment:
       - COMETBFT_URL=http://30.0.0.15:26657

@@ -65,7 +65,7 @@ jobs:
           context: ${{ matrix.images.context }}
           file: ${{ matrix.images.context }}/Dockerfile${{ matrix.images.tag }}
           push: true
-          tags: ghcr.io/heliaxdev/nrt-${{ matrix.images.image }}:main${{ matrix.images.tag }}
+          tags: ghcr.io/namada-net/nrt-${{ matrix.images.image }}:main${{ matrix.images.tag }}
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
@@ -78,7 +78,7 @@ jobs:
           context: ${{ matrix.images.context }}
           file: ${{ matrix.images.context }}/Dockerfile${{ matrix.images.tag }}
           push: false
-          tags: ghcr.io/heliaxdev/nrt-${{ matrix.images.image }}:${{ github.event.pull_request.head.sha }}${{ matrix.images.tag }}
+          tags: ghcr.io/namada-net/nrt-${{ matrix.images.image }}:${{ github.event.pull_request.head.sha }}${{ matrix.images.tag }}
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |
@@ -91,7 +91,7 @@ jobs:
           context: ${{ matrix.images.context }}
           file: ${{ matrix.images.context }}/Dockerfile${{ matrix.images.tag }}
           push: true
-          tags: ghcr.io/heliaxdev/nrt-${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
+          tags: ghcr.io/namada-net/nrt-${{ matrix.images.image }}:${{ github.event.inputs.commit }}${{ matrix.images.tag }}
           cache-from: type=gha,scope=${{ matrix.images.cache_scope }}
           cache-to: type=gha,scope=${{ matrix.images.cache_scope }},mode=max
           build-args: |

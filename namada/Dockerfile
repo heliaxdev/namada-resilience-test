@@ -22,7 +22,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-instal
     ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ADD --keep-git-dir=true https://github.com/anoma/namada.git#$GIT_SHA .
+ADD --keep-git-dir=true https://github.com/namada-net/namada.git#$GIT_SHA .
 
 # Be aware the patch could potentially be version dependent
 # getting rid of the sudo
