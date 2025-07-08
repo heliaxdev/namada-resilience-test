@@ -36,12 +36,12 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GH_PAT }}
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: check
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ghcr.io/heliaxdev/nrt-check:master
+          tags: ghcr.io/namada-net/nrt-check:master
           cache-from: type=gha,scope=check-image
           cache-to: type=gha,scope=check-image,mode=max

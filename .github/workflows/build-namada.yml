@@ -57,7 +57,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GH_PAT }}
       - name: Build & Push Image ${{ matrix.images.image }} with sha commit main/'0.46.0-ant' (scheduled)
         if: ${{ github.event_name == 'schedule' }}
         uses: docker/build-push-action@v6
