@@ -17,7 +17,7 @@ jobs:
             workload: "master"
             check: "master"
             duration: 14400
-          - namada: "v101.1.2"
+          - namada: "v201.0.2"
             masp_indexer: "v1.3.0"
             workload: "master"
             check: "master"
